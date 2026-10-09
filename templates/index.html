@@ -288,6 +288,21 @@
     /* ------------------------------------------------------------------ */
     /* Snipe-IT section                                                     */
     /* ------------------------------------------------------------------ */
+    #snipeit-section h2 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .api-status {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+      background: var(--text-muted);
+    }
+    .api-status-checking { animation: dot-pulse 1.4s ease-in-out infinite; }
+    .api-status-online { background: var(--success-text); }
+    .api-status-offline { background: var(--danger-text); }
     #snipeit-section {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -360,6 +375,119 @@
     }
 
     /* ------------------------------------------------------------------ */
+    /* Software inventory table                                             */
+    /* ------------------------------------------------------------------ */
+    .sw-section { margin-bottom: 16px; }
+
+    .sw-head-row th {
+      padding: 7px 14px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: var(--surface-high);
+      border-bottom: 1px solid var(--border-faint);
+      text-align: left;
+    }
+
+    .sw-col-name   { width: 36%; }
+    .sw-col-status { width: 20%; }
+    .sw-col-version{ width: 24%; }
+    .sw-col-method { width: 20%; }
+
+    .sw-name {
+      font-size: 0.83rem;
+      color: var(--text-primary);
+      font-weight: 500;
+      padding: 8px 14px;
+    }
+
+    .sw-status  { padding: 8px 14px; }
+    .sw-version {
+      padding: 8px 14px;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: var(--text-secondary);
+    }
+    .sw-method {
+      padding: 8px 14px;
+      font-size: 0.74rem;
+      color: var(--text-muted);
+    }
+
+    .sw-row-ok      { background: transparent; }
+    .sw-row-missing { background: rgba(248, 81, 73, 0.04); }
+    .sw-row-missing .sw-name { color: var(--text-secondary); }
+
+    /* Status pill */
+    .sw-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .sw-pill-ok {
+      background: rgba(35, 134, 54, 0.18);
+      color: var(--success-text);
+    }
+    .sw-pill-missing {
+      background: rgba(248, 81, 73, 0.14);
+      color: var(--danger-text);
+    }
+    .sw-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .sw-pill-ok      .sw-dot { background: var(--success-text); }
+    .sw-pill-missing .sw-dot { background: var(--danger-text);  }
+
+    .sw-missing-text { color: var(--text-muted); }
+
+    /* ------------------------------------------------------------------ */
+    /* Windows Activation card                                              */
+    /* ------------------------------------------------------------------ */
+    .activation-body { padding: 12px 14px 14px; }
+
+    .activation-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+    }
+    .activation-ok {
+      background: var(--success-bg);
+      color: var(--success-text);
+      border: 1px solid rgba(63, 185, 80, 0.25);
+    }
+    .activation-warn {
+      background: rgba(210, 153, 34, 0.12);
+      color: var(--warning-text);
+      border: 1px solid rgba(210, 153, 34, 0.25);
+    }
+    .act-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .activation-ok   .act-dot { background: var(--success-text); }
+    .activation-warn .act-dot { background: var(--warning-text); }
+
+    .activation-body table { margin-top: 2px; }
+
+    /* ------------------------------------------------------------------ */
     /* Motion                                                               */
     /* ------------------------------------------------------------------ */
     @media (prefers-reduced-motion: reduce) {
@@ -411,9 +539,17 @@
       <div id="browser-sections"></div>
 
       <!-- Snipe-IT section — hidden until agent sends serial -->
+      <!-- Software inventory + Windows activation — injected by app.js when agent data arrives -->
+      <div id="software-slot"></div>
+
       <p class="col-heading" style="margin-top:20px;">Snipe-IT record</p>
       <div id="snipeit-section">
-        <h2>Snipe-IT</h2>
+        <h2>
+          <span>Snipe-IT</span>
+          <span id="snipeit-api-status" class="api-status api-status-checking"
+                role="img" aria-label="Checking Snipe-IT API connection"
+                title="Checking Snipe-IT API connection"></span>
+        </h2>
         <p class="snipeit-looking" style="color:var(--text-muted);">
           Waiting for agent to provide serial number…
         </p>
@@ -430,6 +566,6 @@
 
 </div><!-- end .shell -->
 
-<script src="/static/app.js?v=2"></script>
+<script src="/static/app.js?v=4"></script>
 </body>
 </html>
