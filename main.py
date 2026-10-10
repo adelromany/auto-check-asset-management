@@ -53,6 +53,81 @@ app = FastAPI(title="Snipe-IT Onboarding", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+from fastapi import Depends
+from fastapi.responses import RedirectResponse
+from authlib.integrations.starlette_client import OAuth
+from starlette.middleware.sessions import SessionMiddleware
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET", "change-me"),
+    https_only=os.getenv("HTTPS_ONLY", "true") == "true",
+    same_site="lax",
+    max_age=3600,
+)
+
+oauth = OAuth()
+oauth.register(
+    name="entra",
+    client_id=os.getenv("AZURE_CLIENT_ID"),
+    client_secret=os.getenv("AZURE_CLIENT_SECRET"),
+    server_metadata_url=(
+        f"https://login.microsoftonline.com/{os.getenv('AZURE_TENANT_ID')}"
+        "/v2.0/.well-known/openid-configuration"
+    ),
+    client_kwargs={
+        "scope": "openid profile email",
+        "token_endpoint_auth_method": "client_secret_post",
+    },
+)
+
+SSO_ENABLED = os.getenv("SSO_ENABLED", "true").strip().lower() == "true"
+DEV_USER = {
+    "name": os.getenv("DEV_USER_NAME") or "Dev User",
+    "email": os.getenv("DEV_USER_EMAIL") or "dev@local",
+}
+
+if not SSO_ENABLED:
+    print("=" * 70)
+    print("WARNING: SSO_ENABLED=false -> authentication is DISABLED.")
+    print(f"Everyone is treated as '{DEV_USER['email']}'. NEVER use this in production.")
+    print("=" * 70)
+
+
+def current_user(request: Request):
+    if not SSO_ENABLED:
+        return DEV_USER
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+    return user
+
+
+@app.get("/login")
+async def login(request: Request):
+    if not SSO_ENABLED:
+        return RedirectResponse("/")
+    return await oauth.entra.authorize_redirect(request, os.getenv("REDIRECT_URI"))
+
+
+@app.get("/auth/callback")
+async def auth_callback(request: Request):
+    if not SSO_ENABLED:
+        return RedirectResponse("/")
+    token = await oauth.entra.authorize_access_token(request)
+    c = token["userinfo"]
+    request.session["user"] = {
+        "name": c.get("name"),
+        "email": c.get("preferred_username"),
+    }
+    return RedirectResponse("/")
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/")
+
 # ---------------------------------------------------------------------------
 # In-memory session store
 # {code: {"created": float, "data": dict|None}}
@@ -104,6 +179,8 @@ class AgentPayload(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
+    if SSO_ENABLED and not request.session.get("user"):
+        return RedirectResponse("/login")
     # Determine the server address the browser is actually using so we can
     # embed it in the one-liner shown on the page.
     host = APP_HOST or request.headers.get("host", "YOUR-SERVER:8080")
@@ -123,20 +200,20 @@ async def index(request: Request):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/session/new")
-async def new_session():
+async def new_session(user=Depends(current_user)):
     """Create a new session code. Called when the page loads."""
     _purge_expired()
     code = _make_code()
     # Extremely unlikely collision, but guard anyway
     while code in _sessions:
         code = _make_code()
-    _sessions[code] = {"created": time.time(), "data": None}
+    _sessions[code] = {"created": time.time(), "data": None, "tech": user}
     ttl = SESSION_TTL_SECONDS
     return JSONResponse({"code": code, "ttl_seconds": ttl})
 
 
 @app.get("/api/session/{code}/data")
-async def poll_session(code: str):
+async def poll_session(code: str, user=Depends(current_user)):
     """
     Browser polls this endpoint. Returns 202 while waiting, 200 when data arrived.
     """
@@ -144,6 +221,8 @@ async def poll_session(code: str):
     session = _sessions.get(code)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found or expired.")
+    if session.get("tech", {}).get("email") != user["email"]:
+        raise HTTPException(status_code=403, detail="Forbidden")
     if session["data"] is None:
         return JSONResponse({"status": "waiting"}, status_code=202)
     return JSONResponse({"status": "ready", "data": session["data"]})
@@ -173,7 +252,7 @@ async def submit_session(code: str, payload: AgentPayload):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/snipeit/device")
-async def lookup_device(serial: str):
+async def lookup_device(serial: str, user=Depends(current_user)):
     """Look up a device in Snipe-IT by serial number."""
     if not serial or len(serial.strip()) < 3:
         raise HTTPException(status_code=400, detail="Serial number too short.")
