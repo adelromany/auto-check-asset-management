@@ -26,6 +26,7 @@ let agentReceived = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   startClock();
+  loadUser();
 
   // Collect browser-side data immediately (doesn't need the agent)
   const browserData = await collectBrowserData();
@@ -512,6 +513,25 @@ function el(tag, attrs = {}, ...children) {
     node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
   });
   return node;
+}
+
+async function loadUser() {
+  try {
+    const r = await fetch("/api/me");
+    if (!r.ok) return;
+    const u = await r.json();
+    const box = document.getElementById("user-info");
+    if (!box) return;
+    box.textContent = `${u.name || ""} (${u.email || ""})`;
+    if (u.sso) {
+      const a = document.createElement("a");
+      a.href = "/logout";
+      a.textContent = " · Logout";
+      box.appendChild(a);
+    } else {
+      box.append(" · DEV MODE");
+    }
+  } catch (e) { /* ignore */ }
 }
 
 function startClock() {

@@ -199,6 +199,11 @@ async def index(request: Request):
 # Routes — session API
 # ---------------------------------------------------------------------------
 
+@app.get("/api/me")
+async def me(user=Depends(current_user)):
+    return {"name": user.get("name"), "email": user.get("email"), "sso": SSO_ENABLED}
+
+
 @app.get("/api/session/new")
 async def new_session(user=Depends(current_user)):
     """Create a new session code. Called when the page loads."""
