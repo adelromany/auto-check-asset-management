@@ -1,11 +1,11 @@
 /**
- * Snipe-IT Onboarding — Phase 2
+ * Snipe-IT Onboarding — Phase 3
  *
  * Flow:
  *  1. Page loads → request a session code from the server
  *  2. Show the one-liner commands for Windows / macOS / Linux
  *  3. Poll /api/session/{code}/data every 2 s
- *  4. When agent data arrives, render the full hardware panel
+ *  4. When agent data arrives, render hardware + software + activation panels
  *  5. Merge with browser-side data (GPU, screen, battery, network)
  *  6. Auto-trigger Snipe-IT lookup using the serial from the agent
  */
@@ -27,6 +27,7 @@ let agentReceived = false;
 document.addEventListener("DOMContentLoaded", async () => {
   startClock();
   loadUser();
+  checkSnipeITHealth();
 
   // Collect browser-side data immediately (doesn't need the agent)
   const browserData = await collectBrowserData();
@@ -35,6 +36,29 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Start the agent session
   await initSession();
 });
+
+async function checkSnipeITHealth() {
+  const indicator = document.getElementById("snipeit-api-status");
+  if (!indicator) return;
+
+  try {
+    const resp = await fetch("/api/snipeit/health");
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const result = await resp.json();
+    const connected = result.connected === true;
+    indicator.classList.remove("api-status-checking");
+    indicator.classList.toggle("api-status-online", connected);
+    indicator.classList.toggle("api-status-offline", !connected);
+    const label = connected ? "Snipe-IT API connected" : "Snipe-IT API unavailable";
+    indicator.title = label;
+    indicator.setAttribute("aria-label", label);
+  } catch (_) {
+    indicator.classList.remove("api-status-checking", "api-status-online");
+    indicator.classList.add("api-status-offline");
+    indicator.title = "Snipe-IT API health check failed";
+    indicator.setAttribute("aria-label", "Snipe-IT API health check failed");
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Session lifecycle
@@ -79,11 +103,16 @@ function onAgentData(data) {
   const waiting = document.getElementById("agent-waiting");
   if (waiting) {
     waiting.innerHTML =
-      '<span class="badge-ok">Agent connected</span> Hardware data received.';
+      '<span class="badge-ok">Agent connected</span> All data received.';
   }
 
-  // Render the hardware section from agent data
+  // Render hardware sections (left column)
   renderAgentSections(data);
+
+  // Render software inventory + Windows activation (right column)
+  if (data.software_checks || data.windows_activation) {
+    renderSoftwareSection(data);
+  }
 
   // Auto-lookup Snipe-IT if we have a serial
   if (data.serial) {
@@ -243,8 +272,8 @@ function renderAgentPanel(code, ttl) {
   // Derive server origin from current page
   const origin = window.location.origin;
 
-  const winCmd  = `$env:ONBOARD_URL="${origin}"; $env:ONBOARD_CODE="${code}"; iwr ${origin}/static/agent.ps1?v=3 -UseBasicParsing | iex`;
-  const unixCmd = `curl -sL ${origin}/static/agent.sh | ONBOARD_URL=${origin} ONBOARD_CODE=${code} bash`;
+  const winCmd  = `$env:ONBOARD_URL="${origin}"; $env:ONBOARD_CODE="${code}"; iwr ${origin}/static/agent.ps1?v=4 -UseBasicParsing | iex`;
+  const unixCmd = `curl -sL ${origin}/static/agent.sh?v=2 | ONBOARD_URL=${origin} ONBOARD_CODE=${code} bash`;
 
   const panel = el("div", { className: "agent-panel", id: "agent-panel" });
 
@@ -453,29 +482,9 @@ function buildDisksRows(disks) {
 }
 
 function buildNICRows(d) {
-  const rows = [];
-  const macs = d.mac_addresses ?? [];
-  const ips  = d.ip_addresses  ?? [];
-
-  if (!macs.length && !ips.length) return [["Interfaces", null, "No network data"]];
-
-  // Group by interface name
-  const ifaces = {};
-  macs.forEach(({ iface, mac }) => {
-    ifaces[iface] = ifaces[iface] ?? {};
-    ifaces[iface].mac = mac;
-  });
-  ips.forEach(({ iface, ip }) => {
-    ifaces[iface] = ifaces[iface] ?? {};
-    (ifaces[iface].ips = ifaces[iface].ips ?? []).push(ip);
-  });
-
-  Object.entries(ifaces).forEach(([iface, info]) => {
-    if (info.mac) rows.push([`${iface} MAC`, info.mac]);
-    if (info.ips) info.ips.forEach(ip => rows.push([`${iface} IP`, ip]));
-  });
-
-  return rows;
+  const ips = d.ip_addresses ?? [];
+  if (!ips.length) return [["IPv4 address", null, "No Wi-Fi or Ethernet IPv4 data"]];
+  return ips.map(({ iface, ip }) => [`${iface} IPv4`, ip]);
 }
 
 function buildAgentOSRows(d) {
@@ -484,6 +493,122 @@ function buildAgentOSRows(d) {
     ["Version",      d.os_version],
     ["Architecture", d.os_arch],
   ];
+}
+
+// ---------------------------------------------------------------------------
+// Render — software inventory + Windows activation
+// ---------------------------------------------------------------------------
+
+/**
+ * Inserts two cards into the right column:
+ *   1. Windows Activation status card
+ *   2. Software inventory card (one row per app, with coloured status dot)
+ *
+ * Both are inserted into #software-slot which sits in the right column of
+ * index.html, between the browser sections and the Snipe-IT record.
+ */
+function renderSoftwareSection(data) {
+  const slot = document.getElementById("software-slot");
+  if (!slot) return;
+
+  // ── Windows Activation ───────────────────────────────────────────────────
+  if (data.windows_activation) {
+    const act = data.windows_activation;
+    const activated = act.status_code === 1;
+
+    const card = el("section", { className: "info-section sw-section" });
+    card.appendChild(el("h2", {}, "Windows Activation"));
+
+    const body = el("div", { className: "activation-body" });
+
+    // Big status badge
+    const badge = el("div", {
+      className: `activation-badge ${activated ? "activation-ok" : "activation-warn"}`,
+    });
+    const dot = el("span", { className: "act-dot" });
+    badge.appendChild(dot);
+    badge.appendChild(document.createTextNode(act.status ?? "Unknown"));
+    body.appendChild(badge);
+
+    // Detail table
+    const tbl = el("table");
+    const detailRows = [
+      ["Product",      act.product_name],
+      ["Partial key",  act.partial_key ? `XXXXX-XXXXX-XXXXX-XXXXX-${act.partial_key}` : null],
+      ["Status code",  act.status_code != null ? String(act.status_code) : null],
+    ];
+    detailRows.forEach(([label, value]) => {
+      if (!value) return;
+      const tr = el("tr");
+      tr.appendChild(el("td", { className: "label-cell" }, label));
+      tr.appendChild(el("td", { className: "value-cell" }, value));
+      tbl.appendChild(tr);
+    });
+    body.appendChild(tbl);
+    card.appendChild(body);
+    slot.appendChild(card);
+  }
+
+  // ── Software Inventory ───────────────────────────────────────────────────
+  if (data.software_checks && data.software_checks.length > 0) {
+    const card = el("section", { className: "info-section sw-section" });
+    card.appendChild(el("h2", {}, "Software inventory"));
+
+    const tbl = el("table");
+
+    // Header row
+    const headTr = el("tr", { className: "sw-head-row" });
+    ["Application", "Status", "Version", "Detection"].forEach((h, i) => {
+      const th = el("th", { className: i === 0 ? "sw-col-name" : `sw-col-${["status","version","method"][i-1]}` }, h);
+      headTr.appendChild(th);
+    });
+    tbl.appendChild(headTr);
+
+    // One row per app
+    data.software_checks.forEach(app => {
+      const tr = el("tr", { className: app.installed ? "sw-row-ok" : "sw-row-missing" });
+
+      // Name
+      const tdName = el("td", { className: "sw-name" }, app.name);
+      tr.appendChild(tdName);
+
+      // Status dot + label
+      const tdStatus = el("td", { className: "sw-status" });
+      const statusWrap = el("span", { className: `sw-pill ${app.installed ? "sw-pill-ok" : "sw-pill-missing"}` });
+      statusWrap.appendChild(el("span", { className: "sw-dot" }));
+      statusWrap.appendChild(document.createTextNode(app.installed ? "Installed" : "Missing"));
+      tdStatus.appendChild(statusWrap);
+      tr.appendChild(tdStatus);
+
+      // Version
+      const tdVer = el("td", { className: "sw-version" });
+      if (app.version) {
+        tdVer.textContent = app.version;
+      } else {
+        tdVer.appendChild(el("span", { className: app.installed ? "unavailable" : "sw-missing-text" },
+          app.installed ? "—" : "—"));
+      }
+      tr.appendChild(tdVer);
+
+      // Detection method — friendly labels
+      const methodMap = {
+        registry:       "Registry",
+        filesystem:     "File system",
+        service:        "Windows service",
+        appx:           "MSIX package",
+        mdm_enrollment: "MDM enrollment",
+        not_found:      "",
+      };
+      const tdMethod = el("td", { className: "sw-method" },
+        methodMap[app.method] ?? app.method ?? "");
+      tr.appendChild(tdMethod);
+
+      tbl.appendChild(tr);
+    });
+
+    card.appendChild(tbl);
+    slot.appendChild(card);
+  }
 }
 
 // ---------------------------------------------------------------------------

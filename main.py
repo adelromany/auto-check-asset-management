@@ -40,10 +40,10 @@ load_dotenv()
 # Configuration
 # ---------------------------------------------------------------------------
 
-SNIPEIT_URL        = os.getenv("SNIPEIT_URL",   "http://localhost:8000")
+SNIPEIT_URL        = os.getenv("SNIPEIT_URL",   "localhost:8000")
 SNIPEIT_TOKEN      = os.getenv("SNIPEIT_TOKEN", "")
 SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL", "600"))   # 10 min default
-APP_HOST           = os.getenv("APP_HOST", "")               # e.g. 192.168.1.50:8080
+APP_HOST           = os.getenv("APP_HOST", "localhost:8080")               # e.g. 192.168.1.50:8080
 
 # ---------------------------------------------------------------------------
 # App
@@ -171,6 +171,11 @@ class AgentPayload(BaseModel):
     ip_addresses:  Optional[list] = None  # [{iface, ip}]
     agent_os:     Optional[str] = None    # "windows" | "macos" | "linux"
     collected_at: Optional[str] = None
+    # ── Phase 3 additions ──────────────────────────────────────────────
+    software_checks:     Optional[list] = None
+    # [{id, name, installed: bool, version: str|None, method: str}]
+    windows_activation:  Optional[dict] = None
+    # {status: str, status_code: int, product_name: str, partial_key: str}
 
 
 # ---------------------------------------------------------------------------
@@ -181,9 +186,7 @@ class AgentPayload(BaseModel):
 async def index(request: Request):
     if SSO_ENABLED and not request.session.get("user"):
         return RedirectResponse("/login")
-    # Determine the server address the browser is actually using so we can
-    # embed it in the one-liner shown on the page.
-    host = APP_HOST or request.headers.get("host", "YOUR-SERVER:8080")
+    host = APP_HOST or f"http://{request.headers.get('host', 'localhost:8080')}"
 
     return templates.TemplateResponse(
         request=request,
@@ -308,6 +311,34 @@ async def lookup_device(serial: str, user=Depends(current_user)):
         "purchase_date": asset.get("purchase_date", {}).get("formatted") if asset.get("purchase_date") else None,
         "warranty_months": asset.get("warranty_months"),
         "notes":         asset.get("notes"),
+    })
+
+
+@app.get("/api/snipeit/health")
+async def snipeit_health():
+    """Check whether the configured Snipe-IT API is reachable with the current token."""
+    if not SNIPEIT_TOKEN:
+        return JSONResponse({"connected": False, "reason": "token_not_configured"})
+
+    headers = {
+        "Authorization": f"Bearer {SNIPEIT_TOKEN}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{SNIPEIT_URL}/api/v1/hardware",
+                headers=headers,
+                params={"limit": 1},
+            )
+    except httpx.RequestError:
+        return JSONResponse({"connected": False, "reason": "unreachable"})
+
+    return JSONResponse({
+        "connected": resp.is_success,
+        "reason": None if resp.is_success else "api_error",
+        "status_code": resp.status_code,
     })
 
 
