@@ -1,0 +1,37 @@
+"""All environment-based settings. The ONLY place os.getenv is read.
+
+Everything else imports values from here and reads them as module
+attributes (never `from app.config import <value>` for anything the app
+or tests may need fresh after a reload).
+"""
+
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+SNIPEIT_URL = os.getenv("SNIPEIT_URL", "localhost:8000")
+SNIPEIT_TOKEN = os.getenv("SNIPEIT_TOKEN", "")
+SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL", "600"))  # 10 min default
+APP_HOST = os.getenv("APP_HOST", "localhost:8080")  # e.g. 192.168.1.50:8080
+
+SESSION_SECRET = os.getenv("SESSION_SECRET", "change-me")
+HTTPS_ONLY = os.getenv("HTTPS_ONLY", "true") == "true"
+
+AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
+AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
+AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
+REDIRECT_URI = os.getenv("REDIRECT_URI")
+
+SSO_ENABLED = os.getenv("SSO_ENABLED", "true").strip().lower() == "true"
+DEV_USER = {
+    "name": os.getenv("DEV_USER_NAME") or "Dev User",
+    "email": os.getenv("DEV_USER_EMAIL") or "dev@local",
+}
+
+if not SSO_ENABLED:
+    print("=" * 70)
+    print("WARNING: SSO_ENABLED=false -> authentication is DISABLED.")
+    print(f"Everyone is treated as '{DEV_USER['email']}'. NEVER use this in production.")
+    print("=" * 70)
