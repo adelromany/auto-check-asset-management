@@ -314,10 +314,17 @@ function renderAgentPanel(code, ttl) {
     const body = el("div", { className: `cmd-body${i === 0 ? " active" : ""}`, dataset: { id } });
     const pre  = el("pre", { className: "cmd-pre" }, cmd);
     const copyBtn = el("button", { className: "copy-btn" }, "Copy");
+    // The command text is already in memory: call copyText synchronously
+    // in the click handler so the browser keeps user activation.
+    // copyText never fails silently (falls back to execCommand, then modal).
     copyBtn.addEventListener("click", () => {
-      navigator.clipboard.writeText(cmd).then(() => {
-        copyBtn.textContent = "Copied!";
-        setTimeout(() => { copyBtn.textContent = "Copy"; }, 2000);
+      copyText(cmd, { filename: id === "win" ? "onboard.ps1" : "onboard.sh" }).then((res) => {
+        if (res.ok) {
+          copyBtn.textContent = `Copied (${cmd.length} chars)`;
+        } else {
+          copyBtn.textContent = "Copy manually";
+        }
+        setTimeout(() => { copyBtn.textContent = "Copy"; }, 2500);
       });
     });
     body.appendChild(pre);
