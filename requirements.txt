@@ -7,3 +7,4 @@ pydantic
 authlib
 itsdangerous
 pytest
+pytest-playwright
