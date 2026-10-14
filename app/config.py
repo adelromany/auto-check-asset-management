@@ -30,6 +30,9 @@ DEV_USER = {
     "email": os.getenv("DEV_USER_EMAIL") or "dev@local",
 }
 
+# Read-only clipboard diagnostics page (/diag/clipboard). Off by default.
+ENABLE_DIAG = os.getenv("ENABLE_DIAG", "false").strip().lower() == "true"
+
 if not SSO_ENABLED:
     print("=" * 70)
     print("WARNING: SSO_ENABLED=false -> authentication is DISABLED.")
