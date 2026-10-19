@@ -42,20 +42,18 @@
 
     overlay = document.createElement("div");
     overlay.id = MODAL_ID;
-    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.65);" +
-      "display:flex;align-items:center;justify-content:center;z-index:9999;";
+    overlay.className = "fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4";
 
     var box = document.createElement("div");
-    box.style.cssText = "background:#161b22;border:1px solid #2a3140;border-radius:6px;" +
-      "padding:16px;max-width:520px;width:90%;color:#e6edf3;font-family:system-ui,sans-serif;";
+    box.className = "card w-full max-w-[520px] p-5 shadow-lg";
 
     var title = document.createElement("div");
-    title.style.cssText = "font-weight:600;margin-bottom:8px;";
+    title.className = "card-title text-base";
     title.textContent = "Automatic copy did not work";
     box.appendChild(title);
 
     var why = document.createElement("div");
-    why.style.cssText = "font-size:.82rem;color:#8b949e;margin-bottom:8px;";
+    why.className = "mt-1.5 text-sm text-muted-foreground";
     why.textContent = reason ||
       "The browser blocked automatic copy (often on plain http origins). " +
       "Press Ctrl+C to copy manually.";
@@ -64,28 +62,26 @@
     var ta = document.createElement("textarea");
     ta.readOnly = true;
     ta.value = text;
-    ta.style.cssText = "width:100%;min-height:90px;background:#0d1117;color:#79c0ff;" +
-      "border:1px solid #2a3140;border-radius:4px;padding:8px;" +
-      "font-family:monospace;font-size:.75rem;";
+    ta.className = "input mt-3 h-auto min-h-[90px] resize-y font-mono text-xs";
     box.appendChild(ta);
 
     var row = document.createElement("div");
-    row.style.cssText = "margin-top:10px;display:flex;gap:8px;";
+    row.className = "mt-4 flex justify-end gap-2";
 
-    function btn(label, onclick) {
+    function btn(label, variant, onclick) {
       var b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn " + variant;
       b.textContent = label;
-      b.style.cssText = "background:#1e2430;color:#e6edf3;border:1px solid #2a3140;" +
-        "border-radius:4px;padding:6px 12px;cursor:pointer;";
       b.addEventListener("click", onclick);
       row.appendChild(b);
       return b;
     }
 
-    btn("Download " + (filename || "file"), function () {
+    btn("Download " + (filename || "file"), "btn btn-outline btn-sm", function () {
       downloadFile(filename || "copy.txt", text);
     });
-    btn("Close", function () { overlay.remove(); });
+    btn("Close", "btn btn-default btn-sm", function () { overlay.remove(); });
 
     box.appendChild(row);
     overlay.appendChild(box);

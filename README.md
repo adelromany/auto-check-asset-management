@@ -21,10 +21,15 @@ app/
     health.py           # /api/health
     diag.py             # /diag/clipboard (behind ENABLE_DIAG)
 templates/              # index.html, diag_clipboard.html
+  partials/logo.html    # app logo (Jinja macro: mark + lockup)
 static/
+  css/app.css           # built stylesheet (generated — do not edit)
+  favicon.svg           # app icon
   app.js                # portal UI (uses shared copyText)
   js/clipboard.js       # shared copyText() utility (3 tiers, never silent)
+  js/theme.js           # light / dark / system theme toggle
   agent.ps1 / agent.sh  # device agent scripts served to targets
+styles/app.css          # Tailwind + shadcn design-system source
 tests/
   conftest.py           # env-isolated app factory (see header comment)
   test_characterization.py  # pins current API behavior (must stay green)
@@ -34,7 +39,74 @@ docs/
   discovery.md          # code map produced before the refactor
   copy-diagnosis.md     # clipboard root cause, decision log, manual matrix
   https-deployment.md   # deferred TLS cutover checklist
+  logo.svg              # brand mark (512px app icon)
 ```
+
+## UI system
+
+The frontend is server-rendered (Jinja2 + vanilla JS) styled with
+**Tailwind CSS v4** and the **shadcn/ui** token architecture.
+
+- `styles/app.css` is the single source of truth: design tokens (oklch CSS
+  variables with the canonical shadcn names), the light/dark palettes, and the
+  shadcn component classes (`.card`, `.btn`, `.badge`, `.table`, `.tabs-*`,
+  `.alert`, `.input`, `.separator`).
+- `static/css/app.css` is the **build output** served at `/static/css/app.css`.
+  It is committed so the Python app can be deployed without Node.
+- Class names mirror the shadcn component APIs, so a future React port is a
+  mechanical translation.
+
+### Page layout
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ topbar: logo · wordmark · clock · user · theme toggle    │
+├──────────────────────────────────────────────────────────┤
+│ Local Agent  (full width — primary action)               │
+│   session code → platform tabs → one-line command + copy  │
+│   guidance steps → live status                            │
+├────────────────────────────┬─────────────────────────────┤
+│ Reported by the agent      │ This device                 │
+│   System / Processor / …   │   Browser & OS / Graphics / │
+│   Windows activation        │   Battery                   │
+│   Software inventory        │ Snipe-IT record             │
+└────────────────────────────┴─────────────────────────────┘
+```
+
+The agent panel spans the full width so the one-liner command never wraps,
+and the two data columns are grouped by origin (agent-reported vs. collected
+in this browser).
+
+### Logo
+
+- `templates/partials/logo.html` — Jinja macro `logo_mark(size)` /
+  `logo_lockup(size, title, subtitle)`. Strokes only, inherits `currentColor`,
+  so it adapts to the active theme.
+- `static/favicon.svg` — app icon (browser tab).
+- `docs/logo.svg` — 512px brand mark.
+
+### Theme (light / dark / system)
+
+- Dark mode is class-driven: `<html class="dark">`, not media-driven, so the
+  user choice overrides the OS preference.
+- An inline script in `<head>` applies the theme **before first paint** — the
+  page never flashes the wrong colours.
+- The topbar button cycles **light → dark → system**. The choice is persisted
+  in `localStorage` under `theme`; `system` removes the key and follows
+  `prefers-color-scheme`.
+- Programmatic API: `window.theme.set('light'|'dark'|'system')`,
+  `window.theme.get()`, `window.theme.effective()`.
+
+### Build the stylesheet
+
+```powershell
+npm install
+npm run build:css   # one-shot build -> static/css/app.css
+npm run dev         # rebuild on change (watch mode)
+```
+
+Rebuild is required after changing `styles/app.css`, the templates, or any
+Tailwind classes used in `static/app.js`.
 
 ## Run
 

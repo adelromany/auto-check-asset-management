@@ -1,573 +1,126 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Device Onboarding — Snipe-IT</title>
 
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-  <style>
-    /* ------------------------------------------------------------------ */
-    /* Tokens                                                               */
-    /* ------------------------------------------------------------------ */
-    :root {
-      --bg:            #0d1117;
-      --surface:       #161b22;
-      --surface-high:  #1e2430;
-      --surface-agent: #0f1a2e;
-      --border:        #2a3140;
-      --border-faint:  #1e2530;
-      --border-agent:  #1d3557;
+  <link rel="stylesheet" href="/static/css/app.css?v=1" />
 
-      --accent:        #3b82f6;
-      --accent-dim:    #1d3a6e;
-      --accent-glow:   rgba(59,130,246,.15);
-      --success:       #238636;
-      --success-bg:    #0d2a18;
-      --success-text:  #3fb950;
-      --danger-text:   #f85149;
-      --warning-text:  #d29922;
-
-      --text-primary:   #e6edf3;
-      --text-secondary: #7d8590;
-      --text-muted:     #484f58;
-      --text-label:     #8b949e;
-      --text-code:      #79c0ff;
-
-      --font-sans: "Inter", system-ui, sans-serif;
-      --font-mono: "JetBrains Mono", "Cascadia Mono", monospace;
-      --radius:    6px;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { font-size: 15px; -webkit-font-smoothing: antialiased; }
-    body  { font-family: var(--font-sans); background: var(--bg); color: var(--text-primary); min-height: 100vh; }
-
-    /* ------------------------------------------------------------------ */
-    /* Shell                                                                */
-    /* ------------------------------------------------------------------ */
-    .shell {
-      max-width: 780px;
-      margin: 0 auto;
-      padding: 0 20px 80px;
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* Topbar                                                               */
-    /* ------------------------------------------------------------------ */
-    .topbar {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 20px 0 16px;
-      border-bottom: 1px solid var(--border-faint);
-      margin-bottom: 28px;
-    }
-    .topbar-logo {
-      width: 30px; height: 30px;
-      background: var(--accent-dim);
-      border-radius: 5px;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .topbar-logo svg { display: block; }
-    .topbar-wordmark { font-size: 0.95rem; font-weight: 600; letter-spacing: -.01em; }
-    .topbar-divider  { width: 1px; height: 16px; background: var(--border); }
-    .topbar-subtitle { font-size: 0.85rem; color: var(--text-secondary); }
-    .topbar-spacer   { flex: 1; }
-    .topbar-time     { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); }
-
-    /* ------------------------------------------------------------------ */
-    /* Two-column layout: agent | hardware                                  */
-    /* ------------------------------------------------------------------ */
-    .page-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: auto;
-      gap: 20px;
-      align-items: start;
-    }
-    .col-left  { grid-column: 1; }
-    .col-right { grid-column: 2; }
-    .col-full  { grid-column: 1 / -1; }
-
-    @media (max-width: 620px) {
-      .page-grid { grid-template-columns: 1fr; }
-      .col-left, .col-right, .col-full { grid-column: 1; }
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* Agent panel                                                          */
-    /* ------------------------------------------------------------------ */
-    .agent-panel {
-      background: var(--surface-agent);
-      border: 1px solid var(--border-agent);
-      border-radius: var(--radius);
-      overflow: hidden;
-      transition: border-color .3s;
-    }
-    .agent-panel.agent-done {
-      border-color: var(--success);
-    }
-
-    .agent-header {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 14px 16px 12px;
-      border-bottom: 1px solid var(--border-agent);
-    }
-    .agent-icon {
-      font-size: 1.3rem;
-      color: var(--accent);
-      line-height: 1;
-      margin-top: 2px;
-    }
-    .agent-title    { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
-    .agent-subtitle { font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
-
-    /* Session code band */
-    .code-band {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 16px;
-      background: var(--accent-dim);
-      border-bottom: 1px solid var(--border-agent);
-    }
-    .code-label { font-size: 0.72rem; color: var(--text-secondary); font-weight: 500; }
-    .code-value {
-      font-family: var(--font-mono);
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--accent);
-      letter-spacing: .12em;
-    }
-    .code-ttl { font-size: 0.72rem; color: var(--text-muted); margin-left: auto; }
-
-    /* Tabs */
-    .cmd-tabs {
-      display: flex;
-      border-bottom: 1px solid var(--border-agent);
-    }
-    .cmd-tab {
-      flex: 1;
-      padding: 8px 12px;
-      background: none;
-      border: none;
-      border-right: 1px solid var(--border-agent);
-      color: var(--text-secondary);
-      font-family: var(--font-sans);
-      font-size: 0.78rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background .15s, color .15s;
-      text-align: center;
-    }
-    .cmd-tab:last-child { border-right: none; }
-    .cmd-tab.active, .cmd-tab:hover {
-      background: var(--accent-dim);
-      color: var(--text-primary);
-    }
-
-    /* Command display */
-    .cmd-body { display: none; position: relative; }
-    .cmd-body.active { display: block; }
-    .cmd-pre {
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
-      color: var(--text-code);
-      padding: 12px 50px 12px 14px;
-      white-space: pre-wrap;
-      word-break: break-all;
-      line-height: 1.55;
-      background: var(--bg);
-      border-bottom: 1px solid var(--border-agent);
-      min-height: 56px;
-    }
-    .copy-btn {
-      position: absolute;
-      top: 8px; right: 8px;
-      background: var(--surface-high);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      color: var(--text-secondary);
-      font-family: var(--font-sans);
-      font-size: 0.72rem;
-      font-weight: 500;
-      padding: 3px 8px;
-      cursor: pointer;
-      transition: background .15s;
-    }
-    .copy-btn:hover { background: var(--accent-dim); color: var(--text-primary); }
-
-    /* Waiting indicator */
-    .agent-waiting {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 16px;
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-    }
-    .waiting-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--accent);
-      display: inline-block;
-      animation: dot-pulse 1.4s ease-in-out infinite;
-      flex-shrink: 0;
-    }
-    @keyframes dot-pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%       { opacity: .3; transform: scale(.7); }
-    }
-    .badge-ok {
-      display: inline-block;
-      background: var(--success);
-      color: var(--success-text);
-      font-size: 0.7rem;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 20px;
-    }
-    .agent-error {
-      padding: 12px 16px;
-      font-size: 0.8rem;
-      color: var(--danger-text);
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* Info sections (shared)                                               */
-    /* ------------------------------------------------------------------ */
-    .info-section {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      margin-bottom: 16px;
-    }
-    .info-section h2 {
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: .05em;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      padding: 10px 14px 8px;
-      background: var(--surface-high);
-      border-bottom: 1px solid var(--border-faint);
-    }
-    table { width: 100%; border-collapse: collapse; }
-    tr:not(:last-child) td { border-bottom: 1px solid var(--border-faint); }
-    td { padding: 7px 14px; vertical-align: top; font-size: 0.82rem; line-height: 1.4; }
-    .label-cell { width: 42%; color: var(--text-label); font-weight: 500; white-space: nowrap; }
-    .value-cell { color: var(--text-primary); font-family: var(--font-mono); font-size: 0.78rem; word-break: break-all; }
-    .unavailable { color: var(--text-muted); font-family: var(--font-sans); font-style: italic; }
-    .note { color: var(--text-muted); font-family: var(--font-sans); font-size: 0.74rem; }
-
-    /* ------------------------------------------------------------------ */
-    /* Agent-received sections                                              */
-    /* ------------------------------------------------------------------ */
-    #agent-sections.hidden { display: none; }
-    #agent-sections .info-section {
-      border-color: var(--border-agent);
-      background: var(--surface-agent);
-    }
-    #agent-sections .info-section h2 {
-      background: var(--accent-dim);
-      color: var(--accent);
-      border-bottom-color: var(--border-agent);
-    }
-    #agent-sections tr:not(:last-child) td {
-      border-bottom-color: #1a2540;
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* Snipe-IT section                                                     */
-    /* ------------------------------------------------------------------ */
-    #snipeit-section h2 {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .api-status {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      flex: 0 0 auto;
-      background: var(--text-muted);
-    }
-    .api-status-checking { animation: dot-pulse 1.4s ease-in-out infinite; }
-    .api-status-online { background: var(--success-text); }
-    .api-status-offline { background: var(--danger-text); }
-    #snipeit-section {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-    #snipeit-section h2 {
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: .05em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      padding: 10px 14px 8px;
-      background: var(--surface-high);
-      border-bottom: 1px solid var(--border-faint);
-    }
-    .snipeit-looking {
-      padding: 12px 14px;
-      font-size: 0.82rem;
-      color: var(--text-secondary);
-    }
-    .snipeit-found-badge {
-      display: inline-block;
-      margin: 10px 14px 0;
-      background: var(--success);
-      color: var(--success-text);
-      font-size: 0.68rem;
-      font-weight: 600;
-      letter-spacing: .04em;
-      padding: 2px 9px;
-      border-radius: 20px;
-      text-transform: uppercase;
-    }
-    .snipeit-result table { margin-top: 6px; }
-    .snipeit-error {
-      padding: 12px 14px;
-      color: var(--danger-text);
-      font-size: 0.82rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .error-icon { font-weight: 700; }
-
-    /* ------------------------------------------------------------------ */
-    /* Column headings                                                      */
-    /* ------------------------------------------------------------------ */
-    .col-heading {
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 10px;
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* Footer                                                               */
-    /* ------------------------------------------------------------------ */
-    .page-footer {
-      margin-top: 32px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border-faint);
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* Software inventory table                                             */
-    /* ------------------------------------------------------------------ */
-    .sw-section { margin-bottom: 16px; }
-
-    .sw-head-row th {
-      padding: 7px 14px;
-      font-size: 0.68rem;
-      font-weight: 600;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      background: var(--surface-high);
-      border-bottom: 1px solid var(--border-faint);
-      text-align: left;
-    }
-
-    .sw-col-name   { width: 36%; }
-    .sw-col-status { width: 20%; }
-    .sw-col-version{ width: 24%; }
-    .sw-col-method { width: 20%; }
-
-    .sw-name {
-      font-size: 0.83rem;
-      color: var(--text-primary);
-      font-weight: 500;
-      padding: 8px 14px;
-    }
-
-    .sw-status  { padding: 8px 14px; }
-    .sw-version {
-      padding: 8px 14px;
-      font-family: var(--font-mono);
-      font-size: 0.76rem;
-      color: var(--text-secondary);
-    }
-    .sw-method {
-      padding: 8px 14px;
-      font-size: 0.74rem;
-      color: var(--text-muted);
-    }
-
-    .sw-row-ok      { background: transparent; }
-    .sw-row-missing { background: rgba(248, 81, 73, 0.04); }
-    .sw-row-missing .sw-name { color: var(--text-secondary); }
-
-    /* Status pill */
-    .sw-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 0.74rem;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 20px;
-    }
-    .sw-pill-ok {
-      background: rgba(35, 134, 54, 0.18);
-      color: var(--success-text);
-    }
-    .sw-pill-missing {
-      background: rgba(248, 81, 73, 0.14);
-      color: var(--danger-text);
-    }
-    .sw-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      display: inline-block;
-      flex-shrink: 0;
-    }
-    .sw-pill-ok      .sw-dot { background: var(--success-text); }
-    .sw-pill-missing .sw-dot { background: var(--danger-text);  }
-
-    .sw-missing-text { color: var(--text-muted); }
-
-    /* ------------------------------------------------------------------ */
-    /* Windows Activation card                                              */
-    /* ------------------------------------------------------------------ */
-    .activation-body { padding: 12px 14px 14px; }
-
-    .activation-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.88rem;
-      font-weight: 600;
-      padding: 6px 14px;
-      border-radius: var(--radius);
-      margin-bottom: 12px;
-    }
-    .activation-ok {
-      background: var(--success-bg);
-      color: var(--success-text);
-      border: 1px solid rgba(63, 185, 80, 0.25);
-    }
-    .activation-warn {
-      background: rgba(210, 153, 34, 0.12);
-      color: var(--warning-text);
-      border: 1px solid rgba(210, 153, 34, 0.25);
-    }
-    .act-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      display: inline-block;
-      flex-shrink: 0;
-    }
-    .activation-ok   .act-dot { background: var(--success-text); }
-    .activation-warn .act-dot { background: var(--warning-text); }
-
-    .activation-body table { margin-top: 2px; }
-
-    /* ------------------------------------------------------------------ */
-    /* Motion                                                               */
-    /* ------------------------------------------------------------------ */
-    @media (prefers-reduced-motion: reduce) {
-      .waiting-dot { animation: none; }
-    }
-  </style>
+  <!--
+    Applied before first paint so the page never flashes the wrong theme.
+    Order: explicit user choice → OS preference → light.
+  -->
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var dark = stored === "dark" || (stored !== "light" && prefersDark);
+        document.documentElement.classList.toggle("dark", dark);
+      } catch (e) { /* storage blocked — fall back to light */ }
+    })();
+  </script>
 </head>
-<body>
-<div class="shell">
+<body class="min-h-screen bg-background text-foreground">
+<div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
 
-  <!-- Topbar -->
-  <header class="topbar">
-    <div class="topbar-logo" aria-hidden="true">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <rect x="1" y="1" width="6" height="6" rx="1" fill="#3b82f6"/>
-        <rect x="9" y="1" width="6" height="6" rx="1" fill="#3b82f6" opacity=".5"/>
-        <rect x="1" y="9" width="6" height="6" rx="1" fill="#3b82f6" opacity=".4"/>
-        <rect x="9" y="9" width="6" height="6" rx="1" fill="#3b82f6" opacity=".25"/>
-      </svg>
+  <!-- ═══ Topbar ═══════════════════════════════════════════════════════ -->
+  <header class="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div class="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
+      {% from "partials/logo.html" import logo_lockup %}
+      {{ logo_lockup(18) }}
+
+      <div class="flex-1"></div>
+
+      <span id="clock" class="hidden font-mono text-xs text-muted-foreground md:inline tabular-nums" aria-live="off"></span>
+      <div id="user-info" class="max-w-[38vw] truncate text-xs text-muted-foreground md:max-w-none"></div>
+
+      <!-- Theme toggle -->
+      <button type="button" data-theme-toggle
+              class="btn btn-ghost btn-icon-sm"
+              aria-label="Toggle theme" title="Toggle light / dark theme">
+        <svg data-theme-icon="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+             class="hidden size-4">
+          <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+        </svg>
+        <svg data-theme-icon="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+             class="size-4">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+        </svg>
+        <svg data-theme-icon="monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+             class="hidden size-4">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>
+        </svg>
+      </button>
     </div>
-    <span class="topbar-wordmark">Snipe-IT Onboarding</span>
-    <div class="topbar-divider" aria-hidden="true"></div>
-    <span class="topbar-subtitle">Device information</span>
-    <div class="topbar-spacer"></div>
-    <span class="topbar-time" id="clock" aria-live="off"></span>
-    <div id="user-info"></div>
   </header>
 
-  <div class="page-grid">
+  <!-- ═══ Content ══════════════════════════════════════════════════════ -->
+  <main class="flex-1 px-4 py-6">
 
-    <!-- ─── LEFT COLUMN: Agent + Snipe-IT ─────────────────────────── -->
-    <div class="col-left">
+    <!--
+      The agent panel is the primary action of this page, so it spans the
+      full width: the one-liner command then fits on a single line instead
+      of wrapping.
+    -->
+    <div id="agent-slot"></div>
 
-      <p class="col-heading">Local agent</p>
+    <div class="mt-6 grid items-start gap-6 lg:grid-cols-[1.05fr_1fr]">
 
-      <!-- Agent panel injected here by app.js -->
-      <div id="agent-slot"></div>
+      <!-- ─── LEFT: everything the agent reported ────────────────────── -->
+      <div id="agent-sections" class="hidden flex-col gap-4"></div>
 
-      <!-- Agent hardware data injected here when received -->
-      <div id="agent-sections" class="hidden" style="margin-top:20px;">
-        <p class="col-heading">Hardware (from agent)</p>
+      <!-- ─── RIGHT: browser data + Snipe-IT lookup ─────────────────── -->
+      <div class="flex flex-col gap-4">
+
+        <div id="browser-sections"></div>
+
+        <div id="snipeit-section" class="card overflow-hidden">
+          <div class="card-header border-b bg-muted/40 py-3">
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="card-title text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Snipe-IT record
+              </h2>
+              <span id="snipeit-api-status" class="api-status api-status-checking"
+                    role="img" aria-label="Checking Snipe-IT API connection"
+                    title="Checking Snipe-IT API connection"></span>
+            </div>
+          </div>
+          <div class="snipeit-body card-content py-4">
+            <p class="snipeit-looking flex items-center gap-2 text-sm text-muted-foreground">
+              <span class="size-1.5 rounded-full bg-muted-foreground"></span>
+              Waiting for the agent to report a serial number…
+            </p>
+          </div>
+        </div>
+
       </div>
 
     </div>
+  </main>
 
-    <!-- ─── RIGHT COLUMN: Browser data + Snipe-IT record ──────────── -->
-    <div class="col-right">
-
-      <p class="col-heading">Browser data</p>
-      <div id="browser-sections"></div>
-
-      <!-- Snipe-IT section — hidden until agent sends serial -->
-      <!-- Software inventory + Windows activation — injected by app.js when agent data arrives -->
-      <div id="software-slot"></div>
-
-      <p class="col-heading" style="margin-top:20px;">Snipe-IT record</p>
-      <div id="snipeit-section">
-        <h2>
-          <span>Snipe-IT</span>
-          <span id="snipeit-api-status" class="api-status api-status-checking"
-                role="img" aria-label="Checking Snipe-IT API connection"
-                title="Checking Snipe-IT API connection"></span>
-        </h2>
-        <p class="snipeit-looking" style="color:var(--text-muted);">
-          Waiting for agent to provide serial number…
-        </p>
-      </div>
-
+  <!-- ═══ Footer ═══════════════════════════════════════════════════════ -->
+  <footer class="border-t px-4 py-4">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <span>Snipe-IT Device Onboarding</span>
+      <span>Browser data collected locally. Agent data sent directly to this server.</span>
     </div>
-
-  </div><!-- end .page-grid -->
-
-  <footer class="page-footer">
-    <span>Snipe-IT Device Onboarding</span>
-    <span>Browser data collected locally. Agent data sent directly to this server.</span>
   </footer>
 
-</div><!-- end .shell -->
+</div>
 
+<script src="/static/js/theme.js?v=1"></script>
 <script src="/static/js/clipboard.js?v=1"></script>
-<script src="/static/app.js?v=5"></script>
+<script src="/static/app.js?v=7"></script>
 </body>
 </html>

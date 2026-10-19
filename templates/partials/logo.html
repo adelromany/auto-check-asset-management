@@ -1,0 +1,37 @@
+{#-
+  App logo.
+
+  The mark is a device screen with a check mark — "a device, verified and
+  admitted into the asset register". It is drawn with strokes only and
+  inherits `currentColor`, so it adapts to the active theme.
+
+  Usage:
+    {% from "partials/logo.html" import logo_mark, logo_lockup %}
+    {{ logo_mark(18) }}
+    {{ logo_lockup() }}
+-#}
+
+{% macro logo_mark(size=18, cls="") -%}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="{{ size }}" height="{{ size }}"
+     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+     class="{{ cls }}" aria-hidden="true" focusable="false">
+  <rect x="3" y="4" width="18" height="12" rx="2.5"/>
+  <path d="m9.2 10 2.1 2.1 3.9-4.2"/>
+  <path d="M8 20h8"/>
+</svg>
+{%- endmacro %}
+
+
+{% macro logo_lockup(size=18, title="Snipe-IT Onboarding", subtitle="Device information") -%}
+<span class="flex min-w-0 items-center gap-2.5">
+  <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+    {{ logo_mark(size) }}
+  </span>
+  <span class="flex min-w-0 flex-col leading-none">
+    <span class="truncate text-sm font-semibold tracking-tight whitespace-nowrap">{{ title }}</span>
+    {% if subtitle %}
+    <span class="mt-1 hidden truncate text-xs text-muted-foreground sm:block">{{ subtitle }}</span>
+    {% endif %}
+  </span>
+</span>
+{%- endmacro %}
