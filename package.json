@@ -1,0 +1,30 @@
+{
+  "name": "auto-check-asset-management",
+  "version": "1.0.0",
+  "description": "IT opens the portal, gets a short session code, runs an agent one-liner on the employee's device; the agent POSTs its report back using that code.",
+  "private": true,
+  "scripts": {
+    "build": "npm run build:css",
+    "build:css": "tailwindcss -i ./styles/app.css -o ./static/css/app.css --minify",
+    "dev": "tailwindcss -i ./styles/app.css -o ./static/css/app.css --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adelromany/auto-check-asset-management.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/adelromany/auto-check-asset-management/issues"
+  },
+  "homepage": "https://github.com/adelromany/auto-check-asset-management#readme",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  },
+  "overrides": {
+    "@parcel/watcher": "2.6.0"
+  }
+}

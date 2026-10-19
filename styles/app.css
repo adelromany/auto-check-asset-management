@@ -1,0 +1,451 @@
+/* ---------------------------------------------------------------------------
+ * Snipe-IT Onboarding — design system
+ *
+ * Tailwind CSS v4 (CSS-first config) + shadcn/ui token architecture.
+ *
+ *   - `styles/app.css`  → this file (source)
+ *   - `static/css/app.css` → build output, served at /static/css/app.css
+ *
+ * Build:  npm run build:css      (one-shot)
+ * Watch:  npm run dev            (rebuild on change)
+ *
+ * The token names below are the canonical shadcn/ui names, so any component
+ * can be ported to React later without renaming anything.
+ * ------------------------------------------------------------------------- */
+
+@import "tailwindcss";
+
+/* Content sources for the class scanner. */
+@source "../templates";
+@source "../static";
+
+/* Dark mode is class-driven (`<html class="dark">`), not media-driven, so the
+   user toggle can override the OS preference. */
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------------------
+ * Tokens — light
+ * ------------------------------------------------------------------------- */
+:root {
+  --radius: 0.625rem;
+
+  --background: oklch(0.99 0.002 247.858);
+  --foreground: oklch(0.208 0.042 265.755);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.208 0.042 265.755);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.208 0.042 265.755);
+
+  --primary: oklch(0.53 0.19 258.5);
+  --primary-foreground: oklch(0.985 0.002 247.858);
+
+  --secondary: oklch(0.968 0.007 247.896);
+  --secondary-foreground: oklch(0.279 0.041 260.031);
+
+  --muted: oklch(0.968 0.007 247.896);
+  --muted-foreground: oklch(0.554 0.046 257.417);
+
+  --accent: oklch(0.94 0.03 250);
+  --accent-foreground: oklch(0.35 0.09 258);
+
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --success: oklch(0.52 0.14 152);
+  --success-foreground: oklch(0.985 0 0);
+
+  --warning: oklch(0.68 0.15 70);
+  --warning-foreground: oklch(0.2 0.04 70);
+
+  --border: oklch(0.929 0.013 255.508);
+  --input: oklch(0.929 0.013 255.508);
+  --ring: oklch(0.53 0.19 258.5);
+
+  --chart-1: oklch(0.62 0.19 258.5);
+  --chart-2: oklch(0.6 0.13 185);
+  --chart-3: oklch(0.7 0.14 75);
+  --chart-4: oklch(0.63 0.17 300);
+  --chart-5: oklch(0.62 0.19 25);
+
+  --sidebar: oklch(0.968 0.007 247.896);
+  --sidebar-foreground: oklch(0.208 0.042 265.755);
+  --sidebar-primary: oklch(0.53 0.19 258.5);
+  --sidebar-primary-foreground: oklch(0.985 0.002 247.858);
+  --sidebar-accent: oklch(0.94 0.03 250);
+  --sidebar-accent-foreground: oklch(0.35 0.09 258);
+  --sidebar-border: oklch(0.929 0.013 255.508);
+  --sidebar-ring: oklch(0.53 0.19 258.5);
+}
+
+/* ---------------------------------------------------------------------------
+ * Tokens — dark
+ * ------------------------------------------------------------------------- */
+.dark {
+  --background: oklch(0.16 0.02 258);
+  --foreground: oklch(0.94 0.008 250);
+
+  --card: oklch(0.2 0.022 258);
+  --card-foreground: oklch(0.94 0.008 250);
+
+  --popover: oklch(0.2 0.022 258);
+  --popover-foreground: oklch(0.94 0.008 250);
+
+  --primary: oklch(0.66 0.17 255);
+  --primary-foreground: oklch(0.16 0.03 258);
+
+  --secondary: oklch(0.26 0.022 258);
+  --secondary-foreground: oklch(0.94 0.008 250);
+
+  --muted: oklch(0.26 0.022 258);
+  --muted-foreground: oklch(0.71 0.021 255);
+
+  --accent: oklch(0.3 0.035 258);
+  --accent-foreground: oklch(0.9 0.02 250);
+
+  --destructive: oklch(0.65 0.19 25);
+  --destructive-foreground: oklch(0.16 0.03 258);
+
+  --success: oklch(0.7 0.16 152);
+  --success-foreground: oklch(0.16 0.03 152);
+
+  --warning: oklch(0.8 0.15 80);
+  --warning-foreground: oklch(0.2 0.04 70);
+
+  --border: oklch(0.3 0.022 258);
+  --input: oklch(0.32 0.022 258);
+  --ring: oklch(0.66 0.17 255);
+
+  --chart-1: oklch(0.66 0.17 255);
+  --chart-2: oklch(0.65 0.14 185);
+  --chart-3: oklch(0.78 0.14 80);
+  --chart-4: oklch(0.7 0.16 300);
+  --chart-5: oklch(0.68 0.18 25);
+
+  --sidebar: oklch(0.19 0.022 258);
+  --sidebar-foreground: oklch(0.94 0.008 250);
+  --sidebar-primary: oklch(0.66 0.17 255);
+  --sidebar-primary-foreground: oklch(0.16 0.03 258);
+  --sidebar-accent: oklch(0.3 0.035 258);
+  --sidebar-accent-foreground: oklch(0.9 0.02 250);
+  --sidebar-border: oklch(0.3 0.022 258);
+  --sidebar-ring: oklch(0.66 0.17 255);
+}
+
+/* ---------------------------------------------------------------------------
+ * Theme mapping
+ * ------------------------------------------------------------------------- */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", "SF Mono", monospace;
+}
+
+/* ---------------------------------------------------------------------------
+ * Base
+ * ------------------------------------------------------------------------- */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    @apply font-mono;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Components
+ *
+ * shadcn/ui primitives, ported to server-rendered HTML + vanilla JS.
+ * Class names mirror the shadcn component APIs so a future React port is a
+ * mechanical translation.
+ * ------------------------------------------------------------------------- */
+@layer components {
+  /* Card ---------------------------------------------------------------- */
+  .card {
+    @apply rounded-xl border bg-card text-card-foreground shadow-sm;
+  }
+  .card-header {
+    @apply flex flex-col gap-1.5 p-5;
+  }
+  .card-title {
+    @apply leading-none font-semibold tracking-tight;
+  }
+  .card-description {
+    @apply text-sm text-muted-foreground;
+  }
+  .card-content {
+    @apply p-5 pt-0;
+  }
+  .card-footer {
+    @apply flex items-center p-5 pt-0;
+  }
+
+  /* Button -------------------------------------------------------------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium
+           transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50
+           disabled:pointer-events-none disabled:opacity-50
+           [&_svg]:pointer-events-none [&_svg]:shrink-0;
+  }
+  .btn-default {
+    @apply bg-primary text-primary-foreground shadow-xs hover:bg-primary/90;
+  }
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80;
+  }
+  .btn-outline {
+    @apply border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground;
+  }
+  .btn-ghost {
+    @apply hover:bg-accent hover:text-accent-foreground;
+  }
+  .btn-destructive {
+    @apply bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90;
+  }
+  .btn-sm {
+    @apply h-8 gap-1.5 rounded-md px-3 text-xs;
+  }
+  .btn-lg {
+    @apply h-10 rounded-md px-6;
+  }
+  .btn-icon {
+    @apply size-9;
+  }
+  .btn-icon-sm {
+    @apply size-8;
+  }
+
+  /* Badge --------------------------------------------------------------- */
+  .badge {
+    @apply inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md border
+           px-2 py-0.5 text-xs font-medium
+           [&>svg]:size-3;
+  }
+  .badge-default {
+    @apply border-transparent bg-primary text-primary-foreground;
+  }
+  .badge-secondary {
+    @apply border-transparent bg-secondary text-secondary-foreground;
+  }
+  .badge-destructive {
+    @apply border-transparent bg-destructive text-destructive-foreground;
+  }
+  .badge-success {
+    @apply border-transparent bg-success text-success-foreground;
+  }
+  .badge-warning {
+    @apply border-transparent bg-warning text-warning-foreground;
+  }
+  .badge-outline {
+    @apply text-foreground;
+  }
+  .badge-accent {
+    @apply border-transparent bg-accent text-accent-foreground;
+  }
+
+  /* Input --------------------------------------------------------------- */
+  .input {
+    @apply flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-base shadow-xs
+           transition-[color,box-shadow] outline-none placeholder:text-muted-foreground
+           focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50
+           disabled:cursor-not-allowed disabled:opacity-50 md:text-sm;
+  }
+
+  /* Table --------------------------------------------------------------- */
+  .table {
+    @apply w-full caption-bottom text-sm;
+  }
+  .table-header {
+    @apply [&_tr]:border-b;
+  }
+  .table-body {
+    @apply [&_tr:last-child]:border-0;
+  }
+  .table-row {
+    @apply border-b border-border/60 transition-colors hover:bg-muted/40;
+  }
+  .table-head {
+    @apply h-9 px-5 text-left align-middle font-medium whitespace-nowrap text-muted-foreground;
+  }
+  .table-cell {
+    @apply px-5 py-2.5 align-middle;
+  }
+  .table-caption {
+    @apply mt-4 text-sm text-muted-foreground;
+  }
+  /* Denser variant for multi-column tables (software inventory). */
+  .table-compact .table-head {
+    @apply px-3;
+  }
+  .table-compact .table-cell {
+    @apply px-3;
+  }
+
+  /* Tabs ---------------------------------------------------------------- */
+  .tabs-list {
+    @apply inline-flex h-9 w-fit items-center justify-center rounded-lg bg-muted p-[3px] text-muted-foreground;
+  }
+  .tabs-trigger {
+    @apply inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border
+           border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow]
+           focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50
+           disabled:pointer-events-none disabled:opacity-50
+           data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm
+           dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30
+           dark:data-[state=active]:text-foreground;
+  }
+  .tabs-content {
+    @apply flex-1 outline-none;
+  }
+
+  /* Separator ----------------------------------------------------------- */
+  .separator {
+    @apply shrink-0 bg-border data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full
+           data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px;
+  }
+
+  /* Alert --------------------------------------------------------------- */
+  .alert {
+    @apply relative grid w-full grid-cols-[0_1fr] items-start gap-y-0.5 rounded-lg border px-4 py-3 text-sm
+           has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:translate-y-0.5;
+  }
+  .alert-destructive {
+    @apply border-destructive/50 bg-destructive/5 text-destructive [&>svg]:text-current;
+  }
+  .alert-success {
+    @apply border-success/50 bg-success/5 text-success [&>svg]:text-current;
+  }
+  .alert-warning {
+    @apply border-warning/50 bg-warning/10 text-warning-foreground [&>svg]:text-current;
+  }
+  .alert-title {
+    @apply col-start-2 min-h-4 font-medium tracking-tight;
+  }
+  .alert-description {
+    @apply col-start-2 text-sm text-muted-foreground;
+  }
+
+  /* Skeleton ------------------------------------------------------------ */
+  .skeleton {
+    @apply animate-pulse rounded-md bg-muted;
+  }
+
+  /* Status dot ---------------------------------------------------------- */
+  .api-status {
+    @apply size-2 shrink-0 rounded-full bg-muted-foreground;
+  }
+  .api-status-checking {
+    @apply animate-pulse bg-primary;
+  }
+  .api-status-online {
+    @apply bg-success;
+  }
+  .api-status-offline {
+    @apply bg-destructive;
+  }
+
+  /* Agent panel — agent reported in ------------------------------------- */
+  .agent-panel.agent-done {
+    @apply border-success;
+  }
+
+  /* Guidance steps ------------------------------------------------------ */
+  .step {
+    @apply rounded-full border px-2.5 py-1;
+  }
+  .step-current {
+    @apply border-primary/40 bg-primary/10 font-medium text-primary;
+  }
+  .step-current .step-dot {
+    @apply border-primary/50 bg-primary text-primary-foreground;
+  }
+  .step-done {
+    @apply border-success/40 bg-success/10 font-medium text-success;
+  }
+  .step-done .step-dot {
+    @apply border-success/50 bg-success text-success-foreground;
+  }
+  .step-pending {
+    @apply border-border text-muted-foreground;
+  }
+  .step-pending .step-dot {
+    @apply border-border text-muted-foreground;
+  }
+  .step-dot {
+    @apply border-current;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Utilities
+ * ------------------------------------------------------------------------- */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

@@ -4,3 +4,5 @@ files2
 __pycache__
 .venv
 .env
+node_modules/
+npm-debug.log*
