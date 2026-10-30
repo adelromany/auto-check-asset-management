@@ -21,3 +21,6 @@ Format per entry: ID, date, status (AGREED / PROPOSED / OPEN / IMPLEMENTED), con
 - D-14 OPEN — Stalled threshold by time, retention of events and documents, HTTPS rollout, agent single-use token binding.
 - D-15 AGREED — H-Caliper is the owner's name for these 12 principle files; following H-Caliper means obeying and maintaining them.
 - D-16 IMPLEMENTED — Graph file (`03-graph-principles.md`) is machine-checked by a test and updated in every branch that changes structure.
+- D-17 IMPLEMENTED — One database session per request; `app/dependencies.get_session` is the only commit/rollback boundary. Repositories flush but never commit, so services compose calls inside one transaction.
+- D-18 IMPLEMENTED — The engine and session factory are created lazily (`app/db/engine.py`); importing the app never opens a database connection, which keeps the characterization tests honest.
+- D-19 IMPLEMENTED — The active-handover uniqueness rule is a partial unique index on `handovers.device_serial` with both `postgresql_where` and `sqlite_where` predicates, so SQLite tests enforce the same rule as production PostgreSQL.

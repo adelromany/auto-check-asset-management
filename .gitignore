@@ -6,3 +6,6 @@ __pycache__
 .env
 node_modules/
 npm-debug.log*
+data/
+*.db
+venv/

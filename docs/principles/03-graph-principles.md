@@ -26,9 +26,13 @@ The project graph is a map of what depends on what, so any change can be assesse
 |---|---|---|---|
 | module | app/main.py | infra | application factory, middleware and router wiring |
 | module | app/config.py | config | the only place environment variables are read |
-| module | app/dependencies.py | infra | current_user and session-store injection |
+| module | app/dependencies.py | infra | current_user, session-store injection, per-request DB session |
 | module | app/auth.py | infra | Entra ID SSO routes (/login, /auth/callback, /logout) |
 | module | app/schemas.py | dto | AgentPayload request model |
+| module | app/db/base.py | db | declarative base and stable constraint naming |
+| module | app/db/engine.py | db | lazy async engine and session factory (no connection at import) |
+| module | app/db/models/handover.py | db | ORM models: Handover, HandoverStage, AgentReport, Document, Event |
+| module | app/repositories/events.py | repository | insert-only business event trail |
 | module | app/services/sessions.py | service | in-memory short-code session store |
 | module | app/routers/pages.py | router | index page and /api/me |
 | module | app/routers/agent.py | router | session code create/poll/submit |
@@ -54,6 +58,15 @@ The project graph is a map of what depends on what, so any change can be assesse
 | external | Snipe-IT API | app/routers/snipeit.py |
 | external | Entra ID (OIDC) | app/auth.py |
 
+### Nodes — tables
+| kind | table | read by | written by |
+|---|---|---|---|
+| table | handovers | — (repository arrives in Phase 2) | — |
+| table | handover_stages | — (repository arrives in Phase 2) | — |
+| table | agent_reports | — (repository arrives in Phase 2) | — |
+| table | documents | — (repository arrives in Phase 6) | — |
+| table | events | app/repositories/events.py | app/repositories/events.py |
+
 ### Edges (selected, source of truth for impact)
 | from | edge | to |
 |---|---|---|
@@ -62,6 +75,10 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/routers/snipeit.py | uses | Snipe-IT API |
 | app/auth.py | uses | Entra ID (OIDC) |
 | app/main.py | imports | app/routers/* |
+| app/dependencies.py | imports | app/db/engine.py |
+| app/db/engine.py | reads | DATABASE_URL (app/config.py) |
+| app/repositories/events.py | imports | app/db/models/handover.py |
+| alembic/env.py | imports | app/db/base.py |
 
 ### Impact table
 | if you change | re-check |
@@ -70,4 +87,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/services/sessions.py | app/routers/agent.py; tests/test_characterization.py |
 | app/schemas.py (AgentPayload) | static/agent.ps1, static/agent.sh, app/routers/agent.py, the report page |
 | app/routers/snipeit.py response shape | static/app.js lookup rendering; tests/test_characterization.py |
+| app/db/models/handover.py | alembic/versions/0001_initial.py; repositories; tests/test_persistence.py |
+| app/db/engine.py | app/dependencies.py get_session; tests that override DATABASE_URL |
+| app/repositories/events.py | every service that writes an event; LOG-07 test |
 <!-- GRAPH:END -->

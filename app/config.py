@@ -33,6 +33,17 @@ DEV_USER = {
 # Read-only clipboard diagnostics page (/diag/clipboard). Off by default.
 ENABLE_DIAG = os.getenv("ENABLE_DIAG", "false").strip().lower() == "true"
 
+# Handover portal persistence and Snipe-IT client.
+# DATABASE_URL selects the driver: PostgreSQL (asyncpg) in production,
+# SQLite (aiosqlite) for development and tests.
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "sqlite+aiosqlite:///./data/handover.db"
+)
+DOCUMENTS_DIR = os.getenv("DOCUMENTS_DIR", "./data/documents")
+DOCUMENT_MAX_BYTES = int(os.getenv("DOCUMENT_MAX_BYTES", "10485760"))
+SNIPEIT_TIMEOUT_SECONDS = float(os.getenv("SNIPEIT_TIMEOUT_SECONDS", "10"))
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
 if not SSO_ENABLED:
     print("=" * 70)
     print("WARNING: SSO_ENABLED=false -> authentication is DISABLED.")

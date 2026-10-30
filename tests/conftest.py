@@ -34,11 +34,30 @@ BASE_ENV = {
 }
 
 
+_SKIP_RELOAD_PREFIXES = ("app.db", "app.domain")
+
+
+def _is_reloadable(name: str) -> bool:
+    if name == "main":
+        return True
+    if not name.startswith("app."):
+        return False
+    return not any(
+        name == prefix or name.startswith(prefix + ".")
+        for prefix in _SKIP_RELOAD_PREFIXES
+    )
+
+
 def _reload_app_modules():
-    """Re-import the app with current env. Gives a fresh session store."""
+    """Re-import the app with current env. Gives a fresh session store.
+
+    ``app.db`` and ``app.domain`` are NOT reloaded: reloading SQLAlchemy models
+    re-registers their tables on the same MetaData and crashes. Both packages
+    are configuration-free, so a fresh reload is not needed.
+    """
     if "main" not in sys.modules:
         import main  # noqa: F401
-    for name in [n for n in list(sys.modules) if n == "main" or n.startswith("app.")]:
+    for name in [n for n in list(sys.modules) if _is_reloadable(n)]:
         importlib.reload(sys.modules[name])
     import main
     return main

@@ -13,6 +13,11 @@ app/
   dependencies.py       # current_user, injectable session store
   auth.py               # Entra ID SSO: /login, /auth/callback, /logout
   schemas.py            # AgentPayload
+  db/
+    base.py             # declarative Base + stable constraint names
+    engine.py           # lazy async engine/sessionmaker (no connection at import)
+    models/handover.py  # Handover, HandoverStage, AgentReport, Document, Event
+  repositories/events.py  # insert-only business event trail
   services/sessions.py  # SessionStore (create/get/submit/expire)
   routers/
     pages.py            # / and /api/me
@@ -20,6 +25,8 @@ app/
     snipeit.py          # /api/snipeit/device, /api/snipeit/health
     health.py           # /api/health
     diag.py             # /diag/clipboard (behind ENABLE_DIAG)
+alembic/                # async migrations (alembic upgrade head)
+alembic.ini
 templates/              # index.html, diag_clipboard.html
   partials/logo.html    # app logo (Jinja macro: mark + lockup)
 static/
@@ -36,6 +43,7 @@ tests/
   test_diag.py          # diagnostics page tests
   test_architecture_rules.py  # enforces the layer dependency rules (ARC-01/04/05)
   test_graph_consistency.py   # keeps the LIVE GRAPH in docs/principles/03 honest
+  test_persistence.py   # migration, partial index, lazy engine, event trail
   test_clipboard_playwright.py  # browser condition matrix (needs browsers)
 pytest.ini              # asyncio_mode=auto, testpaths=tests
 .gitattributes          # LF line endings; binary markers for images/fonts
@@ -125,6 +133,21 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8080
 
 Copy `.env.example` to `.env` and fill it in. SSO is ON unless
 `SSO_ENABLED=false` (development only — startup prints a warning).
+
+## Database
+
+PostgreSQL is the production target (`DATABASE_URL=postgresql+asyncpg://…`);
+SQLite is used for local development and tests
+(`sqlite+aiosqlite:///./data/handover.db`, the default). The schema is managed
+only by Alembic — the application never calls `create_all`:
+
+```powershell
+alembic upgrade head      # create/upgrade the schema
+alembic downgrade base    # drop everything (development only)
+```
+
+Set `TEST_DATABASE_URL` to run the migration test against PostgreSQL; without
+it that test is reported as skipped ("PostgreSQL not exercised").
 
 ## Tests
 
