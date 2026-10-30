@@ -34,12 +34,19 @@ tests/
   conftest.py           # env-isolated app factory (see header comment)
   test_characterization.py  # pins current API behavior (must stay green)
   test_diag.py          # diagnostics page tests
+  test_architecture_rules.py  # enforces the layer dependency rules (ARC-01/04/05)
+  test_graph_consistency.py   # keeps the LIVE GRAPH in docs/principles/03 honest
   test_clipboard_playwright.py  # browser condition matrix (needs browsers)
+pytest.ini              # asyncio_mode=auto, testpaths=tests
+.gitattributes          # LF line endings; binary markers for images/fonts
 docs/
   discovery.md          # code map produced before the refactor
   copy-diagnosis.md     # clipboard root cause, decision log, manual matrix
   https-deployment.md   # deferred TLS cutover checklist
   logo.svg              # brand mark (512px app icon)
+  OPEN_QUESTIONS.md     # questions the prompt does not answer (conservative default taken)
+  principles/           # H-Caliper: the 12 principle files (01…12)
+  context/              # briefing material dropped by the owner
 ```
 
 ## UI system
