@@ -32,10 +32,18 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/db/base.py | db | declarative base and stable constraint naming |
 | module | app/db/engine.py | db | lazy async engine and session factory (no connection at import) |
 | module | app/db/models/handover.py | db | ORM models: Handover, HandoverStage, AgentReport, Document, Event |
+| module | app/domain/stages.py | domain | nine fixed stages: keys, order, dependencies and statuses |
+| module | app/domain/handover_rules.py | domain | pure derive_status, missing_steps and can_run rules |
+| module | app/domain/errors.py | domain | typed handover workflow exceptions |
+| module | app/domain/redaction.py | domain | strip windows_activation.partial_key before storage |
+| module | app/dto/handover.py | dto | handover request/response models |
+| module | app/repositories/handovers.py | repository | handover, stage and agent-report data access |
 | module | app/repositories/events.py | repository | insert-only business event trail |
+| module | app/services/handovers.py | service | create, get, list, confirm, cancel, recompute, agent report |
 | module | app/services/sessions.py | service | in-memory short-code session store |
 | module | app/routers/pages.py | router | index page and /api/me |
 | module | app/routers/agent.py | router | session code create/poll/submit |
+| module | app/routers/handovers.py | router | /api/handovers create, list, detail, confirm, cancel |
 | module | app/routers/snipeit.py | router | Snipe-IT device lookup and health |
 | module | app/routers/health.py | router | liveness endpoint |
 | module | app/routers/diag.py | router | clipboard diagnostics page (ENABLE_DIAG) |
@@ -48,6 +56,11 @@ The project graph is a map of what depends on what, so any change can be assesse
 | route | GET /api/session/new | app/routers/agent.py |
 | route | GET /api/session/{code}/data | app/routers/agent.py |
 | route | POST /api/session/{code}/submit | app/routers/agent.py |
+| route | POST /api/handovers | app/routers/handovers.py |
+| route | GET /api/handovers | app/routers/handovers.py |
+| route | GET /api/handovers/{id} | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/stages/{stage}/confirm | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/cancel | app/routers/handovers.py |
 | route | GET /api/snipeit/device | app/routers/snipeit.py |
 | route | GET /api/snipeit/health | app/routers/snipeit.py |
 | route | GET /api/health | app/routers/health.py |
@@ -61,9 +74,9 @@ The project graph is a map of what depends on what, so any change can be assesse
 ### Nodes — tables
 | kind | table | read by | written by |
 |---|---|---|---|
-| table | handovers | — (repository arrives in Phase 2) | — |
-| table | handover_stages | — (repository arrives in Phase 2) | — |
-| table | agent_reports | — (repository arrives in Phase 2) | — |
+| table | handovers | app/repositories/handovers.py | app/repositories/handovers.py |
+| table | handover_stages | app/repositories/handovers.py | app/repositories/handovers.py |
+| table | agent_reports | app/repositories/handovers.py | app/repositories/handovers.py |
 | table | documents | — (repository arrives in Phase 6) | — |
 | table | events | app/repositories/events.py | app/repositories/events.py |
 
@@ -78,6 +91,15 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/dependencies.py | imports | app/db/engine.py |
 | app/db/engine.py | reads | DATABASE_URL (app/config.py) |
 | app/repositories/events.py | imports | app/db/models/handover.py |
+| app/repositories/handovers.py | imports | app/db/models/handover.py |
+| app/repositories/handovers.py | imports | app/domain/stages.py |
+| app/services/handovers.py | imports | app/repositories/handovers.py |
+| app/services/handovers.py | imports | app/repositories/events.py |
+| app/services/handovers.py | uses | app/domain/handover_rules.py |
+| app/services/handovers.py | imports | app/domain/redaction.py |
+| app/routers/handovers.py | imports | app/services/handovers.py |
+| app/routers/handovers.py | imports | app/dto/handover.py |
+| app/routers/agent.py | imports | app/services/handovers.py |
 | alembic/env.py | imports | app/db/base.py |
 
 ### Impact table
@@ -89,5 +111,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/routers/snipeit.py response shape | static/app.js lookup rendering; tests/test_characterization.py |
 | app/db/models/handover.py | alembic/versions/0001_initial.py; repositories; tests/test_persistence.py |
 | app/db/engine.py | app/dependencies.py get_session; tests that override DATABASE_URL |
+| app/domain/stages.py | app/domain/handover_rules.py; app/services/handovers.py; tests/test_domain_rules.py |
+| app/services/handovers.py | app/routers/handovers.py; app/routers/agent.py; tests/test_handover_service.py; tests/test_handovers_api.py |
 | app/repositories/events.py | every service that writes an event; LOG-07 test |
 <!-- GRAPH:END -->
