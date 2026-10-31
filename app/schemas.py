@@ -8,6 +8,8 @@ from pydantic import BaseModel
 class AgentPayload(BaseModel):
     hostname:     Optional[str] = None
     username:     Optional[str] = None
+    user_domain:  Optional[str] = None
+    console_user: Optional[str] = None
     serial:       Optional[str] = None
     manufacturer: Optional[str] = None
     model:        Optional[str] = None

@@ -81,7 +81,7 @@ async def test_create_makes_nine_pending_stages_and_one_event(service) -> None:
     view = await service.get_detail(handover.id)
     assert [event.type for event in view.events] == ["handover_created"]
     assert view.events[0].actor == ENGINEER
-    assert len(view.missing_steps) == 9
+    assert len(view.missing_steps) == 10
 
 
 async def test_create_strips_serial_and_blank_ticket(service) -> None:
@@ -242,8 +242,17 @@ async def test_agent_report_with_matching_serial_passes_stage_three(
     payload = {
         "serial": "SN-MATCH",
         "username": "alice",
+        "user_domain": "TESTDOMAIN",
+        "cpu": "Intel Core i7",
+        "ram_gb": 16,
+        "disks": [{"name": "NVMe", "size_gb": 512, "type": "SSD"}],
+        "software_checks": [
+            {"id": software_id, "name": software_id, "installed": True}
+            for software_id in ("forticlient", "sccm", "intune", "office2021")
+        ],
         "windows_activation": {
             "status": "Licensed",
+            "status_code": 1,
             "product_name": "Windows 11 Pro",
             "partial_key": "ABCDE",
         },
@@ -271,7 +280,17 @@ async def test_agent_report_with_other_serial_fails_stage_three(service) -> None
     handover = await _create(service, serial="SN-EXPECTED")
 
     await service.record_agent_report(
-        handover.id, {"serial": "SN-OTHER", "username": "bob"}, actor=ENGINEER
+        handover.id,
+        {
+            "serial": "SN-OTHER",
+            "username": "bob",
+            "cpu": "Intel Core i7",
+            "ram_gb": 16,
+            "disks": [{"name": "NVMe", "size_gb": 512, "type": "SSD"}],
+            "software_checks": [],
+            "windows_activation": {"status": "Licensed", "status_code": 1},
+        },
+        actor=ENGINEER,
     )
 
     view = await service.get_detail(handover.id)
@@ -288,7 +307,18 @@ async def test_agent_report_with_other_serial_fails_stage_three(service) -> None
 async def test_agent_report_without_serial_fails_with_a_clear_reason(service) -> None:
     handover = await _create(service, serial="SN-EXPECTED")
 
-    await service.record_agent_report(handover.id, {"username": "bob"}, actor=ENGINEER)
+    await service.record_agent_report(
+        handover.id,
+        {
+            "username": "bob",
+            "cpu": "Intel Core i7",
+            "ram_gb": 16,
+            "disks": [{"name": "NVMe", "size_gb": 512, "type": "SSD"}],
+            "software_checks": [],
+            "windows_activation": {"status": "Licensed", "status_code": 1},
+        },
+        actor=ENGINEER,
+    )
 
     view = await service.get_detail(handover.id)
     stage = next(item for item in view.stages if item.stage == "agent_report")

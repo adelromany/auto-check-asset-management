@@ -22,11 +22,12 @@ def _stages(**statuses: StageStatus) -> list[StageState]:
     ]
 
 
-def test_stage_order_is_the_nine_fixed_stages() -> None:
+def test_stage_order_is_the_ten_fixed_stages() -> None:
     assert [stage.value for stage in STAGE_ORDER] == [
         "device_prepared",
         "user_signed_in",
         "agent_report",
+        "software_check",
         "recipient_check",
         "checkout",
         "report_printed",

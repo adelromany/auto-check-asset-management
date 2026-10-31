@@ -31,7 +31,6 @@ class StageNotRunnable(HandoverError):
         self.reason = reason
         super().__init__(reason)
 
-
 class ManualStageRequired(HandoverError):
     """The stage is not one an engineer may confirm by hand."""
 
@@ -58,3 +57,19 @@ class UnsupportedDocumentType(HandoverError):
 
 class AgentReportNotFound(HandoverError):
     """The printable report needs a stored agent report first."""
+
+
+class SoftwareCheckConflict(HandoverError):
+    """The software-check command is not valid in its current state."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
+class RecipientConfirmationConflict(HandoverError):
+    """A reported identity requires an explicit engineer acknowledgement."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)

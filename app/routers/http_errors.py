@@ -26,6 +26,8 @@ from app.domain.errors import (
     HandoverNotFound,
     InvalidStage,
     ManualStageRequired,
+    RecipientConfirmationConflict,
+    SoftwareCheckConflict,
     StageNotRunnable,
     UnsupportedDocumentType,
 )
@@ -37,6 +39,8 @@ _CONFLICT_ERRORS = (
     HandoverCancelled,
     HandoverCompleted,
     ManualStageRequired,
+    RecipientConfirmationConflict,
+    SoftwareCheckConflict,
     StageNotRunnable,
 )
 

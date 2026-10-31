@@ -1,5 +1,5 @@
 /* Printable handover report. Self-hosted so CSP can stay self-only. */
-@page { margin: 18mm; }
+@page { size: A4; margin: 18mm; }
 body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #111; margin: 0; }
 h1 { font-size: 20px; margin: 0 0 4px; }
 h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; margin: 22px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
@@ -12,4 +12,7 @@ th { width: 28%; color: #444; font-weight: 600; }
 .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 28px; }
 .signature { border-top: 1px solid #111; padding-top: 6px; font-size: 11px; color: #444; }
 .note { margin-top: 18px; font-size: 11px; color: #666; }
-@media print { .no-print { display: none; } }
+@media print {
+  html, body { color: #000; background: #fff; }
+  .no-print, nav, button { display: none !important; }
+}

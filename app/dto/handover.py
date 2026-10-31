@@ -38,6 +38,18 @@ class HandoverCreate(BaseModel):
         return cleaned or None
 
 
+class SoftwareCheckOverride(BaseModel):
+    reason: str = Field(min_length=10, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _clean_reason(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not 10 <= len(cleaned) <= 500:
+            raise ValueError("reason must be 10–500 characters after trimming")
+        return cleaned
+
+
 class StageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -136,6 +148,9 @@ class RecipientSearchResult(BaseModel):
     candidates: list[RecipientCandidate]
     reported_username: str | None = None
     warning: str | None = None
+    detected_user: str | None = None
+    is_local: bool = False
+    same_as_engineer: bool = False
 
 
 class RecipientConfirm(BaseModel):
@@ -143,6 +158,7 @@ class RecipientConfirm(BaseModel):
 
     snipeit_user_id: int | None = Field(default=None, ge=1)
     not_found: bool = False
+    acknowledge_same_as_engineer: bool = False
 
     @model_validator(mode="after")
     def _exactly_one_choice(self) -> "RecipientConfirm":

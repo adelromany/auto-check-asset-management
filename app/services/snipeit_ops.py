@@ -23,8 +23,9 @@ from app.clients.snipeit import (
     SnipeItUnavailable,
 )
 from app.db.models.handover import Handover
-from app.domain.errors import StageNotRunnable
+from app.domain.errors import RecipientConfirmationConflict, StageNotRunnable
 from app.domain.handover_rules import can_run
+from app.domain.recipient_identity import DetectedUser, detect_recipient
 from app.domain.stages import Stage, StageStatus
 from app.dto.handover import (
     CheckinOutcome,
@@ -65,14 +66,41 @@ class SnipeItHandoverService:
     async def search_recipients(
         self,
         handover_id: uuid.UUID,
-        query: str,
+        query: str | None,
         *,
         client: SnipeItClient,
         engineer_email: str,
         engineer_name: str = "",
     ) -> RecipientSearchResult:
         handover = await self._core.get(handover_id, with_details=True)
-        users = await client.search_users(query)
+        report = await self._core.latest_agent_report(handover_id)
+        detected = (
+            detect_recipient(report.payload, handover.engineer_email)
+            if report is not None
+            else DetectedUser("", None, "", True, False)
+        )
+        manual_query = (query or "").strip()
+        search_query = manual_query or detected.sam
+        if not manual_query and (detected.is_local or not detected.sam):
+            return RecipientSearchResult(
+                query="",
+                candidates=[],
+                reported_username=handover.recipient_reported_username,
+                warning="Cannot determine a domain user on this device — search manually",
+                detected_user=detected.raw or None,
+                is_local=detected.is_local,
+                same_as_engineer=detected.same_as_engineer,
+            )
+        if not search_query:
+            return RecipientSearchResult(
+                query="",
+                candidates=[],
+                reported_username=handover.recipient_reported_username,
+                detected_user=detected.raw or None,
+                is_local=detected.is_local,
+                same_as_engineer=detected.same_as_engineer,
+            )
+        users = await client.search_users(search_query)
         engineer_keys = _identity_keys(engineer_email, engineer_name)
         reported = handover.recipient_reported_username
         reported_key = (reported or "").strip().casefold()
@@ -91,14 +119,17 @@ class SnipeItHandoverService:
         ]
 
         warning = None
-        if reported_key and reported_key in engineer_keys:
+        if detected.same_as_engineer or (reported_key and reported_key in engineer_keys):
             warning = ELEVATED_AGENT_WARNING
 
         return RecipientSearchResult(
-            query=query,
+            query=search_query,
             candidates=candidates,
             reported_username=reported,
             warning=warning,
+            detected_user=detected.raw or None,
+            is_local=detected.is_local,
+            same_as_engineer=detected.same_as_engineer,
         )
 
     async def confirm_recipient(
@@ -109,10 +140,17 @@ class SnipeItHandoverService:
         not_found: bool,
         actor: str,
         client: SnipeItClient,
+        acknowledge_same_as_engineer: bool = False,
     ) -> HandoverDetailView:
         handover = await self._core.get(handover_id, with_details=True)
         ensure_open(handover)
 
+        report = await self._core.latest_agent_report(handover.id)
+        detected = (
+            detect_recipient(report.payload, handover.engineer_email)
+            if report is not None
+            else None
+        )
         row = stage_row(handover, Stage.RECIPIENT_CHECK)
         if row.status == StageStatus.PASSED.value:
             if (
@@ -128,6 +166,15 @@ class SnipeItHandoverService:
 
         if not_found:
             return await self._block_recipient(handover, actor=actor)
+
+        if (
+            detected is not None
+            and detected.same_as_engineer
+            and not acknowledge_same_as_engineer
+        ):
+            raise RecipientConfirmationConflict(
+                "The detected user matches the engineer. Confirm with explicit acknowledgement."
+            )
 
         assert snipeit_user_id is not None  # enforced by the DTO
         try:

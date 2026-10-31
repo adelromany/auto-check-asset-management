@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SNIPEIT_URL = os.getenv("SNIPEIT_URL", "localhost:8000")
+SNIPEIT_URL = os.getenv("SNIPEIT_URL", "http://localhost:8081")
 SNIPEIT_TOKEN = os.getenv("SNIPEIT_TOKEN", "")
 SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL", "600"))  # 10 min default
 APP_HOST = os.getenv("APP_HOST", "localhost:8080")  # e.g. 192.168.1.50:8080
@@ -43,6 +43,14 @@ DOCUMENTS_DIR = os.getenv("DOCUMENTS_DIR", "./data/documents")
 DOCUMENT_MAX_BYTES = int(os.getenv("DOCUMENT_MAX_BYTES", "10485760"))
 SNIPEIT_TIMEOUT_SECONDS = float(os.getenv("SNIPEIT_TIMEOUT_SECONDS", "10"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+STALL_HOURS = int(os.getenv("STALL_HOURS", "24"))
+REQUIRED_SOFTWARE_IDS = [
+    item.strip().casefold()
+    for item in os.getenv(
+        "REQUIRED_SOFTWARE_IDS", "forticlient,sccm,intune,office2021"
+    ).split(",")
+    if item.strip()
+]
 
 # In-memory rate limits (single process). Counts per client address per rule.
 RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
@@ -52,9 +60,3 @@ RATE_LIMIT_SUBMIT_PER_WINDOW = int(
 RATE_LIMIT_RECIPIENT_SEARCH_PER_WINDOW = int(
     os.getenv("RATE_LIMIT_RECIPIENT_SEARCH_PER_WINDOW", "60")
 )
-
-if not SSO_ENABLED:
-    print("=" * 70)
-    print("WARNING: SSO_ENABLED=false -> authentication is DISABLED.")
-    print(f"Everyone is treated as '{DEV_USER['email']}'. NEVER use this in production.")
-    print("=" * 70)

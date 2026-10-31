@@ -60,17 +60,18 @@ database table) is needed before horizontal scaling.
 
 Owner: platform/operations owner.
 
-## Q-5 — Should structured technical logging and request ids be added? (OPEN)
+## Q-5 — Should structured technical logging and request ids be added? (RESOLVED)
 
 Context: principle file 02 describes structured `key=value` logs, a request id
 returned as `X-Request-ID`, level policy and a startup configuration summary.
 None of that is implemented: the app relies on uvicorn's default logging and
 the `events` table for the audit trail.
 
-Conservative option taken: do not claim the logging stack exists; keep the
-token/secret logging prohibitions and the append-only event trail. The final
-sync rewrites file 02 to separate implemented audit behavior from the
-unimplemented technical logging.
+Resolution (2026-10-31): implement structured key/value logging, request IDs
+and `X-Request-ID`, generic error responses with the request ID, startup
+summary and sanitized Snipe-IT timing. See `app/logging_config.py`,
+`app/middleware/request_id.py`, `tests/test_request_logging.py`, and
+principle 02. Logs exclude request bodies, URLs' paths, tokens and identities.
 
 Owner: platform/operations owner.
 
@@ -98,22 +99,70 @@ seed script and record machine/date timings in a follow-up branch.
 
 Owner: performance/code owner.
 
-## Q-8 — Stage 9 duplicate uploads when Snipe-IT rewrites stored filenames (OPEN)
+## Q-9 — Upload signed paper before or after checkout? (OPEN)
 
-Context: live verification (2026-10-31, `docs/snipeit-api-verified.md`) proved
-that Snipe-IT v8.8.3 stores every upload as
-`{item_id}-{random8}-{slug(original basename)}.{ext}` and never exposes the
-original name in the files listing. D-40's idempotency check matches by the
-portal's sanitized name and byte size, so on a real instance the check will not
-recognize an already-pushed file whose stored name was rewritten; a retry would
-upload a second copy. UNVERIFIED whether duplicates cause any further error,
-and whether the portal's byte-size check is sufficient against the stored-name
-form.
+Context: both steps are required, but the owner has not chosen their desired
+order. The current stage dependencies in code remain in force until a decision.
 
-Conservative option taken: keep stage 9's existing decision logic (upload only
-when the sanitized-name + size match fails); record the divergence and do not
-weaken the check without a decision. Options for the owner: match on the
-lowercased original basename inside the stored filename, add
-`upload_original_filename` behavior upstream, or accept possible duplicates.
+Conservative option taken: preserve the implemented order and document it;
+make no workflow change without owner approval.
+
+Owner: handover process owner.
+
+## Q-10 — Is 24 hours the right stalled-by-age threshold? (OPEN)
+
+Context: the age threshold is configurable via `STALL_HOURS` (default 24,
+zero disables). It automatically marks inactive draft/in-progress handovers
+stalled. The owner has not confirmed the default.
+
+Conservative option taken: 24 hours is PROPOSED and configurable; confirm
+before treating it as an approved business policy.
+
+Owner: handover process owner.
+
+## Q-11 — Should Office 365 count as installed Office? (OPEN)
+
+Context: the Windows agent currently reports the `office2021` software id;
+Microsoft 365/Office 365 detection is not specified.
+
+Conservative option taken: require the current configured id and do not infer
+Office 365 equivalence.
+
+Owner: endpoint engineering.
+
+## Q-12 — Where should the H-Caliper files live? (OPEN)
+
+Context: the current principles live in `docs/principles/`. The gap prompt
+prohibits moving them and prohibits adding `.caliper/`, while the owner has
+not otherwise decided the long-term layout.
+
+Conservative option taken: retain `docs/principles/`.
+
+Owner: documentation/code owner.
+
+## Q-13 — Should Snipe-IT writes use per-engineer credentials? (OPEN)
+
+Context: live verification established that Snipe-IT history attributes a
+write to the API token owner. The current service-account mechanism therefore
+shows the service account as actor, while the portal stores the engineer in the
+write note and audit event. The observed API behavior is resolved; the desired
+attribution design is not.
+
+Conservative option taken: retain the service-account credential and the
+engineer note/audit fields until the owner chooses a per-engineer mechanism.
+
+Owner: Snipe-IT/security owner.
+
+## Q-8 — Stage 9 duplicate uploads when Snipe-IT rewrites stored filenames (RESOLVED)
+
+Context: live verification proved Snipe-IT v8.8.3 rewrites uploaded filenames
+and omits file size from the listing. Its API token receives HTTP 403 from the
+file download route, so the portal cannot verify byte size through these
+endpoints.
+
+Owner decision (2026-10-31): match the lowercased normalized original basename
+at the end of the stored filename. This can mistake different files with the
+same basename for the same scan. The limitation is recorded in D-61 and
+`docs/snipeit-api-verified.md`.
 
 Owner: Snipe-IT/code owner.

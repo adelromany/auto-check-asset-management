@@ -19,7 +19,7 @@ import app.main
 from app import config
 from app.db.base import Base
 from app.db.models.handover import Handover, HandoverStage
-from app.domain.stages import STAGE_ORDER, StageStatus
+from app.domain.stages import STAGE_ORDER, Stage, StageStatus
 from app.services.sessions import SessionStore
 
 ENGINEER_A = ("Engineer A", "engineer.a@example.com")
@@ -108,8 +108,9 @@ async def _seed(factory: async_sessionmaker) -> None:
                             STAGE_ORDER[0],
                             STAGE_ORDER[1],
                             STAGE_ORDER[2],
+                            Stage.SOFTWARE_CHECK,
                         ),
-                        blocked=(STAGE_ORDER[3],),
+                        blocked=(Stage.RECIPIENT_CHECK,),
                     ),
                 ),
                 _handover(
@@ -176,6 +177,8 @@ async def dashboard(monkeypatch):
     async with httpx.AsyncClient(
         transport=transport, base_url="http://test"
     ) as client:
+        csrf = await client.get("/api/me")
+        client.headers["X-CSRF-Token"] = csrf.headers["X-CSRF-Token"]
         yield DashboardHarness(app=application, client=client, factory=factory)
 
     await engine.dispose()
@@ -331,7 +334,7 @@ async def test_rows_include_progress_and_missing_steps(
     assert body["total"] == 1
     row = body["items"][0]
     assert row["handover"]["device_serial"] == "SN-STALLED"
-    assert len(row["stages"]) == 9
+    assert len(row["stages"]) == 10
     assert [item["status"] for item in row["stages"]].count("blocked") == 1
     assert row["missing_steps"][0]["stage"] == "recipient_check"
     assert row["missing_steps"][0]["status"] == "blocked"

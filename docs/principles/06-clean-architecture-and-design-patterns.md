@@ -23,6 +23,7 @@ app/security/*  cross-cutting HTTP hardening, imported by main/pages only
 - ARC-10 Adapter/Client: `SnipeItClient` hides Snipe-IT's wire format.
 - ARC-11 Strategy/Provider: `SnipeItCredentialProvider` so the token source can change later without touching services.
 - ARC-12 State machine via pure functions: stage ordering, `can_run`, `derive_status` live in the domain.
+- ARC-21 Hardware and software evidence evaluation lives in pure `app/domain/software_rules.py`; `app/services/software_check.py` coordinates the persisted override and reevaluation.
 - ARC-13 Dependency injection through FastAPI `Depends` and constructor arguments; tests override them.
 - ARC-14 Unit of work: one request, one database session, commit in a single place (`get_session`).
 

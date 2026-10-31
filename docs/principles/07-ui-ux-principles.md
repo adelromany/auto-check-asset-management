@@ -18,7 +18,8 @@ The UI is server-rendered Jinja + vanilla JS, styled by Tailwind v4 with the sha
 - UIX-08 The case page reads top to bottom as the real process: stages in order, the current/blocked stage visually prominent, the action for each stage next to it.
 - UIX-09 Always show what is missing: a stalled or incomplete handover names the missing step and the reason in plain language, next to a button that fixes it (for example Retry).
 - UIX-10 Forms are a single column. Group fields with whitespace rather than nested boxes.
-- UIX-20 `/handovers` shows KPI tiles, filters (status, engineer, date range), and one row per handover with a status badge, serial, recipient, engineer, compact stage progress and a Missing column. `/handovers/{id}` is the case page with the stage checklist, recipient section, Snipe-IT devices, signed-sheet actions, preview and event timeline.
+- UIX-20 `/handovers` shows KPI tiles, filters (status, engineer, date range), and one row per handover with a status badge, serial, recipient, engineer, compact stage progress and a Missing column. `/handovers/{id}` is the case page with the stage checklist, software override, detected recipient identity, Snipe-IT devices, signed-sheet actions, preview and event timeline.
+- UIX-21 The printable report includes an explicit `[Company legal text goes here]` placeholder until the owner supplies approved wording; it must not invent legal claims.
 
 ## States and feedback
 - UIX-11 Every list/table has three distinct states: loading (skeleton or spinner), empty (message with a next action), populated.

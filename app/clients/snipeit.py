@@ -8,10 +8,17 @@ exception message or a log line.
 from __future__ import annotations
 
 import asyncio
+import logging
+import re
+import time
+import unicodedata
 from dataclasses import dataclass
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 class SnipeItError(Exception):
@@ -139,6 +146,25 @@ def _rows(data: Any) -> list[dict[str, Any]]:
     return []
 
 
+def _operation_name(path: str, method: str) -> str:
+    lowered = path.casefold()
+    if "byserial" in lowered or "serial" in lowered:
+        resource = "asset_lookup"
+    elif "checkout" in lowered:
+        resource = "checkout"
+    elif "checkin" in lowered:
+        resource = "checkin"
+    elif "files" in lowered:
+        resource = "asset_file"
+    elif "whoami" in lowered:
+        resource = "whoami"
+    elif "users" in lowered:
+        resource = "user_lookup"
+    else:
+        resource = "api_request"
+    return f"{method.casefold()}_{resource}"
+
+
 def _single_row(data: Any) -> dict[str, Any] | None:
     rows = _rows(data)
     return rows[0] if rows else None
@@ -191,6 +217,25 @@ def _file_from_json(row: dict[str, Any]) -> SnipeItFile:
     )
 
 
+def snipeit_file_name_matches(stored_name: str, original_name: str) -> bool:
+    """Match Snipe-IT's asset/random-prefix/slug filename to an upload name."""
+    original = original_name.strip().casefold()
+    stored = stored_name.strip().casefold()
+    if stored == original:
+        return True
+    decomposed = unicodedata.normalize("NFKD", original)
+    ascii_name = "".join(
+        char for char in decomposed if not unicodedata.combining(char)
+    )
+    stem, dot, extension = ascii_name.rpartition(".")
+    if dot and extension:
+        slug = re.sub(r"[^a-z0-9]+", "-", stem).strip("-")
+        sanitized = f"{slug}.{extension}"
+    else:
+        sanitized = re.sub(r"[^a-z0-9]+", "-", ascii_name).strip("-")
+    return bool(sanitized) and stored.endswith(f"-{sanitized}")
+
+
 def _action_result(
     data: Any, *, status_code: int | None = None
 ) -> SnipeItActionResult:
@@ -231,6 +276,7 @@ class SnipeItClient:
         self._engineer_email = engineer_email
         self._max_retries = max_retries
         self._retry_backoff = retry_backoff
+        self._uploaded_file_names: dict[int, list[str]] = {}
 
     async def __aenter__(self) -> "SnipeItClient":
         return self
@@ -355,11 +401,33 @@ class SnipeItClient:
             files={"file[]": (filename, content, content_type)},
             data={"note": note} if note else {},
         )
-        return _action_result(data, status_code=status_code)
+        result = _action_result(data, status_code=status_code)
+        if result.status == "success":
+            self._uploaded_file_names.setdefault(asset_id, []).append(
+                filename
+            )
+        return result
 
     async def list_asset_files(self, asset_id: int) -> list[SnipeItFile]:
         data = await self._get_json(f"/api/v1/hardware/{asset_id}/files")
-        return [_file_from_json(row) for row in _rows(data)]
+        files = [_file_from_json(row) for row in _rows(data)]
+        uploaded = self._uploaded_file_names.get(asset_id, [])
+        mapped: list[SnipeItFile] = []
+        for file in files:
+            original_name = next(
+                (
+                    name
+                    for name in uploaded
+                    if snipeit_file_name_matches(file.filename, name)
+                ),
+                None,
+            )
+            mapped.append(
+                SnipeItFile(file.id, original_name, file.size)
+                if original_name is not None
+                else file
+            )
+        return mapped
 
     async def whoami(self) -> SnipeItUser:
         data = await self._get_json("/api/v1/users/me")
@@ -415,9 +483,12 @@ class SnipeItClient:
         data: dict[str, Any] | None = None,
     ) -> httpx.Response:
         url = f"{self._base_url}{path}"
+        target = urlsplit(self._base_url).hostname or "unknown"
+        operation = _operation_name(path, method)
         headers = self._headers(write=write)
         attempt = 0
         while True:
+            started = time.monotonic()
             try:
                 client = self._client()
                 if method == "GET":
@@ -434,6 +505,10 @@ class SnipeItClient:
                         kwargs["data"] = data
                     response = await client.post(url, **kwargs)
             except httpx.RequestError as exc:
+                logger.info(
+                    "snipeit_request target=%s operation=%s status=network_error duration_ms=%d",
+                    target, operation, round((time.monotonic() - started) * 1000),
+                )
                 if method == "GET" and attempt < self._max_retries:
                     attempt += 1
                     await asyncio.sleep(self._retry_backoff * attempt)
@@ -451,6 +526,13 @@ class SnipeItClient:
                 await asyncio.sleep(self._retry_backoff * attempt)
                 continue
 
+            logger.info(
+                "snipeit_request target=%s operation=%s status=%d duration_ms=%d",
+                target,
+                operation,
+                response.status_code,
+                round((time.monotonic() - started) * 1000),
+            )
             self._raise_for_status(response)
             return response
 

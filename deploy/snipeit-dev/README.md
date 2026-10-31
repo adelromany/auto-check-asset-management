@@ -4,7 +4,27 @@ A throwaway Snipe-IT v8 instance (Snipe-IT + MariaDB) used to exercise the
 Handover Portal against a real API. **Development only.** Do not reuse this
 compose file, its credentials, or its data in production.
 
-## 1. Create the environment file
+## Quick bootstrap (Windows)
+
+From the repository root, run `.\deploy\snipeit-dev\bootstrap.ps1`.
+The script creates the ignored development environment file if needed, starts
+the stack, initializes Passport/settings/admin/test fixtures, and writes only
+`SNIPEIT_URL` and `SNIPEIT_TOKEN` to the root `.env`. It is safe to rerun and
+does not print the generated token.
+
+## Login
+
+- URL: <http://localhost:8081>
+- Email/username: `admin@example.test` / `admin`
+- Password: `ChangeMe-Dev-Only-1`
+- These credentials are for the loopback development instance only; never
+  reuse them.
+
+To reset the development database and start over, run `docker compose down -v`
+from this directory, then rerun the bootstrap from the repository root. This
+deletes the local Snipe-IT development data.
+
+## 1. Create the environment file (manual alternative)
 
 ```powershell
 cd deploy/snipeit-dev
@@ -30,11 +50,12 @@ docker compose logs -f snipeit
 ```
 
 Wait until the log shows the migrations finished and the web server is
-listening, then open <http://localhost:8080>.
+listening, then open <http://localhost:8081>. The portal remains at
+<http://localhost:8080>.
 
 ## 3. Create the first admin
 
-Either complete the web setup at <http://localhost:8080/setup>, or run the
+Either complete the web setup at <http://localhost:8081/setup>, or run the
 artisan command non-interactively:
 
 ```powershell
@@ -100,15 +121,15 @@ docker compose exec snipeit php artisan snipeit:make-api-key `
 In the portal's own `.env` (repository root):
 
 ```dotenv
-SNIPEIT_URL=http://localhost:8080
+SNIPEIT_URL=http://localhost:8081
 SNIPEIT_TOKEN=<the token from step 5>
 ```
 
 Restart the portal, then check:
 
 ```powershell
-curl.exe http://localhost:8000/api/snipeit/health
-curl.exe "http://localhost:8000/api/snipeit/device?serial=TEST-SN-0001"
+curl.exe http://localhost:8080/api/snipeit/health
+curl.exe "http://localhost:8080/api/snipeit/device?serial=TEST-SN-0001"
 ```
 
 Both require an authenticated session; sign in first or use the browser.
@@ -117,7 +138,7 @@ Both require an authenticated session; sign in first or use the browser.
 
 ```powershell
 $env:SNIPEIT_LIVE_TEST = "1"
-$env:SNIPEIT_URL = "http://localhost:8080"
+$env:SNIPEIT_URL = "http://localhost:8081"
 $env:SNIPEIT_TOKEN = "<token>"
 python -m pytest tests/test_snipeit_live.py -m live -q
 ```
@@ -126,18 +147,25 @@ The live tests create/clean up only `TEST-` objects and are skipped by
 default. They are not part of the normal suite.
 
 Last full run (2026-10-31, v8.8.3-alpine, admin + `TEST-recipient` +
-`TEST-SN-0001` seeded): **5 passed, 1 failed**. The failure is
-`test_upload_and_list_test_asset_file` and is a Snipe-IT product limitation —
-uploaded filenames are always rewritten to
-`{item_id}-{random8}-{slug}.{ext}` (see `docs/snipeit-api-verified.md`), so the
-assertion `any(item.filename == <original name>)` can never hold on a real
-instance.
+`TEST-SN-0001` seeded): **6 passed**. Snipe-IT rewrites uploaded filenames and
+does not return file size in its listing; the client maps the same-client
+upload response to its logical original name, while Stage 9 matches the stored
+normalized basename suffix across requests. The owner accepted the possible
+same-basename collision; see `docs/snipeit-api-verified.md`.
 
 ## Reset
 
 ```powershell
 docker compose down -v
 ```
+
+## Login
+
+The development-only login is at <http://localhost:8081>: username
+`admin` (email `admin@example.test`), password `ChangeMe-Dev-Only-1`.
+Use these credentials only on the loopback development instance; never reuse
+them. To reset the password and database, run `docker compose down -v`, then
+run `./bootstrap.ps1` again.
 
 `-v` deletes both volumes (database and uploads). All development data is
 lost, which is the point.

@@ -213,6 +213,19 @@
     });
 
     var confirm = document.createElement("button");
+    if (result.same_as_engineer) {
+      var acknowledgement = document.createElement("label");
+      acknowledgement.className = "flex items-start gap-2 text-sm";
+      var checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.id = "ack-same-as-engineer";
+      checkbox.className = "mt-1";
+      acknowledgement.appendChild(checkbox);
+      acknowledgement.appendChild(
+        textElement("span", "text-muted-foreground", "I acknowledge this is my own account and confirm the recipient deliberately.")
+      );
+      container.appendChild(acknowledgement);
+    }
     confirm.type = "button";
     confirm.className = "btn btn-default btn-sm self-start";
     confirm.setAttribute("data-action", "confirm-recipient");
@@ -225,14 +238,12 @@
     var form = event.currentTarget;
     var query = document.getElementById("recipient-query").value.trim();
     var button = form.querySelector("button[type=submit]");
-    if (!query) {
-      showToast("Enter a name, username or email to search.", "error");
-      return;
-    }
     setBusy(button, true);
     try {
+      var searchPath = base + "/recipient/search";
+      if (query) searchPath += "?q=" + encodeURIComponent(query);
       var result = await request(
-        base + "/recipient/search?q=" + encodeURIComponent(query),
+        searchPath,
         { method: "POST" }
       );
       renderCandidates(result);
@@ -253,9 +264,13 @@
     }
     setBusy(button, true);
     try {
+      var acknowledgement = document.getElementById("ack-same-as-engineer");
       await request(base + "/recipient/confirm", {
         method: "POST",
-        json: { snipeit_user_id: Number(checked.value) },
+        json: {
+          snipeit_user_id: Number(checked.value),
+          acknowledge_same_as_engineer: Boolean(acknowledgement && acknowledgement.checked),
+        },
       });
       flashAndReload("Recipient confirmed.", "success");
     } catch (error) {

@@ -29,9 +29,9 @@ services:
       snipeit-db:
         condition: service_healthy
     ports:
-      - "${SNIPEIT_PORT:-8080}:80"
+      - "${SNIPEIT_PORT:-8081}:80"
     environment:
-      APP_URL: ${SNIPEIT_APP_URL:-http://localhost:8080}
+      APP_URL: ${SNIPEIT_APP_URL:-http://localhost:8081}
       APP_KEY: ${SNIPEIT_APP_KEY:?set SNIPEIT_APP_KEY in .env}
       APP_ENV: production
       APP_DEBUG: "false"

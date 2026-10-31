@@ -1,6 +1,10 @@
 """Application factory. No business logic lives here."""
 
-from fastapi import FastAPI
+import logging
+from urllib.parse import urlsplit
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -20,11 +24,18 @@ from app.security.csrf import CsrfMiddleware
 from app.security.headers import SecurityHeadersMiddleware
 from app.security.ratelimit import RateLimitMiddleware
 from app.security.startup import validate_startup_config
+from app.logging_config import configure_logging
+from app.middleware.request_id import RequestIdMiddleware
+from app.request_context import request_id_var
+
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
+    configure_logging()
     validate_startup_config()
     application = FastAPI(title="Snipe-IT Onboarding", docs_url=None, redoc_url=None)
+    application.add_exception_handler(Exception, _internal_error)
     application.mount("/static", StaticFiles(directory="static"), name="static")
     # Added inner-to-outer: the session must exist before CSRF reads it, and
     # the header middleware must wrap every response, including errors.
@@ -38,6 +49,8 @@ def create_app() -> FastAPI:
         max_age=3600,
     )
     application.add_middleware(SecurityHeadersMiddleware)
+    # Added last so the server-generated id wraps every other middleware.
+    application.add_middleware(RequestIdMiddleware)
     application.include_router(auth.router)
     application.include_router(pages.router)
     application.include_router(agent.router)
@@ -47,7 +60,28 @@ def create_app() -> FastAPI:
     application.include_router(snipeit.router)
     application.include_router(health.router)
     application.include_router(diag.router)
+    database_scheme = urlsplit(config.DATABASE_URL).scheme or "unknown"
+    snipeit_host = urlsplit(
+        config.SNIPEIT_URL if "://" in config.SNIPEIT_URL
+        else f"http://{config.SNIPEIT_URL}"
+    ).hostname or "unconfigured"
+    logger.info(
+        "startup database_dialect=%s sso_enabled=%s snipeit_host=%s",
+        database_scheme,
+        str(config.SSO_ENABLED).lower(),
+        snipeit_host,
+    )
+    if not config.SSO_ENABLED:
+        logger.warning("SSO_ENABLED=false; authentication bypass is enabled")
     return application
+
+
+async def _internal_error(request: Request, exc: Exception) -> JSONResponse:
+    logger.error("unhandled_request_error exception_type=%s", type(exc).__name__)
+    return JSONResponse(
+        {"detail": "Internal server error", "request_id": request_id_var.get()},
+        status_code=500,
+    )
 
 
 app = create_app()

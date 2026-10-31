@@ -11,13 +11,15 @@ derive each row's missing steps. No endpoint loads the whole table.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import case, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.handover import Handover, HandoverStage
 from app.domain.handover_rules import missing_steps
+from app.domain.timeutil import as_utc
+from app import config
 from app.domain.stages import (
     STAGE_ORDER,
     HandoverStatus,
@@ -44,8 +46,9 @@ _ACTIVE_STATUSES = (
 class DashboardService:
     """Read-only aggregates and paged rows for the dashboard."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, *, now: datetime | None = None):
         self._session = session
+        self._now = as_utc(now or datetime.now(timezone.utc))
 
     # -- summary ----------------------------------------------------------
     async def summary(
@@ -57,10 +60,14 @@ class DashboardService:
         filters = _created_filters(created_from, created_to)
 
         by_status = {status.value: 0 for status in HandoverStatus}
+        stale = self._stalled_by_age_condition()
+        visible_status = case(
+            (stale, HandoverStatus.STALLED.value), else_=Handover.status
+        )
         status_rows = await self._session.execute(
-            select(Handover.status, func.count())
+            select(visible_status, func.count())
             .where(*filters)
-            .group_by(Handover.status)
+            .group_by(visible_status)
         )
         for status, count in status_rows.all():
             if str(status) in by_status:
@@ -174,7 +181,9 @@ class DashboardService:
             .where(
                 *filters,
                 Handover.status.not_in(_ACTIVE_STATUSES),
-                HandoverStage.status != StageStatus.PASSED.value,
+                HandoverStage.status.not_in(
+                    [StageStatus.PASSED.value, StageStatus.SKIPPED.value]
+                ),
             )
             .group_by(HandoverStage.stage)
             .order_by(count.desc(), HandoverStage.stage)
@@ -204,9 +213,21 @@ class DashboardService:
             created_to=created_to,
             page=page,
             page_size=page_size,
+            stall_cutoff=self._stall_cutoff(),
         )
         items = []
         for handover in handovers:
+            last_updated = as_utc(handover.updated_at)
+            now = as_utc(self._now)
+            cutoff = self._stall_cutoff()
+            if (
+                cutoff is not None
+                and handover.status in (HandoverStatus.DRAFT.value, HandoverStatus.IN_PROGRESS.value)
+                and last_updated is not None
+                and now is not None
+                and last_updated < now - timedelta(hours=config.STALL_HOURS)
+            ):
+                handover.status = HandoverStatus.STALLED.value
             states = stage_states(handover)
             items.append(
                 HandoverRowOut(
@@ -225,6 +246,22 @@ class DashboardService:
             )
         return HandoverRowListOut(
             items=items, total=total, page=page, page_size=page_size
+        )
+
+    def _stall_cutoff(self) -> datetime | None:
+        if config.STALL_HOURS <= 0 or self._now is None:
+            return None
+        return self._now - timedelta(hours=config.STALL_HOURS)
+
+    def _stalled_by_age_condition(self):
+        cutoff = self._stall_cutoff()
+        if cutoff is None:
+            return False
+        return and_(
+            Handover.status.in_(
+                [HandoverStatus.DRAFT.value, HandoverStatus.IN_PROGRESS.value]
+            ),
+            Handover.updated_at < cutoff,
         )
 
 

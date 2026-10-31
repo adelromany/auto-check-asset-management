@@ -1,7 +1,7 @@
 # Snipe-IT Device Onboarding (Handover Portal)
 
 IT opens the portal, runs a short-lived agent on the employee's device, and
-works through nine verifiable handover stages. Snipe-IT stays the system of
+works through ten verifiable handover stages. Snipe-IT stays the system of
 record; the portal stores workflow state and evidence, and only writes to
 Snipe-IT after an engineer's explicit, verified action.
 
@@ -20,13 +20,19 @@ app/
     csrf.py                # per-session token + Origin check for cookie-authenticated writes
     headers.py             # self-only CSP and fixed security headers
     ratelimit.py           # in-memory limits for agent submit and recipient search
+  middleware/
+    request_id.py          # request IDs and generic 500 response correlation
+  logging_config.py       # structured technical logging configuration
   db/
     base.py                # declarative Base + stable constraint names
     engine.py              # lazy async engine/sessionmaker (no connection at import)
     models/handover.py     # Handover, HandoverStage, AgentReport, Document, Event
   domain/
-    stages.py              # nine fixed stages, order, dependencies, statuses
+    stages.py              # ten fixed stages, order, dependencies, statuses
     handover_rules.py      # pure derive_status / missing_steps / can_run
+    software_rules.py      # pure hardware, software and activation checks
+    recipient_identity.py  # domain-user and engineer-match detection
+    timeutil.py            # normalize persistence datetimes to UTC
     errors.py              # typed handover workflow errors
     redaction.py           # strip windows_activation.partial_key before storage
   clients/
@@ -41,6 +47,7 @@ app/
   services/
     sessions.py            # in-memory short-code SessionStore
     handovers.py           # create/get/list/confirm/cancel/recompute/agent report
+    software_check.py      # software override and re-evaluation
     snipeit_ops.py         # recipient search/confirm, preview, checkin, verified checkout
     documents.py           # printable report, safe scan storage, download, verified push
     dashboard.py           # database-side aggregates and page-sized rows
@@ -72,6 +79,7 @@ static/
   js/shell.js              # topbar, clock, CSRF token bridge
   js/handovers.js          # dashboard filters, KPIs, table states
   js/handover_detail.js    # case-page actions
+  js/software_check.js    # software override interaction
   js/diag_clipboard.js     # diagnostics page logic
   app.js                   # legacy landing-page UI (not extended for the dashboard)
   agent.ps1 / agent.sh     # device agent scripts
@@ -90,7 +98,7 @@ tests/
   test_documents.py
   test_dashboard.py
   test_security_hardening.py
-  test_clipboard_playwright.py  # browser matrix (needs Playwright browsers)
+  test_clipboard_playwright.py  # browser matrix
 docs/
   principles/              # H-Caliper: the 12 principle files (01…12)
   security-review.md       # Phase 8 checklist against principle 04
@@ -169,7 +177,23 @@ used in the JS.
   user.
 - The full checklist and the remaining gaps are in `docs/security-review.md`.
 
-## Run
+## Run the local development stack (Windows)
+
+From the repository root, run these commands in PowerShell:
+
+```powershell
+Set-Location D:\DevOps\B_labs\auto-check-asset-management
+.\deploy\snipeit-dev\bootstrap.ps1
+python -m alembic upgrade head
+$env:SSO_ENABLED = "false"
+python -m uvicorn main:app --host 127.0.0.1 --port 8080
+```
+
+The bootstrap creates/updates the ignored environment settings and starts
+Snipe-IT. Use the development login documented in
+`deploy/snipeit-dev/README.md`; do not reuse it outside this local instance.
+
+## Manual Run
 
 ```powershell
 pip install -r requirements.txt
@@ -179,8 +203,16 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8080
 # equivalent: python -m uvicorn app.main:app --host 0.0.0.0 --port 8080
 ```
 
-`SSO_ENABLED=false` is a development bypass only; startup prints a loud
-warning. Production runs with SSO on and HTTPS on.
+The portal listens at <http://localhost:8080>. The development Snipe-IT
+instance listens at <http://localhost:8081>; its defaults are in
+`deploy/snipeit-dev/.env.example`. Root `.env.example` points the portal to
+that instance and leaves `SNIPEIT_TOKEN` blank until the bootstrap creates it.
+
+`SSO_ENABLED=false` is a development bypass only; startup logs a warning.
+Production runs with SSO on and HTTPS on. Software checks use
+`REQUIRED_SOFTWARE_IDS`; a justified override is audited. `STALL_HOURS=24`
+currently proposes an inactivity threshold; set `0` to disable while the
+owner decision remains open.
 
 ## Database
 
@@ -195,8 +227,9 @@ alembic downgrade base    # drop everything (development only)
 ```
 
 Set `TEST_DATABASE_URL` to run the migration test against PostgreSQL; without
-it that test is skipped as "PostgreSQL not exercised". `asyncpg` was not
-installable in this environment.
+it that test is skipped as "PostgreSQL not exercised". PostgreSQL migration
+and coverage measurements are reported in the verification result for this
+change.
 
 ## Tests
 
@@ -212,16 +245,17 @@ python -m playwright install chromium firefox webkit
 python -m pytest tests/test_clipboard_playwright.py -q
 ```
 
-Last recorded run: **284 passed, 7 skipped** for the non-browser suite.
-Coverage is not reported because `pytest-cov` could not be downloaded.
+Final verification on 2026-10-31: **345 passed, 6 skipped** for the fast suite
+with PostgreSQL enabled; **23 passed, 2 skipped, 2 xfailed** for the browser
+suite; **93% app coverage**. The six skipped fast-suite tests are the opt-in
+live Snipe-IT checks, run separately against the local v8.8.3 instance (6
+passed).
 
 ## Local Snipe-IT
 
 `deploy/snipeit-dev/` contains a development-only Snipe-IT v8 + MariaDB
-Compose stack, a placeholder `.env.example` and setup steps. Pulling the
-images is currently BLOCKED by Docker Hub timeouts in this environment; the
-exact status, the owner steps and the API shapes still to verify are in
-`docs/snipeit-api-verified.md`.
+Compose stack and a repeatable bootstrap for local testing. The verified API
+shapes and live-test limits are in `docs/snipeit-api-verified.md`.
 
 ## Diagnostics
 

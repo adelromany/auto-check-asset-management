@@ -7,7 +7,7 @@ username or serial does not start with ``TEST-``.
 Required environment:
 
     SNIPEIT_LIVE_TEST=1
-    SNIPEIT_URL=http://localhost:8080
+    SNIPEIT_URL=http://localhost:8081
     SNIPEIT_TOKEN=<admin API token>
 
 Optional (defaults shown):

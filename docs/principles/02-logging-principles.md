@@ -1,9 +1,8 @@
 # 02 — Logging Principles
 
-Status: the **business audit trail is implemented**; structured technical
-logging is **not** implemented. This file states the difference instead of
-claiming a logging stack that does not exist. See Q-5 in
-`docs/OPEN_QUESTIONS.md`.
+Status: both the **business audit trail** and the **structured technical
+logging/request-id path** are implemented. The limits on personal data and
+secrets remain mandatory.
 
 ## Business audit trail (implemented)
 
@@ -20,30 +19,27 @@ claiming a logging stack that does not exist. See Q-5 in
 - LOG-05 The Windows `partial_key` is removed before storage; full payloads
   are never logged.
 
-## Technical logging (not implemented)
+## Technical logging (implemented)
 
-The following rules remain the target, but no code currently satisfies them.
-They must not be reported as done:
-
-- LOG-06 **Structured logging configuration**: there is no
-  `app/logging_config.py`; the app uses uvicorn's default logging. A
-  `LOG_LEVEL` setting exists in `app/config.py` but is not wired to a
-  formatter.
-- LOG-07 **Request id**: no middleware generates a request id, returns
-  `X-Request-ID`, or puts it in a log context. Error responses are generic but
-  do not carry a request id.
-- LOG-08 **Level policy and startup summary**: the only startup message is the
-  loud `SSO_ENABLED=false` warning printed by `app/config.py`. The effective
-  database dialect and Snipe-IT host are not logged.
-- LOG-09 **External-call timing**: Snipe-IT calls are not logged with
-  duration. Their outcome is recorded in the `events` table instead.
+- LOG-06 `app/logging_config.py` configures one structured key/value handler
+  with UTC timestamps and the configured log level.
+- LOG-07 `RequestIdMiddleware` creates a server-side request id, returns it in
+  `X-Request-ID`, and adds it to log records. Unexpected errors return a
+  generic response with that id; logs contain the exception class only, never
+  exception text or stack traces that may include personal data.
+- LOG-08 Startup records the effective database dialect, SSO state and Snipe-IT
+  host. The development SSO bypass is a warning.
+- LOG-09 Snipe-IT calls log operation category, target host, status and elapsed
+  time. URL paths, tokens, identities, and request bodies are excluded.
+- LOG-13 Third-party HTTP and server-access loggers do not record full URLs or
+  query strings, which can contain names, usernames, or email filters.
 
 ## Rules that still apply to any new code
 
 - LOG-10 NEVER log or store: passwords, API tokens, `Authorization` headers,
   session cookies, Windows partial product keys, full agent payloads, uploaded
   file contents, or full request bodies. Log identifiers instead.
-- LOG-11 Errors returned to clients stay generic; stack traces, when they are
-  added, must go to the log only.
+- LOG-11 Errors returned to clients stay generic. Do not log exception text or
+  stack traces that may carry personal data; log only a safe error category.
 - LOG-12 A test must continue to assert that the Snipe-IT token never appears
   in exception text or captured logs (`tests/test_snipeit_client.py`).

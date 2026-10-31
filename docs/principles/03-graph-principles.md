@@ -30,16 +30,22 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/security/csrf.py | infra | per-session CSRF token and Origin check for cookie-authenticated writes |
 | module | app/security/headers.py | infra | self-only CSP and fixed security headers on every response |
 | module | app/security/ratelimit.py | infra | in-memory limits for agent submit and recipient search |
+| module | app/middleware/request_id.py | infra | server-generated request ID context and response header |
+| module | app/request_context.py | infra | context variable for the current request ID |
+| module | app/logging_config.py | infra | key-value UTC logging setup and request-ID filter |
 | module | app/dependencies.py | infra | current_user, session-store and Snipe-IT client injection, per-request DB session |
 | module | app/auth.py | infra | Entra ID SSO routes (/login, /auth/callback, /logout) |
 | module | app/schemas.py | dto | AgentPayload request model |
 | module | app/db/base.py | db | declarative base and stable constraint naming |
 | module | app/db/engine.py | db | lazy async engine and session factory (no connection at import) |
 | module | app/db/models/handover.py | db | ORM models: Handover, HandoverStage, AgentReport, Document, Event |
-| module | app/domain/stages.py | domain | nine fixed stages: keys, order, dependencies and statuses |
+  | module | app/domain/stages.py | domain | ten fixed stages: keys, order, dependencies and statuses |
 | module | app/domain/handover_rules.py | domain | pure derive_status, missing_steps and can_run rules |
+  | module | app/domain/software_rules.py | domain | pure hardware, required software and activation evaluators |
 | module | app/domain/errors.py | domain | typed handover workflow exceptions |
 | module | app/domain/redaction.py | domain | strip windows_activation.partial_key before storage |
+| module | app/domain/recipient_identity.py | domain | interactive domain-user detection and engineer match |
+| module | app/domain/timeutil.py | domain | normalize persistence datetimes to UTC |
 | module | app/clients/snipeit.py | client | Snipe-IT HTTP client, credential provider and typed results |
 | module | app/dto/handover.py | dto | handover request/response models |
 | module | app/dto/dashboard.py | dto | dashboard summary and paged-row response models |
@@ -47,6 +53,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/repositories/documents.py | repository | stored evidence document data access |
 | module | app/repositories/events.py | repository | insert-only business event trail |
 | module | app/services/handovers.py | service | create, get, list, confirm, cancel, recompute, agent report |
+| module | app/services/software_check.py | service | override and re-evaluation of software checks |
 | module | app/services/snipeit_ops.py | service | recipient search/confirm, preview, checkin and verified checkout |
 | module | app/services/documents.py | service | printable report, safe scan storage, download and verified push |
 | module | app/services/dashboard.py | service | database-side dashboard aggregates and page-sized handover rows |
@@ -77,6 +84,8 @@ The project graph is a map of what depends on what, so any change can be assesse
 | route | POST /api/handovers/{id}/stages/{stage}/confirm | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/cancel | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/recipient/search | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/software-check/override | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/software-check/reevaluate | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/recipient/confirm | app/routers/handovers.py |
 | route | GET /api/handovers/{id}/preview | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/checkin | app/routers/handovers.py |
@@ -161,6 +170,11 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/main.py | imports | app/security/csrf.py |
 | app/main.py | imports | app/security/headers.py |
 | app/main.py | imports | app/security/ratelimit.py |
+| app/main.py | imports | app/middleware/request_id.py |
+| app/main.py | imports | app/logging_config.py |
+| app/middleware/request_id.py | imports | app/request_context.py |
+| app/logging_config.py | imports | app/request_context.py |
+| app/logging_config.py | imports | app/config.py |
 | app/routers/pages.py | imports | app/security/csrf.py |
 | app/security/startup.py | imports | app/config.py |
 | app/security/csrf.py | imports | app/config.py |
@@ -175,8 +189,12 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/services/handovers.py | imports | app/repositories/handovers.py |
 | app/services/handovers.py | imports | app/repositories/events.py |
 | app/services/handovers.py | uses | app/domain/handover_rules.py |
+| app/services/handovers.py | uses | app/domain/software_rules.py |
+| app/services/handovers.py | uses | app/domain/recipient_identity.py |
+| app/services/handovers.py | uses | app/domain/timeutil.py |
 | app/services/handovers.py | imports | app/domain/redaction.py |
 | app/services/snipeit_ops.py | imports | app/services/handovers.py |
+| app/services/snipeit_ops.py | uses | app/domain/recipient_identity.py |
 | app/services/snipeit_ops.py | imports | app/clients/snipeit.py |
 | app/services/snipeit_ops.py | imports | app/repositories/events.py |
 | app/services/documents.py | imports | app/repositories/documents.py |
@@ -185,6 +203,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/services/documents.py | imports | app/services/snipeit_ops.py |
 | app/services/documents.py | imports | app/clients/snipeit.py |
 | app/routers/handovers.py | imports | app/services/handovers.py |
+| app/routers/handovers.py | imports | app/services/software_check.py |
 | app/routers/handovers.py | imports | app/services/snipeit_ops.py |
 | app/routers/handovers.py | imports | app/dto/handover.py |
 | app/routers/handovers.py | imports | app/routers/http_errors.py |
@@ -197,6 +216,9 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/services/dashboard.py | imports | app/dto/handover.py |
 | app/services/dashboard.py | reads | handovers table |
 | app/services/dashboard.py | reads | handover_stages table |
+| app/services/dashboard.py | uses | app/domain/timeutil.py |
+| app/routers/pages.py | uses | app/domain/recipient_identity.py |
+| app/routers/pages.py | uses | app/domain/handover_rules.py |
 | app/routers/pages.py | imports | app/services/dashboard.py |
 | app/routers/pages.py | imports | app/services/handovers.py |
 | app/routers/pages.py | renders | templates/handovers.html |
@@ -213,6 +235,11 @@ The project graph is a map of what depends on what, so any change can be assesse
 | if you change | re-check |
 |---|---|
 | app/config.py | every module reading settings; tests/conftest.py BASE_ENV; .env.example |
+| app/middleware/request_id.py | app/main.py outer middleware order; app/logging_config.py; request-ID tests |
+| app/logging_config.py | app/main.py startup; app/clients/snipeit.py; logging tests |
+| app/domain/recipient_identity.py | app/services/handovers.py; app/services/snipeit_ops.py; app/routers/pages.py; static/agent.ps1 |
+| app/domain/timeutil.py | age rules; dashboard SQL comparisons; SQLite datetime tests |
+| app/services/software_check.py | app/routers/handovers.py; static/js/software_check.js; migration and override tests |
 | app/security/startup.py | app/main.py create_app; tests/test_security_hardening.py; deployment .env |
 | app/security/csrf.py | app/main.py; app/routers/pages.py /api/me; static/js/shell.js; every protected POST test |
 | app/security/headers.py | app/main.py; every template (no inline script/style or external host); tests/test_security_hardening.py |

@@ -71,7 +71,11 @@ async function checkSnipeITHealth() {
     indicator.classList.remove("api-status-checking");
     indicator.classList.toggle("api-status-online", connected);
     indicator.classList.toggle("api-status-offline", !connected);
-    const label = connected ? "Snipe-IT API connected" : "Snipe-IT API unavailable";
+    const label = connected
+      ? "Snipe-IT API connected"
+      : result.reason === "not_configured" || result.reason === "token_not_configured"
+        ? "Snipe-IT is not configured"
+        : "Snipe-IT API unavailable";
     indicator.title = label;
     indicator.setAttribute("aria-label", label);
   } catch (_) {

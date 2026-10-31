@@ -17,15 +17,15 @@
 | Database | SQLAlchemy 2.x (async) | 2.1.6 |
 | Database | Alembic | 1.20.1 |
 | Database | aiosqlite (development/tests) | 0.22.1 |
-| Database | asyncpg (production target) | **not installed here** |
+| Database | asyncpg (PostgreSQL driver) | 0.32.0 |
 | Uploads | python-multipart | 0.0.32 |
 | Frontend | Jinja templates, vanilla JS | — |
 | Frontend | Tailwind CSS v4 CLI | 4.3.3 |
 | Tests | pytest | 9.1.1 |
 | Tests | pytest-asyncio | 1.4.1 |
-| Tests | pytest-cov | **not installed here** |
-| Tests | pytest-playwright | declared; browsers not installed |
-| Local Snipe-IT | Docker Compose (development only) | pull BLOCKED by network |
+| Tests | pytest-cov | 7.1.0 |
+| Tests | pytest-playwright | declared; browser run result recorded in final verification |
+| Local Snipe-IT | Docker Compose (development only) | v8.8.3 verified |
 
 `requirements.txt` / `requirements-dev.txt` remain the source of the declared
 ranges; the table records what was actually present when the final sync ran.
@@ -38,5 +38,5 @@ ranges; the table records what was actually present when the final sync ran.
 - TEC-05 Models use only portable column types (`Uuid`, `DateTime(timezone=True)`, `JSON` with a PostgreSQL JSONB variant, text, integers, booleans). **Recorded exception:** the dashboard average-duration query uses one dialect-specific expression (`julianday` on SQLite, `extract('epoch', …)` on PostgreSQL), selected from the session bind in `app/services/dashboard.py`. It is read-only and covered by the dashboard tests.
 - TEC-06 Configuration through environment variables read only in `app/config.py`; new variables documented in `.env.example` with safe placeholders.
 - TEC-07 Single process, single worker is the supported deployment for the in-memory session-code store **and the in-memory rate limiter**. Moving to multiple workers requires replacing both stores first (D-52, Q-4).
-- TEC-08 The Snipe-IT API surface actually used is documented in `docs/snipeit-api-verified.md` with the Snipe-IT version it was verified against. Live verification is currently BLOCKED; the document records the failure and the owner steps.
-- TEC-09 `pytest-cov` and `asyncpg` are approved but were not installable in this environment because package downloads time out. No coverage number and no PostgreSQL result is claimed until they are installed.
+- TEC-08 The Snipe-IT API surface actually used is documented in `docs/snipeit-api-verified.md` with the Snipe-IT version it was verified against. v8.8.3 API and live tests were verified on 2026-10-31.
+- TEC-09 `pytest-cov` and `asyncpg` are installed; the PostgreSQL path was exercised in earlier verification. This change adds migration 0002, so final coverage and migration rerun results are recorded after verification (D-67).

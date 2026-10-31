@@ -435,6 +435,8 @@ $payload = @{
     # Hardware
     hostname      = $env:COMPUTERNAME
     username      = $currentUser
+    user_domain   = $env:USERDOMAIN
+    console_user  = Safe-Get { (Get-CimInstance Win32_ComputerSystem).UserName }
     serial        = if ($bios) { $bios.SerialNumber }      else { $null }
     manufacturer  = if ($cs)   { $cs.Manufacturer }        else { $null }
     model         = if ($cs)   { $cs.Model }               else { $null }

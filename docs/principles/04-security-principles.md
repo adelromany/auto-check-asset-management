@@ -28,7 +28,8 @@ This system runs inside a company and controls who is recorded as holding compan
 - SEC-15 The Snipe-IT token lives only in server configuration. It is never sent to the browser, never logged, never in exception text.
 - SEC-16 Every outbound request has a timeout. Only idempotent GETs are retried. POSTs are never retried automatically.
 - SEC-17 No automatic creation of Snipe-IT users or assets. No automatic rollback of Snipe-IT writes; failures are shown and retried by a human.
-- SEC-18 Writes are attributed: the engineer's email is written into the Snipe-IT note and the events table. The limitation that Snipe-IT history may show the service account is a recorded open decision.
+- SEC-18 Writes are attributed: the engineer's email is written into the Snipe-IT note and events table. Verified v8.8.3 history records the API token owner as actor; with the configured service token that is the service account (D-12, D-62).
+- SEC-27 Agent `user_domain` and `console_user` values are untrusted device assertions. Local or empty identities cannot auto-confirm a recipient; confirmation remains an explicit engineer action and self-matches require acknowledgement.
 
 ## Data protection
 - SEC-19 Agent reports are redacted before storage: the Windows partial product key is never stored. Full payloads are never logged.

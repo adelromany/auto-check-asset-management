@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -83,9 +83,18 @@ class HandoverRepository:
         created_to: datetime | None = None,
         page: int = 1,
         page_size: int = 25,
+        stall_cutoff: datetime | None = None,
     ) -> tuple[list[Handover], int]:
         filters = []
-        if status is not None:
+        stale = and_(
+            Handover.status.in_(["draft", "in_progress"]),
+            Handover.updated_at < stall_cutoff,
+        ) if stall_cutoff is not None else None
+        if status == HandoverStatus.STALLED.value and stale is not None:
+            filters.append(or_(Handover.status == status, stale))
+        elif status in (HandoverStatus.DRAFT.value, HandoverStatus.IN_PROGRESS.value) and stale is not None:
+            filters.append(and_(Handover.status == status, Handover.updated_at >= stall_cutoff))
+        elif status is not None:
             filters.append(Handover.status == status)
         if engineer is not None:
             filters.append(Handover.engineer_email == engineer)

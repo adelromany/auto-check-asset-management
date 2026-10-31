@@ -6,6 +6,7 @@ import uuid
 from dataclasses import dataclass
 
 import httpx
+from fastapi import HTTPException
 import pytest_asyncio
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -77,6 +78,8 @@ async def ops():
     async with httpx.AsyncClient(
         transport=transport, base_url="http://test"
     ) as client:
+        csrf = await client.get("/api/me")
+        client.headers["X-CSRF-Token"] = csrf.headers["X-CSRF-Token"]
         yield OpsHarness(app=application, client=client, fake=fake)
 
     await http_client.aclose()
@@ -111,7 +114,20 @@ async def _agent_report(
     code = session_response.json()["code"]
     submit = await api.client.post(
         f"/api/session/{code}/submit",
-        json={"serial": serial, "username": username},
+        json={
+            "serial": serial,
+            "username": username,
+            "user_domain": "TESTDOMAIN",
+            "console_user": f"TESTDOMAIN\\{username}",
+            "cpu": "Intel Core i7",
+            "ram_gb": 16,
+            "disks": [{"name": "NVMe", "size_gb": 512, "type": "SSD"}],
+            "software_checks": [
+                {"id": software_id, "name": software_id, "installed": True}
+                for software_id in ("forticlient", "sccm", "intune", "office2021")
+            ],
+            "windows_activation": {"status": "Licensed", "status_code": 1},
+        },
     )
     assert submit.status_code == 200, submit.text
 
@@ -179,6 +195,98 @@ async def test_recipient_search_warns_when_the_agent_reported_the_engineer(
 
     assert response.status_code == 200
     assert "may have been run elevated" in response.json()["warning"]
+
+
+async def test_recipient_confirmation_requires_engineer_identity_acknowledgement(
+    ops: OpsHarness,
+) -> None:
+    handover_id = await _ready(ops, reported="engineer", confirm_recipient=False)
+    without_ack = await ops.client.post(
+        f"/api/handovers/{handover_id}/recipient/confirm",
+        json={"snipeit_user_id": ALICE_ID},
+    )
+    assert without_ack.status_code == 409
+    assert "acknowledgement" in without_ack.json()["detail"]
+
+    accepted = await ops.client.post(
+        f"/api/handovers/{handover_id}/recipient/confirm",
+        json={"snipeit_user_id": ALICE_ID, "acknowledge_same_as_engineer": True},
+    )
+    assert accepted.status_code == 200, accepted.text
+
+
+async def test_software_override_api_validates_reason_and_state(ops: OpsHarness) -> None:
+    handover_id = await _create(ops)
+    await _confirm(ops, handover_id, "device_prepared")
+    await _confirm(ops, handover_id, "user_signed_in")
+    session_response = await ops.client.get(
+        f"/api/session/new?handover_id={handover_id}"
+    )
+    code = session_response.json()["code"]
+    payload = {
+        "serial": "SN-10", "username": "alice", "user_domain": "TESTDOMAIN",
+        "hostname": "WS-1", "cpu": "Intel Core i7", "ram_gb": 16,
+        "disks": [{"name": "NVMe", "size_gb": 512, "type": "SSD"}],
+        "software_checks": [
+            {"id": name, "name": name, "installed": name != "office2021"}
+            for name in ("forticlient", "sccm", "intune", "office2021")
+        ],
+        "windows_activation": {"status": "Licensed", "status_code": 1},
+    }
+    submitted = await ops.client.post(f"/api/session/{code}/submit", json=payload)
+    assert submitted.status_code == 200
+
+    short_reason = await ops.client.post(
+        f"/api/handovers/{handover_id}/software-check/override",
+        json={"reason": "123456789"},
+    )
+    assert short_reason.status_code == 422
+    accepted = await ops.client.post(
+        f"/api/handovers/{handover_id}/software-check/override",
+        json={"reason": "Temporary approved exception"},
+    )
+    assert accepted.status_code == 200, accepted.text
+    assert _stage(accepted.json(), "software_check")["status"] == "skipped"
+    repeated = await ops.client.post(
+        f"/api/handovers/{handover_id}/software-check/override",
+        json={"reason": "Another approved exception"},
+    )
+    assert repeated.status_code == 409
+
+
+async def test_software_override_api_authentication_and_csrf(
+    ops: OpsHarness, monkeypatch
+) -> None:
+    handover_id = await _create(ops)
+    no_session_client = httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=ops.app), base_url="http://test"
+    )
+    try:
+        monkeypatch.setattr(app.config, "SSO_ENABLED", True)
+        csrf = await no_session_client.post(
+            f"/api/handovers/{handover_id}/software-check/override",
+            json={"reason": "Valid reason for an override"},
+        )
+        assert csrf.status_code == 403
+    finally:
+        await no_session_client.aclose()
+
+    monkeypatch.setattr(app.config, "SSO_ENABLED", False)
+    ops.app.dependency_overrides[app.dependencies.current_user] = lambda: (
+        _unauthorized_user()
+    )
+    try:
+        unauthenticated = await ops.client.post(
+            f"/api/handovers/{handover_id}/software-check/override",
+            json={"reason": "Valid reason for an override"},
+        )
+        assert unauthenticated.status_code == 401
+    finally:
+        ops.app.dependency_overrides[app.dependencies.current_user] = lambda: ENGINEER
+
+
+def _unauthorized_user():
+    raise HTTPException(status_code=401, detail="Not authenticated")
 
 
 async def test_confirm_recipient_passes_stage_four(ops: OpsHarness) -> None:

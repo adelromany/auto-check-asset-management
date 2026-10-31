@@ -60,6 +60,8 @@ async def api():
     async with httpx.AsyncClient(
         transport=transport, base_url="http://test"
     ) as client:
+        csrf = await client.get("/api/me")
+        client.headers["X-CSRF-Token"] = csrf.headers["X-CSRF-Token"]
         yield ApiHarness(app=application, client=client, store=store)
 
     await engine.dispose()
@@ -97,6 +99,7 @@ async def test_detail_includes_stages_missing_steps_and_timeline(
         "device_prepared",
         "user_signed_in",
         "agent_report",
+        "software_check",
         "recipient_check",
         "checkout",
         "report_printed",
@@ -105,7 +108,7 @@ async def test_detail_includes_stages_missing_steps_and_timeline(
         "document_pushed",
     ]
     assert all(stage["status"] == "pending" for stage in body["stages"])
-    assert len(body["missing_steps"]) == 9
+    assert len(body["missing_steps"]) == 10
     assert all(item["hint"] for item in body["missing_steps"])
     assert [event["type"] for event in body["events"]] == ["handover_created"]
 
@@ -258,8 +261,17 @@ async def test_agent_flow_with_matching_serial_passes_stage_three(
         json={
             "serial": "SN-AGENT-OK",
             "username": "alice",
+            "user_domain": "TESTDOMAIN",
+            "cpu": "Intel Core i7",
+            "ram_gb": 16,
+            "disks": [{"name": "NVMe", "size_gb": 512, "type": "SSD"}],
+            "software_checks": [
+                {"id": software_id, "name": software_id, "installed": True}
+                for software_id in ("forticlient", "sccm", "intune", "office2021")
+            ],
             "windows_activation": {
                 "status": "Licensed",
+                "status_code": 1,
                 "product_name": "Windows 11 Pro",
                 "partial_key": "ABCDE",
             },

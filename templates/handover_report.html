@@ -7,18 +7,7 @@
 </head>
 <body>
   <h1>Handover report</h1>
-  <p class="meta">
-    Case {{ handover.id }} · Device serial <strong>{{ handover.device_serial }}</strong>
-    {% if handover.ticket_ref %} · Ticket {{ handover.ticket_ref }}{% endif %}
-  </p>
-
-  <h2>Handover</h2>
-  <table>
-    <tr><th>Engineer</th><td>{{ handover.engineer_name or "—" }} ({{ handover.engineer_email }})</td></tr>
-    <tr><th>Created</th><td>{{ handover.created_at }}</td></tr>
-    <tr><th>Recipient (reported)</th><td>{{ handover.recipient_reported_username or "—" }}</td></tr>
-    <tr><th>Recipient (confirmed)</th><td>{{ handover.recipient_snipeit_username or "—" }}</td></tr>
-  </table>
+  <p class="meta">Case {{ handover.id }} · Date {{ handover.created_at }}</p>
 
   <h2>Hardware</h2>
   <table>
@@ -28,8 +17,6 @@
     <tr><th>CPU</th><td>{{ payload.cpu or "—" }}{% if payload.cpu_cores %} ({{ payload.cpu_cores }} cores){% endif %}</td></tr>
     <tr><th>RAM</th><td>{% if payload.ram_gb %}{{ payload.ram_gb }} GB{% else %}—{% endif %}</td></tr>
     <tr><th>Operating system</th><td>{{ payload.os_name or "—" }} {{ payload.os_version or "" }} {{ payload.os_arch or "" }}</td></tr>
-    <tr><th>Agent OS</th><td>{{ payload.agent_os or "—" }}</td></tr>
-    <tr><th>Collected at</th><td>{{ payload.collected_at or "—" }}</td></tr>
   </table>
 
   {% if payload.disks %}
@@ -38,16 +25,6 @@
     <tr><th>Name</th><th>Size (GB)</th><th>Type</th></tr>
     {% for disk in payload.disks %}
     <tr><td>{{ disk.name or "—" }}</td><td>{{ disk.size_gb if disk.size_gb is not none else "—" }}</td><td>{{ disk.type or "—" }}</td></tr>
-    {% endfor %}
-  </table>
-  {% endif %}
-
-  {% if payload.ip_addresses %}
-  <h2>Network</h2>
-  <table>
-    <tr><th>Interface</th><th>IP address</th></tr>
-    {% for address in payload.ip_addresses %}
-    <tr><td>{{ address.iface or "—" }}</td><td>{{ address.ip or "—" }}</td></tr>
     {% endfor %}
   </table>
   {% endif %}
@@ -67,7 +44,7 @@
     {% for check in payload.software_checks %}
     <tr>
       <td>{{ check.name or check.id or "—" }}</td>
-      <td class="{{ 'ok' if check.installed else 'bad' }}">{{ "Yes" if check.installed else "No" }}</td>
+      <td>{{ "Yes" if check.installed else "No" }}</td>
       <td>{{ check.version or "—" }}</td>
       <td>{{ check.method or "—" }}</td>
     </tr>
@@ -75,14 +52,26 @@
   </table>
   {% endif %}
 
+  <h2>Recipient and engineer</h2>
+  <table>
+    <tr><th>Recipient</th><td>{{ handover.recipient_snipeit_username or handover.recipient_reported_username or "—" }}</td></tr>
+    <tr><th>Engineer</th><td>{{ handover.engineer_name or handover.engineer_email }}</td></tr>
+  </table>
+
+  <section class="legal-text" aria-label="Company legal text">
+    <h2>Company legal text</h2>
+    <p>[Company legal text goes here]</p>
+  </section>
+
   <div class="signatures">
     <div class="signature">Recipient signature and date</div>
     <div class="signature">Engineer signature and date</div>
   </div>
 
-  <p class="note">
-    The paper sheet is the legal record; this page is the handover evidence summary.
-    Case {{ handover.id }}.
-  </p>
+  <section class="legal-text" aria-label="Company legal text">
+    <h2>Company legal text</h2>
+    <p>[Company legal text goes here]</p>
+  </section>
+  <p class="note">Case {{ handover.id }}.</p>
 </body>
 </html>

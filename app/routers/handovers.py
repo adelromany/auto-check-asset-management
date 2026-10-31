@@ -26,6 +26,7 @@ from app.dto.handover import (
     HandoverSummary,
     RecipientConfirm,
     RecipientSearchResult,
+    SoftwareCheckOverride,
 )
 from app.routers.http_errors import (
     handover_detail,
@@ -34,6 +35,7 @@ from app.routers.http_errors import (
 )
 from app.services.handovers import HandoverService
 from app.services.snipeit_ops import SnipeItHandoverService
+from app.services.software_check import SoftwareCheckService
 
 router = APIRouter(prefix="/api/handovers", tags=["handovers"])
 
@@ -144,7 +146,7 @@ async def cancel_handover(
 )
 async def search_recipient(
     handover_id: uuid.UUID,
-    q: str = Query(min_length=1, max_length=200),
+    q: str | None = Query(default=None, max_length=200),
     user: dict = Depends(current_user),
     session: AsyncSession = Depends(get_session),
     client: SnipeItClient = Depends(get_snipeit_client),
@@ -183,6 +185,7 @@ async def confirm_recipient(
             not_found=payload.not_found,
             actor=_actor(user),
             client=client,
+            acknowledge_same_as_engineer=payload.acknowledge_same_as_engineer,
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
@@ -246,4 +249,43 @@ async def checkout_handover(
         raise handover_http_error(exc) from exc
     except SnipeItError as exc:
         raise snipeithandover_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.post(
+    "/{handover_id}/software-check/override",
+    response_model=HandoverDetail,
+)
+async def override_software_check(
+    handover_id: uuid.UUID,
+    payload: SoftwareCheckOverride,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> HandoverDetail:
+    service = SoftwareCheckService(session)
+    try:
+        view = await service.override(
+            handover_id, reason=payload.reason, actor=_actor(user)
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.post(
+    "/{handover_id}/software-check/reevaluate",
+    response_model=HandoverDetail,
+)
+async def reevaluate_software_check(
+    handover_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> HandoverDetail:
+    service = SoftwareCheckService(session)
+    try:
+        view = await service.reevaluate(
+            handover_id, actor=_actor(user)
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
     return handover_detail(view)

@@ -22,6 +22,7 @@ from app.clients.snipeit import (
     SnipeItError,
     SnipeItFile,
     SnipeItNotFound,
+    snipeit_file_name_matches,
 )
 from app.db.models.handover import Document, Handover
 from app.domain.errors import (
@@ -417,8 +418,7 @@ class DocumentService:
 
 def _file_present(files: list[SnipeItFile], document: Document) -> bool:
     return any(
-        item.filename == document.original_name
-        and item.size == document.size_bytes
+        snipeit_file_name_matches(item.filename, document.original_name)
         for item in files
     )
 

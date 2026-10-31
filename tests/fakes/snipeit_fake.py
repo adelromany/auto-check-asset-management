@@ -7,6 +7,8 @@ the client uses and records every call so tests can assert retry behavior.
 from __future__ import annotations
 
 import json
+import re
+import unicodedata
 from email.parser import BytesParser
 from email.policy import default
 from typing import Any
@@ -195,13 +197,38 @@ class SnipeItFake:
             )
         if action == "files":
             if request.method == "GET":
+                rows = [
+                    {
+                        **record,
+                        "filename": record.get(
+                            "stored_filename", record["filename"]
+                        ),
+                    }
+                    for record in self.files.get(asset["id"], [])
+                ]
                 return httpx.Response(
-                    200, json={"rows": self.files.get(asset["id"], [])}
+                    200, json={"rows": rows}
                 )
             filename, payload = self._multipart_file(request)
+            normalized = unicodedata.normalize("NFKD", filename.casefold())
+            ascii_name = "".join(
+                char for char in normalized if not unicodedata.combining(char)
+            )
+            stem, dot, extension = ascii_name.rpartition(".")
+            if dot and extension:
+                slug = (
+                    re.sub(r"[^a-z0-9]+", "-", stem).strip("-")
+                    + "."
+                    + extension
+                )
+            else:
+                slug = re.sub(r"[^a-z0-9]+", "-", ascii_name).strip("-")
             record = {
                 "id": self._next_file_id,
                 "filename": filename,
+                "stored_filename": (
+                    f"asset-{asset['id']}-a1b2c3d4-{slug}"
+                ),
                 "size": len(payload),
             }
             self._next_file_id += 1

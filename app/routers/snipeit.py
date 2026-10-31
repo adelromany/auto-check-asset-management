@@ -73,8 +73,18 @@ async def lookup_device(serial: str, user=Depends(current_user)):
 @router.get("/api/snipeit/health")
 async def snipeit_health(user=Depends(current_user)):
     """Check whether the configured Snipe-IT API is reachable with the token."""
-    if not config.SNIPEIT_TOKEN:
-        return JSONResponse({"connected": False, "reason": "token_not_configured"})
+    if not config.SNIPEIT_URL.strip() or not config.SNIPEIT_TOKEN.strip():
+        if not config.SNIPEIT_TOKEN.strip():
+            # Preserve the established response body for the missing-token
+            # case; the UI maps this stable reason to a readable message.
+            return JSONResponse(
+                {"connected": False, "reason": "token_not_configured"}
+            )
+        return JSONResponse({
+            "connected": False,
+            "reason": "not_configured",
+            "message": "Snipe-IT is not configured.",
+        })
 
     client = _client(user)
     try:

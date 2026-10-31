@@ -7,6 +7,7 @@ vanilla JS modules only refresh the same data when the filters change.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -15,6 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import config
 from app.dependencies import current_user, get_session
+from app.domain.recipient_identity import detect_recipient
+from app.domain.handover_rules import stalled_by_age
+from app.domain.stages import HandoverStatus
+from app import config
 from app.domain.errors import HandoverNotFound
 from app.security.csrf import get_or_create_token
 from app.services.dashboard import DashboardService
@@ -85,6 +90,21 @@ async def handover_page(
         view = await service.get_detail(handover_id)
     except HandoverNotFound as exc:
         raise HTTPException(status_code=404, detail="Handover not found") from exc
+    report = await service.latest_agent_report(handover_id)
+    detected_user = (
+        detect_recipient(report.payload, view.handover.engineer_email)
+        if report is not None
+        else None
+    )
+    age_stalled = (
+        view.handover.status not in (HandoverStatus.COMPLETED.value, HandoverStatus.CANCELLED.value)
+        and stalled_by_age(
+            view.handover.updated_at,
+            datetime.now(timezone.utc),
+            config.STALL_HOURS,
+        )
+    )
+    display_status = HandoverStatus.STALLED.value if age_stalled else view.handover.status
 
     return templates.TemplateResponse(
         request=request,
@@ -95,6 +115,11 @@ async def handover_page(
             "stages": view.stages,
             "events": view.events,
             "missing": view.missing_steps,
+            "detected_user": detected_user,
+            "display_status": display_status,
+            "stalled_by_age_message": (
+                f"No activity for {config.STALL_HOURS} hours" if age_stalled else None
+            ),
         },
     )
 

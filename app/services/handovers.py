@@ -15,6 +15,7 @@ from typing import Any
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import config
 from app.db.models.handover import Event, Handover, HandoverStage
 from app.domain.errors import (
     HandoverAlreadyExists,
@@ -27,6 +28,8 @@ from app.domain.errors import (
 )
 from app.domain.handover_rules import StageState, can_run, derive_status, missing_steps
 from app.domain.redaction import redact_agent_payload
+from app.domain.recipient_identity import detect_recipient
+from app.domain.software_rules import evaluate_hardware, evaluate_software
 from app.domain.stages import (
     MANUAL_STAGES,
     STAGE_ORDER,
@@ -35,6 +38,7 @@ from app.domain.stages import (
     StageStatus,
     stage_from_key,
 )
+from app.domain.timeutil import as_utc
 from app.repositories.events import EventRepository
 from app.repositories.handovers import HandoverRepository
 
@@ -74,6 +78,9 @@ class HandoverService:
     async def get_detail(self, handover_id: uuid.UUID) -> HandoverDetailView:
         return await self.view(await self.get(handover_id, with_details=True))
 
+    async def latest_agent_report(self, handover_id: uuid.UUID):
+        return await self._handovers.latest_agent_report(handover_id)
+
     async def list(
         self,
         *,
@@ -83,6 +90,7 @@ class HandoverService:
         created_to: datetime | None = None,
         page: int = 1,
         page_size: int = 25,
+        stall_cutoff: datetime | None = None,
     ) -> tuple[list[Handover], int]:
         return await self._handovers.list(
             status=status,
@@ -91,6 +99,7 @@ class HandoverService:
             created_to=created_to,
             page=page,
             page_size=page_size,
+            stall_cutoff=stall_cutoff,
         )
 
     # -- commands ---------------------------------------------------------
@@ -204,7 +213,15 @@ class HandoverService:
         """Derive and store the handover status. The ONLY status writer."""
         if cancelled is None:
             cancelled = handover.status == HandoverStatus.CANCELLED.value
-        status = derive_status(stage_states(handover), cancelled=cancelled)
+        now = _utcnow()
+        handover.updated_at = now
+        status = derive_status(
+            stage_states(handover),
+            cancelled=cancelled,
+            updated_at=as_utc(handover.updated_at),
+            now=now,
+            stall_hours=config.STALL_HOURS,
+        )
         handover.status = status.value
         if status in (HandoverStatus.COMPLETED, HandoverStatus.CANCELLED):
             if handover.closed_at is None:
@@ -233,45 +250,101 @@ class HandoverService:
             handover_id=handover.id, payload=redacted
         )
 
-        reported_username = payload.get("username")
-        if reported_username is None:
-            handover.recipient_reported_username = None
-        else:
-            handover.recipient_reported_username = (
-                str(reported_username).strip() or None
-            )
+        detected_user = detect_recipient(payload, handover.engineer_email)
+        handover.recipient_reported_username = detected_user.sam or None
 
-        reported_serial = payload.get("serial")
-        reported_serial = (
-            str(reported_serial).strip() if reported_serial is not None else ""
-        )
-        expected_serial = handover.device_serial.strip()
-        matched = bool(reported_serial) and reported_serial == expected_serial
+        hardware_result = evaluate_hardware(redacted, handover.device_serial)
+        reported_serial = str(payload.get("serial") or "").strip()
+        # Preserve the established reason text for the serial-only failures;
+        # the complete diagnostic remains available in detail.message.
+        reason = hardware_result.message
+        if not reported_serial:
+            reason = SERIAL_MISSING_REASON
+        elif reported_serial.casefold() != handover.device_serial.strip().casefold():
+            reason = SERIAL_MISMATCH_REASON
 
         row = stage_row(handover, Stage.AGENT_REPORT)
         row.actor = actor
         row.updated_at = _utcnow()
-        if matched:
-            row.status = StageStatus.PASSED.value
-            row.reason = None
-            row.detail = {"reported_serial": reported_serial}
-        else:
-            row.status = StageStatus.FAILED.value
-            row.reason = (
-                SERIAL_MISSING_REASON if not reported_serial else SERIAL_MISMATCH_REASON
-            )
-            row.detail = {
-                "reported_serial": reported_serial or None,
-                "expected_serial": expected_serial,
-            }
+        row.status = hardware_result.status.value
+        row.reason = reason if hardware_result.status is StageStatus.FAILED else None
+        row.detail = {**hardware_result.detail, "message": hardware_result.message}
 
+        recipient_row = stage_row(handover, Stage.RECIPIENT_CHECK)
+        if hardware_result.status is StageStatus.PASSED:
+            recipient_row.actor = actor
+            recipient_row.updated_at = _utcnow()
+            if detected_user.is_local or not detected_user.sam:
+                recipient_row.status = StageStatus.BLOCKED.value
+                recipient_row.reason = (
+                    "Cannot determine a domain user on this device — search manually"
+                )
+                recipient_row.detail = {
+                    "is_local": detected_user.is_local,
+                    "detected_user": detected_user.raw,
+                    "message": recipient_row.reason,
+                }
+                await self._events.add(
+                    handover_id=handover.id,
+                    actor=actor,
+                    type="recipient_identity_blocked",
+                    detail={"stage": Stage.RECIPIENT_CHECK.value},
+                )
+            elif recipient_row.status == StageStatus.BLOCKED.value:
+                recipient_row.status = StageStatus.PENDING.value
+                recipient_row.reason = None
+                recipient_row.detail = {}
+
+        software_row = stage_row(handover, Stage.SOFTWARE_CHECK)
+        software_evaluated = software_row.status != StageStatus.SKIPPED.value
+        if software_evaluated:
+            software_row.actor = actor
+            software_row.updated_at = _utcnow()
+            if hardware_result.status is StageStatus.PASSED:
+                software_result = evaluate_software(
+                    redacted, config.REQUIRED_SOFTWARE_IDS
+                )
+                software_row.status = software_result.status.value
+                software_row.reason = (
+                    software_result.message
+                    if software_result.status is StageStatus.FAILED
+                    else None
+                )
+                software_row.detail = {
+                    **software_result.detail,
+                    "message": software_result.message,
+                }
+            else:
+                software_row.status = StageStatus.PENDING.value
+                software_row.reason = (
+                    "Software check was not run because the hardware report failed."
+                )
+                software_row.detail = {
+                    "blocked_by": Stage.AGENT_REPORT.value,
+                    "message": software_row.reason,
+                }
+
+        if software_evaluated:
+            await self._events.add(
+                handover_id=handover.id,
+                actor=actor,
+                type=(
+                    "software_check_evaluated"
+                    if hardware_result.status is StageStatus.PASSED
+                    else "software_check_deferred"
+                ),
+                detail={
+                    "stage": Stage.SOFTWARE_CHECK.value,
+                    "status": software_row.status,
+                },
+            )
         await self._events.add(
             handover_id=handover.id,
             actor=actor,
             type="agent_report_received",
             detail={
                 "stage": Stage.AGENT_REPORT.value,
-                "matched": matched,
+                "matched": hardware_result.status is StageStatus.PASSED,
                 "reported_serial": reported_serial or None,
             },
         )

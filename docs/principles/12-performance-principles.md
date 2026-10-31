@@ -19,3 +19,4 @@ Context: a small IT team (about 6 engineers), hundreds to low thousands of hando
 
 ## Verification
 - PRF-12 The repeatable `scripts/seed_perf.py` and `docs/performance-notes.md` do **not** exist yet. The 10,000-handover timings were not measured, so no performance target is reported as met. This is Q-7 in `docs/OPEN_QUESTIONS.md`.
+- PRF-13 Stalled-by-age status is computed in SQL for summary counts and paged rows; no dashboard-wide Python scan is introduced. Query plans and 10,000-row timings remain unmeasured (Q-7).

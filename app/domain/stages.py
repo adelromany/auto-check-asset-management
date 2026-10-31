@@ -14,6 +14,7 @@ class Stage(StrEnum):
     DEVICE_PREPARED = "device_prepared"
     USER_SIGNED_IN = "user_signed_in"
     AGENT_REPORT = "agent_report"
+    SOFTWARE_CHECK = "software_check"
     RECIPIENT_CHECK = "recipient_check"
     CHECKOUT = "checkout"
     REPORT_PRINTED = "report_printed"
@@ -26,6 +27,7 @@ STAGE_ORDER: tuple[Stage, ...] = (
     Stage.DEVICE_PREPARED,
     Stage.USER_SIGNED_IN,
     Stage.AGENT_REPORT,
+    Stage.SOFTWARE_CHECK,
     Stage.RECIPIENT_CHECK,
     Stage.CHECKOUT,
     Stage.REPORT_PRINTED,
@@ -40,7 +42,8 @@ STAGE_DEPENDENCIES: dict[Stage, tuple[Stage, ...]] = {
     Stage.USER_SIGNED_IN: (Stage.DEVICE_PREPARED,),
     Stage.AGENT_REPORT: (Stage.DEVICE_PREPARED,),
     Stage.RECIPIENT_CHECK: (Stage.AGENT_REPORT,),
-    Stage.CHECKOUT: (Stage.RECIPIENT_CHECK,),
+    Stage.CHECKOUT: (Stage.RECIPIENT_CHECK, Stage.SOFTWARE_CHECK),
+    Stage.SOFTWARE_CHECK: (Stage.AGENT_REPORT,),
     Stage.REPORT_PRINTED: (Stage.AGENT_REPORT,),
     Stage.USER_SIGNED: (Stage.REPORT_PRINTED,),
     Stage.DOCUMENT_SCANNED: (Stage.USER_SIGNED,),

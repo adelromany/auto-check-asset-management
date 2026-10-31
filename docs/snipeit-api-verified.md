@@ -9,9 +9,10 @@ such. Where the implementation the fake implies differs from the real API, the
 difference is listed under "Real vs fake" and fixed together in the client and
 the fake on branch `fix/snipeit-live-verification`.
 
-Live-test result: **5 passed, 1 failed** — the single failure
-(`test_upload_and_list_test_asset_file`) is a Snipe-IT product limitation, not a
-client bug; see "File upload" below.
+Live-test result on the current branch: **6 passed** (one deprecation warning).
+The file-listing limitation and owner-approved basename-suffix behavior are
+documented below under "Verified Snipe-IT filename behavior and Stage 9
+decision".
 
 ## Common envelope
 
@@ -188,33 +189,27 @@ Response (HTTP 200, payload is a one-row page):
 Client fix: `upload_asset_file` uses `files={"file[]": ...}`. Fake updated to
 read the `file[]` part.
 
-### Verified Snipe-IT limitation (not fixable in the client)
+### Verified Snipe-IT filename behavior and Stage 9 decision
 
 `app/Http/Requests/UploadFileRequest.php` (v8.8.3, line 80) always rewrites the
 stored filename to `{item_id}-{random8}-{slug(original basename)}.{ext}` —
 lowercased and never preserving the original name. `GET /api/v1/hardware/{id}/files`
-returns only the stored name (`filename` === `name` === stored). Therefore:
+returns the stored name (`filename` === `name` === stored) and no `size` field.
+The API token receives HTTP 403 from `HEAD /assets/{id}/files/{file_id}`, so
+these verified endpoints do not expose a usable byte count. Therefore:
 
 - the stored record **never** equals the uploaded filename;
 - `note` sent with the upload is **not** persisted on the row (listing shows
   `note: null` even though the upload accepted it).
 
-Consequence, recorded honestly: live test
-`test_upload_and_list_test_asset_file` passes its upload step (HTTP 200,
-`status: "success"`) and fails only on
-`assert any(item.filename == filename for item in files)` — the original
-`TEST-live-upload.pdf` can never reappear in the listing. Fixing that would
-require editing the existing test (forbidden). The fake keeps returning the
-original filename; the divergence is intentional and documented here.
-
-D-40's "matched by sanitized name and byte size" check therefore must match on
-the sanitized name it searches for. **Action for the owner:** stage 9's
-idempotent re-check should treat "file with same byte size and same lowercased
-basename inside the stored name" as already-present, or D-40 stays satisfied
-because the portal only uploads when its own sanitized search fails — the
-second upload will still succeed but create a duplicate. UNVERIFIED against a
-long-running instance whether duplicates cause any error; the live run did not
-test duplicate uploads.
+Owner decision (2026-10-31): Stage 9 matches the lowercased normalized original
+basename at the end of the stored name. Byte size is not part of the check
+because no verified listing or download endpoint exposes it to the API token.
+The client maps a just-uploaded file to its logical original name within that
+client instance; subsequent requests match the stored suffix. This can mistake
+different files with the same basename for the same scan. The fake now emits
+the same rewritten name as Snipe-IT, and the live round trip passed without
+changing the existing live test.
 
 ## Attribution (D-12) — action_logs behind the API
 
