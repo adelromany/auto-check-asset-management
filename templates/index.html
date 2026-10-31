@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Device Onboarding — Snipe-IT</title>
+  <title>Device check — Handover Portal</title>
 
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
 
@@ -24,7 +24,7 @@
       {% from "partials/logo.html" import logo_lockup %}
       {{ logo_lockup(18) }}
 
-      <a href="/handovers" class="btn btn-ghost btn-sm">Start handover</a>
+      <a href="/handovers" class="btn btn-ghost btn-sm">Handover cases</a>
 
       <div class="flex-1"></div>
 
@@ -55,7 +55,22 @@
   </header>
 
   <!-- ═══ Content ══════════════════════════════════════════════════════ -->
-  <main class="flex-1 px-4 py-6">
+  <main class="flex-1 px-4 py-6" id="device-check-page"
+        data-handover-id="{{ request.query_params.get('handover_id', '') }}">
+
+    {% if request.query_params.get('handover_id') %}
+    <div class="alert alert-info mb-4" role="status">
+      <p class="alert-title">Device check for this handover</p>
+      <p class="alert-description">The agent report will be attached to this case. When it finishes, return to the handover to review the reported values.</p>
+      <a class="btn btn-outline btn-sm mt-2" href="/handovers/{{ request.query_params.get('handover_id') }}">Return to handover</a>
+    </div>
+    {% else %}
+    <div class="alert alert-info mb-4" role="status">
+      <p class="alert-title">Not linked to a handover</p>
+      <p class="alert-description">To update a case, start the device check from that handover's Agent report step.</p>
+      <a class="btn btn-outline btn-sm mt-2" href="/handovers">Open handover cases</a>
+    </div>
+    {% endif %}
 
     <!--
       The agent panel is the primary action of this page, so it spans the
@@ -101,7 +116,7 @@
   <!-- ═══ Footer ═══════════════════════════════════════════════════════ -->
   <footer class="border-t px-4 py-4">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-      <span>Snipe-IT Device Onboarding</span>
+      <span>Device check</span>
       <span>Browser data collected locally. Agent data sent directly to this server.</span>
     </div>
   </footer>

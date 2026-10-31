@@ -5,7 +5,7 @@ Every figure is computed by the database. Python only pivots the small
 response shape is stable even when no handover exists.
 
 The table rows are a page-sized read: the repository loads at most
-``page_size`` handovers and their nine stages, and the pure domain rules
+``page_size`` handovers and their ten stages, and the pure domain rules
 derive each row's missing steps. No endpoint loads the whole table.
 """
 

@@ -92,7 +92,12 @@ async function checkSnipeITHealth() {
 
 async function initSession() {
   try {
-    const resp = await fetch("/api/session/new");
+    const context = document.getElementById("device-check-page");
+    const handoverId = context?.dataset.handoverId;
+    const sessionUrl = handoverId
+      ? `/api/session/new?handover_id=${encodeURIComponent(handoverId)}`
+      : "/api/session/new";
+    const resp = await fetch(sessionUrl);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const { code, ttl_seconds } = await resp.json();
     sessionCode = code;

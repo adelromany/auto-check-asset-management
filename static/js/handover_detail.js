@@ -125,6 +125,8 @@
   // -- stage confirm ----------------------------------------------------
   async function confirmStage(button) {
     var stage = button.getAttribute("data-stage");
+    var confirmation = button.getAttribute("data-confirm-message");
+    if (confirmation && !window.confirm(confirmation)) return;
     setBusy(button, true);
     try {
       await request(base + "/stages/" + encodeURIComponent(stage) + "/confirm", {

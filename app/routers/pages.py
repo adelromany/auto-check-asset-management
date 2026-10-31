@@ -116,6 +116,7 @@ async def handover_page(
             "events": view.events,
             "missing": view.missing_steps,
             "detected_user": detected_user,
+            "agent_report": report.payload if report is not None else None,
             "display_status": display_status,
             "stalled_by_age_message": (
                 f"No activity for {config.STALL_HOURS} hours" if age_stalled else None

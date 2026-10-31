@@ -113,6 +113,24 @@ async def test_detail_includes_stages_missing_steps_and_timeline(
     assert [event["type"] for event in body["events"]] == ["handover_created"]
 
 
+async def test_case_page_links_device_check_and_explains_manual_confirmations(
+    api: ApiHarness, monkeypatch,
+) -> None:
+    created = await _create(api, serial="SN-LINKED-DEVICE-CHECK")
+    handover_id = created["id"]
+    monkeypatch.setattr(config, "SSO_ENABLED", False)
+
+    case_page = await api.client.get(f"/handovers/{handover_id}")
+    assert case_page.status_code == 200
+    assert f'href="/?handover_id={handover_id}"' in case_page.text
+    assert "Manual confirmation. The system does not collect evidence or values" in case_page.text
+
+    device_check = await api.client.get(f"/?handover_id={handover_id}")
+    assert device_check.status_code == 200
+    assert f'data-handover-id="{handover_id}"' in device_check.text
+    assert "The agent report will be attached to this case" in device_check.text
+
+
 async def test_unauthorized_access_returns_401(
     api: ApiHarness, monkeypatch
 ) -> None:
@@ -246,7 +264,7 @@ async def test_unknown_handover_returns_404(api: ApiHarness) -> None:
 
 
 async def test_agent_flow_with_matching_serial_passes_stage_three(
-    api: ApiHarness,
+    api: ApiHarness, monkeypatch,
 ) -> None:
     created = await _create(api, serial="SN-AGENT-OK")
 
@@ -288,6 +306,13 @@ async def test_agent_flow_with_matching_serial_passes_stage_three(
     assert body["status"] == "in_progress"
     assert body["events"][-1]["type"] == "agent_report_received"
     assert body["events"][-1]["detail"]["matched"] is True
+
+    monkeypatch.setattr(config, "SSO_ENABLED", False)
+    case_page = await api.client.get(f"/handovers/{created['id']}")
+    assert "Values received from this device" in case_page.text
+    assert "Intel Core i7" in case_page.text
+    assert "forticlient — Installed" in case_page.text
+    assert "ABCDE" not in case_page.text
 
 
 async def test_agent_flow_with_mismatched_serial_fails_stage_three(

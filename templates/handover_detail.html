@@ -76,8 +76,42 @@
                 {% if stage.reason %}
                 <p class="mt-1 text-xs text-destructive" data-stage-reason>{{ stage.reason }}</p>
                 {% endif %}
+                {% if stage.stage in ("device_prepared", "user_signed_in") %}
+                <p class="mt-1 text-xs text-muted-foreground">Manual confirmation. The system does not collect evidence or values for this step.</p>
+                {% elif stage.stage == "report_printed" %}
+                <p class="mt-1 text-xs text-muted-foreground">Manual confirmation after printing and reviewing the report.</p>
+                {% elif stage.stage == "user_signed" %}
+                <p class="mt-1 text-xs text-muted-foreground">Manual confirmation after the paper copy is signed.</p>
+                {% endif %}
                 {% if stage.stage == "software_check" and stage.status == "pending" and stage.detail.message %}
                 <p class="mt-1 text-xs text-muted-foreground" data-stage-reason>{{ stage.detail.message }}</p>
+                {% endif %}
+                {% if stage.stage == "agent_report" %}
+                {% if agent_report %}
+                {% set activation = agent_report.get("windows_activation") or {} %}
+                <div class="mt-3 rounded-md border bg-muted/20 p-3 text-xs" data-agent-report-evidence>
+                  <h4 class="mb-2 font-semibold">Values received from this device</h4>
+                  <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                    <dt class="text-muted-foreground">Serial</dt><dd class="font-mono" dir="ltr">{{ agent_report.get("serial") or "—" }}</dd>
+                    <dt class="text-muted-foreground">Computer</dt><dd>{{ agent_report.get("manufacturer") or "—" }} {{ agent_report.get("model") or "" }}</dd>
+                    <dt class="text-muted-foreground">CPU</dt><dd>{{ agent_report.get("cpu") or "—" }}</dd>
+                    <dt class="text-muted-foreground">RAM</dt><dd>{{ agent_report.get("ram_gb") or "—" }}{% if agent_report.get("ram_gb") %} GB{% endif %}</dd>
+                    <dt class="text-muted-foreground">Operating system</dt><dd>{{ agent_report.get("os_name") or "—" }} {{ agent_report.get("os_version") or "" }}</dd>
+                    <dt class="text-muted-foreground">Console user</dt><dd class="font-mono" dir="ltr">{{ agent_report.get("console_user") or agent_report.get("username") or "—" }}</dd>
+                    <dt class="text-muted-foreground">Windows activation</dt><dd>{{ activation.get("status") or "Not reported" }} ({{ activation.get("status_code", "—") }})</dd>
+                  </dl>
+                  <h5 class="mt-3 mb-1 font-medium">Disks</h5>
+                  {% if agent_report.get("disks") %}
+                  <ul class="list-disc pl-5">{% for disk in agent_report.get("disks") %}{% if disk is mapping %}<li>{{ disk.get("name") or "Disk" }} · {{ disk.get("size_gb") or "—" }} GB · {{ disk.get("type") or "type not reported" }}</li>{% else %}<li>{{ disk }}</li>{% endif %}{% endfor %}</ul>
+                  {% else %}<p>No disks reported.</p>{% endif %}
+                  <h5 class="mt-3 mb-1 font-medium">Required software</h5>
+                  {% if agent_report.get("software_checks") %}
+                  <ul class="list-disc pl-5">{% for check in agent_report.get("software_checks") %}{% if check is mapping %}<li>{{ check.get("name") or check.get("id") }} — {{ "Installed" if check.get("installed") else "Missing" }}{% if check.get("version") %} · {{ check.get("version") }}{% endif %}</li>{% else %}<li>{{ check }}</li>{% endif %}{% endfor %}</ul>
+                  {% else %}<p>No software checks were reported.</p>{% endif %}
+                </div>
+                {% else %}
+                <p class="mt-2 text-xs text-muted-foreground">No agent report is attached to this handover yet. Start the linked device check below.</p>
+                {% endif %}
                 {% endif %}
                 <p class="mt-1 text-xs text-muted-foreground">
                   {% if stage.actor %}{{ stage.actor }} · {% endif %}{{ stage.updated_at }}
@@ -87,10 +121,16 @@
                 {% set retry = stage.status in ("failed", "blocked") %}
                 {% if stage.status != "passed" %}
                   {% if stage.stage in ("device_prepared", "user_signed_in", "report_printed", "user_signed") %}
+                  {% set confirm_text = {
+                    "device_prepared": "Confirm only if you personally checked that this device is prepared. No device evidence is collected for this step.",
+                    "user_signed_in": "Confirm only if you observed the intended employee sign in to this device. This step is not verified by the agent report.",
+                    "report_printed": "Confirm only after printing and reviewing the report.",
+                    "user_signed": "Confirm only after the employee has signed the paper copy."
+                  } %}
                   <button type="button" class="btn btn-default btn-sm" data-action="confirm-stage"
-                          data-stage="{{ stage.stage }}">{{ "Retry" if retry else "Confirm" }}</button>
+                          data-stage="{{ stage.stage }}" data-confirm-message="{{ confirm_text[stage.stage] }}">{{ "Retry" if retry else "Confirm after checking" }}</button>
                   {% elif stage.stage == "agent_report" %}
-                  <a class="btn btn-outline btn-sm" href="/">Open onboarding</a>
+                  <a class="btn btn-outline btn-sm" href="/?handover_id={{ handover.id }}">Start device check</a>
                   {% elif stage.stage == "software_check" %}
                   {% if stage.status == "failed" %}
                   <form class="software-override-form flex w-full flex-col gap-2" data-software-override>
