@@ -360,12 +360,14 @@
     });
   }
 
-  async function preview(button) {
+  async function preview(button, quiet) {
     setBusy(button, true);
     try {
       var result = await request(base + "/preview");
       renderPreview(result);
-      showToast("Preview loaded; no Snipe-IT writes were made.", "success");
+      if (!quiet) {
+        showToast("Assigned devices loaded; no Snipe-IT changes were made.", "success");
+      }
     } catch (error) {
       showToast(error.message, "error");
     } finally {
@@ -511,6 +513,10 @@
 
   var uploadForm = document.getElementById("upload-form");
   if (uploadForm) uploadForm.addEventListener("submit", upload);
+
+  if (main.getAttribute("data-recipient-confirmed") === "true") {
+    preview(null, true);
+  }
 
   showStoredFlash();
 })();

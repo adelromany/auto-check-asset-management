@@ -8,7 +8,8 @@
 <div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
   {% include "partials/topbar.html" %}
 
-  <main class="flex-1 px-4 py-6" data-handover-id="{{ handover.id }}">
+  <main class="flex-1 px-4 py-6" data-handover-id="{{ handover.id }}"
+        data-recipient-confirmed="{{ 'true' if handover.recipient_snipeit_id else 'false' }}">
     <a href="/handovers" class="text-xs text-muted-foreground underline-offset-4 hover:underline">← All handovers</a>
 
     <div class="mt-2 mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -219,7 +220,7 @@
         <section class="card" aria-labelledby="snipeit-heading">
           <div class="card-header">
             <h2 id="snipeit-heading" class="card-title text-sm">Snipe-IT</h2>
-            <p class="card-description">Checkout the new device, checkin the recipient's old devices.</p>
+            <p class="card-description">Checkout the new device to the confirmed recipient. Their currently assigned devices appear below for optional check-in.</p>
           </div>
           <div class="card-content flex flex-col gap-4">
             <div class="flex flex-wrap items-center justify-between gap-2">
@@ -231,7 +232,7 @@
                 {% endif %}
               </div>
               <div class="flex flex-wrap gap-2">
-                <button type="button" class="btn btn-outline btn-sm" data-action="preview">Preview (dry run)</button>
+                <button type="button" class="btn btn-outline btn-sm" data-action="preview">Refresh assigned devices</button>
                 <button type="button" class="btn btn-default btn-sm" data-action="checkout">Checkout</button>
               </div>
             </div>
@@ -239,10 +240,10 @@
             <div id="preview-panel" class="hidden rounded-md border p-3 text-sm" aria-live="polite"></div>
 
             <div>
-              <p class="text-xs font-medium text-muted-foreground">Recipient's current devices</p>
+              <p class="text-xs font-medium text-muted-foreground">Devices currently assigned to the confirmed recipient</p>
               <div id="recipient-devices" class="mt-2 flex flex-col gap-2">
                 <p class="text-sm text-muted-foreground">
-                  Use Preview to list the devices currently assigned to the confirmed recipient.
+                  Confirm the recipient above to load their currently assigned devices.
                 </p>
               </div>
             </div>
