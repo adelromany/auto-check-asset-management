@@ -1,0 +1,86 @@
+# Task: Build the visual versions with Archify, and fix the "Return to handover" button
+
+This prompt REPLACES parts A and C of `visualize-quality-fix-prompt.md` and any home-made visual generator written for `docs/principles/visual/`. Part B of that old prompt (the button) is repeated here as Part 4. Do not hand-draw diagrams or write your own SVG layout engine any more.
+
+The owner wants the visual output to look and behave like **Archify** (https://github.com/tt-a1i/archify, Apache-2.0): interactive, readable diagrams generated from validated structured data, delivered as single self-contained HTML files with light and dark themes, node details, path tracing and focus. The simplest way to get that result is to **use Archify itself as the generator**.
+
+Repo: `auto-check-asset-management`. Start from the tip of the current working branch. Branches (stacked): `chore/archify-tooling` (Part 1), `docs/principles-visual` (Part 2), `docs/handover-workflow-visual` (Part 3), `fix/return-to-handover-button` (Part 4), `docs/visual-sync` (Part 5). Never commit to `main`. No force-push. Follow the 12 principle files.
+
+## 0. Rules
+1. Every command and result in your report must come from something you ran. If something cannot run, write `NOT RUN` with the exact error. Never claim you looked at a page unless you opened it in a browser and looked at the screenshot.
+2. Archify is a **development tool**, not an application dependency. Do not add it to `requirements*.txt` or to `package.json` dependencies of the portal. Do not copy its source into the repo (it is about 18 MB). Fetch it at a pinned version into a git-ignored folder.
+3. The generated HTML files and the JSON sources are committed. The tool itself is not.
+4. License: Archify is Apache-2.0. Add a short `docs/visual/THIRD_PARTY.md` naming Archify, its version and commit, its license, and a link; include its `LICENSE` and `NOTICE` text if any generated file embeds its code or fonts (read its `THIRD_PARTY_NOTICES.md`). Do not remove notices from generated files.
+5. Do not invent content. Every node, edge, number and label comes from the Markdown principle files or from the code.
+6. If a download, `npm`, `npx` or `git clone` is refused, show the exact error and STOP to ask the owner for the specific permission (host or command). Never disable TLS verification and never use unofficial mirrors.
+7. Tests first for our own code (the JSON builders and checks). Commit after each numbered step.
+
+## 1. Part 1: Archify tooling (branch `chore/archify-tooling`)
+1. Pin the version: Archify `3.2.0`, repository `https://github.com/tt-a1i/archify`, commit `a4065941f12be7967436261d9934784e381d423c` (the commit the owner's reference was checked at). If that commit is unreachable, report it and ask.
+2. Add `scripts/fetch_archify.ps1` and `scripts/fetch_archify.sh`: clone the repo at that exact commit into `.tools/archify` (add `.tools/` to `.gitignore`), verify `git rev-parse HEAD` equals the pinned commit, then use the CLI at `.tools/archify/archify/bin/archify.mjs` (Node 18 or newer is required; check `node --version` first). Idempotent; prints what it does. Archify's own `README.md` also lists an `npx skills` installer for agents: do NOT use it; this task uses the CLI directly.
+3. Read, in this order, before writing any diagram data: `.tools/archify/archify/SKILL.md`, `references/authoring-contract.md`, `references/authoring-defaults.md`, `references/delivery-contract.md`, `references/explainer-authoring.md`, the JSON schemas in `schemas/` for the types you will use, and two or three files from `examples/` of each type you will use. Use the commands exactly as `SKILL.md` documents them (do not guess flags). Known commands from its README, to confirm in `SKILL.md`: `node archify/bin/archify.mjs doctor`, `guide "<description>"`, `validate <type> <source.json> --quality showcase --json`, `preview ...`, `deliver <type> <source.json> <out.html> --quality showcase --json`, and `finalize` / `visual-check` described in the delivery contract.
+4. Run `doctor` and `demo` and report the output. Open the demo output in Chromium (Playwright is installed) and look at it, so you know what "good" looks like before you make ours.
+5. Create `tools/visual/` (our code, small, tested) with:
+   - `build_visuals.py` (or `.mjs` if Node is simpler; follow the repo's tech-stack principle) as the single entry point: `build` (generate JSON sources, call Archify `deliver` for each, write HTML), `check` (see 6), `list`.
+   - Builders that turn our data into Archify JSON: one builder per diagram (Part 2 and Part 3). Builders are deterministic: same input gives byte-identical JSON (sorted keys, stable ids, no timestamps).
+6. `check` must: (a) rebuild every JSON source in memory and fail if a committed JSON differs; (b) run Archify `validate --quality showcase` on every committed JSON and fail on any error or warning; (c) verify every committed HTML has its matching JSON and that the HTML records the same source hash if Archify provides a receipt/provenance file (read the delivery contract; if it provides `*.delivery.json` receipts, commit them or explain why not). Add `tests/test_visual_sources.py` that runs (a) always, and (b) when `.tools/archify` exists (otherwise `skip` with a clear reason; never silently pass).
+7. Add the new tool modules to the LIVE GRAPH so `tests/test_graph_consistency.py` stays green. Document commands in `README.md`: fetch, build, check.
+
+## 2. Part 2: Principle pages and the GRAPH diagrams (branch `docs/principles-visual`)
+Output folder: `docs/visual/` (replace `docs/principles/visual/` if an earlier home-made version exists: delete it in this branch, and update any links and the earlier `--check` tests that referenced it). Keep the Markdown in `docs/principles/` as the single source of truth.
+
+### 2.1 One visual page per principle file (12 pages) and an index
+1. Use Archify's **explainer** type for each of the 12 files (conclusion first, then one panel per question or section, with tables, steps, code, and diagrams where they help). Read `explainer.schema.json` and `explainer-authoring.md` first. Mapping rules:
+   - Title and the 2 to 4 sentence conclusion come from the file's own opening text. If the file has no summary, write the conclusion only from the file's content and mark it `Summary (generated from the headings)`; do not add new rules.
+   - Every rule keeps its ID (for example `SEC-007`) and its exact text. Rules appear as table rows or steps; never paraphrase a rule into a different meaning.
+   - Tables stay tables. Code blocks stay code blocks. Checklists stay checklists.
+   - Each page links back to its `.md` source and shows the source file hash.
+   - Cross references between rule IDs become links to the right page and anchor. List any reference to an ID that does not exist in your report.
+2. Add one real diagram in a page only when the Markdown describes a structure or a flow (for example the layering rule in the Architecture principle, the branch model in Git, the pipeline in Tests): build it from what the file says, and cite the section.
+3. The index page `docs/visual/index.html` lists the 12 pages as cards (number, title, rule count, one line) with search. If Archify has a suitable type for an overview (for example `tree`), you may use it; otherwise generate a small static page that reuses Archify's look as closely as its artifacts allow. Keep it self-contained.
+4. Language: English. Archify ships locales including Arabic (`locales/ar.json`); do not enable another language unless the owner asks.
+
+### 2.2 The GRAPH principle: real diagrams from the LIVE GRAPH
+Source of truth: the machine-checked section between `GRAPH:START` and `GRAPH:END` of the GRAPH principle file. Reuse the parsing rules of `tests/test_graph_consistency.py` (move the shared parser into a small importable module and use it from both). Produce these Archify diagrams, each as its own file linked from the GRAPH page:
+1. **Architecture diagram of the application layers** (Archify `architecture` type): the five layers as grouped bands (routers, services, repositories/clients, db/external, domain) with every module as a node inside its band and the allowed dependencies as edges. Group and name them with the same words the GRAPH file uses.
+2. **Module focus views:** for each layer a focused view (use Archify's focus/reach interactions where authored: upstream and downstream reach), so a reader can click a module and see only its importers and imports. Do not draw every edge at full strength at once if the schema offers a way to focus or lens.
+3. **Violations:** any edge that breaks the layering rule is authored as a visible, labeled problem edge (text label and icon, not only color), and a "0 violations" statement appears on the page when there are none. Take this from the same data the architecture tests use.
+4. **Freshness:** the page header states the number of modules in the LIVE GRAPH and the number found under `app/`; if they differ, a red banner "LIVE GRAPH is out of date" appears. (Our wrapper page may add this banner; Archify's artifact is not modified.)
+5. If a layout is crowded, fix it the way Archify's `architecture-layout-repair.md` describes; do not shrink text or widen the canvas to hide the problem.
+
+### 2.3 Quality gate (hard)
+1. Every Archify artifact must pass `finalize`/`deliver` with `--quality showcase` and zero warnings. The delivery contract requires all nine artifact checks and zero composition errors; follow its repair loop (two focused repair rounds per persistent issue, then report the concrete gap).
+2. Open each delivered page in Chromium with Playwright at 1440x900 and 390x844, light and dark (use Archify's `visual-check` if the contract describes it). LOOK at the screenshots. Write down, per page, what you checked and anything you changed because of it. Reject your own result if: any text is hard to read without zooming; a diagram is drawn tiny inside a big empty frame; edges run through nodes; anything is cut off; colors have weak contrast.
+3. No external network requests when opening a generated file offline (assert in the Playwright run), no console errors.
+4. Do not recolor, restyle, or patch Archify's generated HTML by hand. If something looks wrong, fix the JSON source or report the limitation.
+
+## 3. Part 3: The device handover workflow (branch `docs/handover-workflow-visual`)
+Create these Archify diagrams under `docs/visual/handover/` and link them from the index with their own prominent card "Device handover workflow".
+1. **Workflow** (Archify `workflow` type): all handover stages in order, with who acts at each step (engineer, employee's PC and the agent, portal, Snipe-IT), what each step checks, branching for pass/fail/skipped/overridden, and the failure side paths (agent report missing, serial mismatch, software missing, recipient not found in Snipe-IT, checkout verification mismatch, wrong file type, push not verified).
+2. **Sequence** (Archify `sequence` type) of the onboarding at the employee's PC: engineer opens the portal in the browser on that PC and signs in with SSO; portal creates the one-time code; engineer runs the PowerShell command; the script downloads from `/static/agent.ps1` and posts the report to `/api/session/<code>/submit`; the browser polls for the result; the portal compares serial and checks software; the engineer confirms the recipient; portal checks out in Snipe-IT and verifies; report printed; signed paper scanned and uploaded; pushed to the asset; engineer signs out. Mark clearly which requests are authenticated by SSO and which by the code only.
+3. **Lifecycle** (Archify `lifecycle` type): case status (draft, in progress, stalled, completed, cancelled) and stage statuses (pending, passed, failed, skipped, overridden), with each transition's rule.
+4. **ERD** (Archify `erd` type) of the database tables from the SQLAlchemy models (`handovers`, `handover_stages`, `agent_reports`, `documents`, `events`, and `agent_sessions` if it exists): columns, keys, indexes, the unique "one active handover per serial" rule noted on the entity.
+5. **Source of truth is the code**, not memory: read stage names, order, dependencies and statuses from `app/domain/stages.py`, `app/domain/handover_rules.py`, `app/domain/software_rules.py` (if present) and the models by importing the pure modules or parsing them in the builder. If the owner's briefing/diagram description in `docs/` disagrees with the code, show both in a "Differences" panel on an explainer page `docs/visual/handover/differences.html` and list it in your report. Do not silently align one to the other.
+6. Tests: the builder test asserts the stage list and order in the JSON equal the code's stage list exactly, every dependency edge equals the code's dependency table, the ERD tables and columns equal the models' metadata, and no node id appears twice. `check` (Part 1) fails if the code changes and the committed JSON/HTML were not regenerated.
+7. The same quality gate as 2.3 applies (showcase, zero warnings, screenshots you actually looked at).
+
+## 4. Part 4: "Return to handover" button is visually broken (branch `fix/return-to-handover-button`)
+What the owner sees on `/?handover_id=...` (the "Device check for this handover" card): the label "Return to handover" is drawn outside the card to the left of the content, and a small empty rounded box (the button's border) sits below the paragraph, offset and not around the text. The border belongs to an empty element while the text escapes it.
+
+1. Find the markup: search `templates/`, `static/js/`, `static/app.js`, `static/css/`, `styles/` and `app/` for "Return to handover" and "Device check for this handover" and show file and lines. (An older archive of the project did not contain this text; if you cannot find it on your branch, search all branches with `git grep` and report which branch has it, then STOP and ask.)
+2. Check these likely causes: a Tailwind/shadcn class used in the markup but missing from the built `static/css/app.css` (run `npm run build:css` and check the class exists in the output); the label sitting in a child that is positioned or has a negative margin; an icon span with fixed `size-*` while the label span is outside the `<a>`/`<button>`; fixed small width/height; a global `a`/`.btn` rule with margin or transform.
+3. Reproduce first with a Playwright test that opens the page with a seeded handover, finds the link by its text and asserts: its bounding box CONTAINS the text's bounding box, it lies inside the card's bounding box, width and height are non-zero, the focus ring surrounds the whole link, and it looks the same in dark mode and at 390 px width. The test must fail before the fix. If Playwright cannot run, report `NOT RUN` and add a DOM-structure test instead.
+4. Fix: label and icon inside ONE element using the same button classes as the other buttons (for example the "Copy" button on the same page): `inline-flex items-center gap-2 px-3 py-2 rounded-md border whitespace-nowrap`, no fixed width, no negative margin, placed in the card's action area with 16 px space under the paragraph and aligned with its left edge. Rebuild CSS and commit `static/css/app.css`.
+5. Search the whole UI for other links or buttons built the same wrong way; list them and fix any with the same symptom.
+6. Take before/after screenshots (1440 and 390 wide, light and dark), open them, compare, and say which you checked.
+
+## 5. Part 5: Final sync (branch `docs/visual-sync`)
+1. Update the LIVE GRAPH first, then the Git principle: add one rule "When a principle `.md` or any code that feeds a diagram changes, run the visual build and commit the regenerated files in the same commit", and add the same line to the final-sync checklist in the decisions/Git principle (next free rule IDs). Update `README.md`, `docs/OPEN_QUESTIONS.md`, and the decisions file (decision: use Archify as the generator, pinned version, fetched not vendored, license note).
+2. Run: full test suite, `python -m compileall -q app tests`, `npm run build:css`, the visual `build` then `check`. Report exact counts.
+3. `git status` must be clean except untracked prompt files.
+
+## Forbidden
+Hand-drawing SVG diagrams; editing Archify's generated HTML; adding Archify to the app's runtime dependencies; copying Archify's source into the repo; using an installer that writes outside the repo (`npx skills ... --global`) without the owner's approval; external network requests in generated pages; changing content of the principle files other than the single rule in Part 5; changing application code except Part 4's template/CSS/JS fix; committing to `main`; claiming verification you did not run.
+
+## Final report
+Per part: DONE / PARTIAL / BLOCKED. Exact commands and results (test counts, `check` result, Archify `doctor` output, every `deliver`/`finalize` result with warning counts). The list of screenshots you actually opened and what you changed because of them. Broken rule-ID references found, code-versus-briefing differences found, anything `NOT RUN` with the exact error. How to rebuild on Windows in three commands (fetch, build, check) and where to open `docs/visual/index.html`.
