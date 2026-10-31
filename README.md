@@ -5,6 +5,8 @@ works through ten verifiable handover stages. Snipe-IT stays the system of
 record; the portal stores workflow state and evidence, and only writes to
 Snipe-IT after an engineer's explicit, verified action.
 
+For installation on another computer, see the [Windows deployment guide](docs/deployment/INSTALL-WINDOWS.md), [Linux/macOS draft](docs/deployment/INSTALL-LINUX-MAC.md), and [troubleshooting guide](docs/deployment/TROUBLESHOOTING.md).
+
 ## Project structure
 
 ```
@@ -90,6 +92,7 @@ tests/
   test_diag.py             # 4 original diagnostics tests
   test_architecture_rules.py
   test_graph_consistency.py
+  test_principles_visual.py
   test_persistence.py
   test_handovers_api.py
   test_handover_service.py
@@ -101,6 +104,7 @@ tests/
   test_clipboard_playwright.py  # browser matrix
 docs/
   principles/              # H-Caliper: the 12 principle files (01…12)
+    visual/                # generated, offline HTML versions of the principles
   security-review.md       # Phase 8 checklist against principle 04
   snipeit-api-verified.md  # verified API surface / live-verification status
   OPEN_QUESTIONS.md        # open questions and the conservative option taken
@@ -108,6 +112,15 @@ docs/
   copy-diagnosis.md        # clipboard root cause and manual matrix
   discovery.md             # code map produced before the refactor
 ```
+
+## Principle visuals
+
+The Markdown files in `docs/principles/` remain the source of truth. Build
+their offline HTML versions with `python tools/build_principles_visual.py`.
+The generated `handover-workflow.html` explains the code-defined device handover flow; build it directly with `python tools/build_handover_workflow.py`.
+Check that committed visuals are current with
+`python tools/build_principles_visual.py --check`. Open
+`docs/principles/visual/index.html` in a browser to read them.
 
 ## UI system
 

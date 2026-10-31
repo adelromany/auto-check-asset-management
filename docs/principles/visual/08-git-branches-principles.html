@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>08 — Git Branches Principles</title><link rel="stylesheet" href="assets/visual.css"><script defer src="assets/visual.js"></script></head><body data-page="principle"><header class="site-header"><a href="index.html">Principles</a><strong>H-Caliper Principles</strong><label class="search-label">Search this principle <input data-search type="search" aria-label="Search principle"></label><button type="button" data-theme>Theme</button><button type="button" data-toggle-rail aria-expanded="true">Hide contents</button></header><div class="layout"><nav class="toc-rail" aria-label="Contents"><strong>On this page</strong><a class="toc-level-2" href="#final-sync-checklist">Final-sync checklist</a></nav><main class="principle-main"><p class="generated">Generated from <code>08-git-branches-principles.md</code> · SHA-256 f3741e6db638</p><h1 id="08-git-branches-principles" dir="auto">08 — Git Branches Principles</h1>
+<ul>
+<li dir="auto"><a class="rule-badge" id="GIT-01" href="#GIT-01">GIT-01</a> Never commit to <code>main</code> or <code>feature/sso</code>. Never force-push. Never rewrite pushed history. Never merge branches (the owner merges).
+</li><li>
+<li dir="auto"><a class="rule-badge" id="GIT-02" href="#GIT-02">GIT-02</a> One concern per branch. Names: <code>feature/&lt;name&gt;</code>, <code>refactor/&lt;name&gt;</code>, <code>fix/&lt;bug&gt;</code>, <code>test/&lt;name&gt;</code>, <code>docs/&lt;name&gt;</code>, <code>chore/&lt;name&gt;</code>. Lowercase, hyphens.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="GIT-03" href="#GIT-03">GIT-03</a> Historical implementation branches are listed in the project log; follow-up work starts from the verified prior tip and stays off <code>main</code>. This gap-fix run uses <code>fix/software-verification</code> as its integration branch.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="GIT-04" href="#GIT-04">GIT-04</a> Commits follow Conventional Commits: <code>feat(scope): …</code>, <code>fix(scope): …</code>, <code>refactor(scope): …</code>, <code>test(scope): …</code>, <code>docs(scope): …</code>, <code>chore(scope): …</code>. Subject ≤ 72 characters, imperative, no trailing period.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="GIT-05" href="#GIT-05">GIT-05</a> One logical change per commit; the suite is green at every commit. Do not mix refactoring and behavior change in one commit.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="GIT-06" href="#GIT-06">GIT-06</a> Never commit: <code>.env</code>, <code>data/</code>, <code>*.db</code>, uploaded documents, <code>deploy/snipeit-dev/.env</code>, <code>node_modules/</code>. Generated <code>static/css/app.css</code> IS committed (the Python app deploys without Node).
+</li><li>
+<li dir="auto"><a class="rule-badge" id="GIT-07" href="#GIT-07">GIT-07</a> Line endings: <code>.gitattributes</code> enforces LF. Do not commit mass line-ending changes together with real changes.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="GIT-08" href="#GIT-08">GIT-08</a> Before each commit: run the suite, run <code>git status</code>, review <code>git diff --staged</code> for secrets and unrelated edits.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="GIT-09" href="#GIT-09">GIT-09</a> Integration into <code>feature/sso</code> happens by the owner, in order, after review.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="GIT-10" href="#GIT-10">GIT-10</a> When a principle <code>.md</code> changes, regenerate its visual version in the same commit.
+</ul>
+<h2 id="final-sync-checklist" dir="auto">Final-sync checklist</h2>
+<ul>
+<li dir="auto">When a principle <code>.md</code> changes, regenerate its visual version in the same commit.
+</ul></main></div></body></html>

@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>01 — Test Principles</title><link rel="stylesheet" href="assets/visual.css"><script defer src="assets/visual.js"></script></head><body data-page="principle"><header class="site-header"><a href="index.html">Principles</a><strong>H-Caliper Principles</strong><label class="search-label">Search this principle <input data-search type="search" aria-label="Search principle"></label><button type="button" data-theme>Theme</button><button type="button" data-toggle-rail aria-expanded="true">Hide contents</button></header><div class="layout"><nav class="toc-rail" aria-label="Contents"><strong>On this page</strong><a class="toc-level-2" href="#strategy">Strategy</a><a class="toc-level-2" href="#test-types-and-tooling">Test types and tooling</a><a class="toc-level-2" href="#what-must-always-be-tested">What must always be tested</a><a class="toc-level-2" href="#acceptance-criteria-for-a-change">Acceptance criteria for a change</a></nav><main class="principle-main"><p class="generated">Generated from <code>01-test-principles.md</code> · SHA-256 c4272ea90c7c</p><h1 id="01-test-principles" dir="auto">01 — Test Principles</h1>
+<p dir="auto">Scope: every change in this repository. IDs (TST-xx) are cited in reviews and reports.</p>
+<h2 id="strategy" dir="auto">Strategy</h2>
+<ul>
+<li dir="auto"><a class="rule-badge" id="TST-01" href="#TST-01">TST-01</a> Pyramid: many fast unit tests (domain, services), fewer integration tests (API + DB), very few browser tests (Playwright).
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-02" href="#TST-02">TST-02</a> Characterization tests (<code>tests/test_characterization.py</code>, <code>tests/test_diag.py</code>) pin existing behavior. They are read-only: never edited to make a change pass. If one fails, the change is wrong. The 29 tests in these two files are the compatibility contract and are still green.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-03" href="#TST-03">TST-03</a> Pure logic (<code>app/domain/*</code>) is developed test-first with table-driven cases. Coverage target 100%.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-04" href="#TST-04">TST-04</a> Services and repositories: coverage target ≥ 85% lines. Whole <code>app/</code> target ≥ 75%. Final 2026-10-31 run: whole-<code>app</code> coverage 93%; targets met overall (per-module minimums are not separately asserted).
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-05" href="#TST-05">TST-05</a> Every bug fix starts with a failing test that reproduces it.
+</ul>
+<h2 id="test-types-and-tooling" dir="auto">Test types and tooling</h2>
+<ul>
+<li dir="auto"><a class="rule-badge" id="TST-06" href="#TST-06">TST-06</a> Async code is tested with <code>pytest-asyncio</code> (<code>asyncio_mode = auto</code>). API tests use <code>httpx.AsyncClient</code> with <code>ASGITransport</code> so the test and the app share one event loop.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-07" href="#TST-07">TST-07</a> Database tests use SQLite in memory (aiosqlite). When <code>TEST_DATABASE_URL</code> points to PostgreSQL, the migration and constraint tests also run there. On 2026-10-31 <code>test_migration_runs_on_postgres</code> passed against PostgreSQL 16 with migration 0002, and a manual fresh upgrade → downgrade base → upgrade head → downgrade one → upgrade head cycle passed. Without the variable the test reports skipped, never implied-pass.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-08" href="#TST-08">TST-08</a> External systems are replaced by the stateful fake in <code>tests/fakes/snipeit_fake.py</code> for normal tests. Live tests are marked <code>live</code>, opt-in via <code>SNIPEIT_LIVE_TEST=1</code>, and may only touch records whose names start with <code>TEST-</code>. Live verification completed 2026-10-31 against Snipe-IT v8.8.3 (Docker): six live tests pass; file name matching has the documented basename limitation (D-61).
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-09" href="#TST-09">TST-09</a> Tests must be deterministic: no sleeps for timing, no dependence on test order, no dependence on a developer's <code>.env</code>. Freeze or inject time where it matters.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-10" href="#TST-10">TST-10</a> Each test creates its own data and leaves no state behind.
+</ul>
+<h2 id="what-must-always-be-tested" dir="auto">What must always be tested</h2>
+<ul>
+<li dir="auto"><a class="rule-badge" id="TST-11" href="#TST-11">TST-11</a> Authorization: every new route has a test for 401 (not logged in).
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-12" href="#TST-12">TST-12</a> Validation: invalid input returns 4xx with a clear message, never 500.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-13" href="#TST-13">TST-13</a> Idempotency: repeating a Snipe-IT write step performs at most one external write.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-14" href="#TST-14">TST-14</a> Failure paths: network error, Snipe-IT 401/404/5xx, verification mismatch.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-15" href="#TST-15">TST-15</a> Security regressions: path traversal on uploads, script injection in text fields, token never present in logs.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-16" href="#TST-16">TST-16</a> Architecture rules (<code>tests/test_architecture_rules.py</code>) and graph consistency (<code>tests/test_graph_consistency.py</code>) run in the normal suite.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-17" href="#TST-17">TST-17</a> Security regressions run in <code>tests/test_security_hardening.py</code>: fail-closed startup, CSRF token/Origin, self-only headers, rate limiting and the tracked-file secrets scan.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="TST-18" href="#TST-18">TST-18</a> Dashboard aggregates and pages run in <code>tests/test_dashboard.py</code>; documents in <code>tests/test_documents.py</code>; Snipe-IT writes in <code>tests/test_snipeit_write_ops.py</code>.
+</ul>
+<h2 id="acceptance-criteria-for-a-change" dir="auto">Acceptance criteria for a change</h2>
+<ul>
+<li dir="auto">All original 29 tests pass. New tests pass. <code>python -m pytest tests -q --ignore=tests/test_clipboard_playwright.py</code> is green.
+</li><li>
+<li dir="auto">Playwright tests are run when the UI or clipboard code changed and browsers are installed; otherwise reported as "not run".
+</ul></main></div></body></html>

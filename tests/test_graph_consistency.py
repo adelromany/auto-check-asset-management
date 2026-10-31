@@ -8,6 +8,7 @@ declared layer must match the module's directory.
 from pathlib import Path
 
 import pytest
+from tools.graph_data import actual_modules, graph_section, module_rows
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GRAPH_FILE = REPO_ROOT / "docs" / "principles" / "03-graph-principles.md"
@@ -24,37 +25,13 @@ _LAYER_BY_DIRECTORY = {
 }
 
 
-def _graph_section() -> str:
-    """Lines strictly between the standalone GRAPH markers.
-
-    The markers also appear inside the specification text above the graph, so
-    they must be matched as whole lines, not as substrings.
-    """
-    lines = GRAPH_FILE.read_text(encoding="utf-8").splitlines()
-    start = next(i for i, line in enumerate(lines) if line.strip() == "<!-- GRAPH:START -->")
-    end = next(i for i, line in enumerate(lines) if line.strip() == "<!-- GRAPH:END -->")
-    return "\n".join(lines[start + 1:end])
-
-
 def _module_rows() -> list[tuple[str, str]]:
     """``(path, layer)`` for every ``| module | ... |`` row in the graph."""
-    rows: list[tuple[str, str]] = []
-    for line in _graph_section().splitlines():
-        stripped = line.strip()
-        if not stripped.startswith("|"):
-            continue
-        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
-        if len(cells) >= 4 and cells[0] == "module":
-            rows.append((cells[1], cells[2]))
-    return rows
+    return module_rows(graph_section(GRAPH_FILE.read_text(encoding="utf-8")))
 
 
 def _actual_modules() -> set[str]:
-    return {
-        path.relative_to(REPO_ROOT).as_posix()
-        for path in APP_DIR.rglob("*.py")
-        if path.name != "__init__.py"
-    }
+    return actual_modules(APP_DIR, REPO_ROOT)
 
 
 def _expected_layers(path: str) -> set[str]:

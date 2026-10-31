@@ -67,6 +67,9 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/routers/snipeit.py | router | Snipe-IT device lookup and health |
 | module | app/routers/health.py | router | liveness endpoint |
 | module | app/routers/diag.py | router | clipboard diagnostics page (ENABLE_DIAG) |
+| module | tools/build_principles_visual.py | infra | deterministic offline principle visual generator |
+| module | tools/graph_data.py | infra | shared LIVE GRAPH parsing for generation and consistency tests |
+| module | tools/build_handover_workflow.py | infra | generates code-derived handover workflow visual |
 
 ### Nodes — routes
 | kind | method path | exposed by |
@@ -112,8 +115,9 @@ The project graph is a map of what depends on what, so any change can be assesse
 | stage | device_prepared | — |
 | stage | user_signed_in | device_prepared |
 | stage | agent_report | device_prepared |
+| stage | software_check | agent_report |
 | stage | recipient_check | agent_report |
-| stage | checkout | recipient_check |
+| stage | checkout | recipient_check; software_check |
 | stage | report_printed | agent_report |
 | stage | user_signed | report_printed |
 | stage | document_scanned | user_signed |
@@ -229,6 +233,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/routers/http_errors.py | imports | app/clients/snipeit.py |
 | app/routers/http_errors.py | imports | app/domain/errors.py |
 | app/routers/agent.py | imports | app/services/handovers.py |
+| tools/build_principles_visual.py | imports | tools/graph_data.py |
 | alembic/env.py | imports | app/db/base.py |
 
 ### Impact table

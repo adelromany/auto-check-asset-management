@@ -1,0 +1,64 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>02 — Logging Principles</title><link rel="stylesheet" href="assets/visual.css"><script defer src="assets/visual.js"></script></head><body data-page="principle"><header class="site-header"><a href="index.html">Principles</a><strong>H-Caliper Principles</strong><label class="search-label">Search this principle <input data-search type="search" aria-label="Search principle"></label><button type="button" data-theme>Theme</button><button type="button" data-toggle-rail aria-expanded="true">Hide contents</button></header><div class="layout"><nav class="toc-rail" aria-label="Contents"><strong>On this page</strong><a class="toc-level-2" href="#business-audit-trail-implemented">Business audit trail (implemented)</a><a class="toc-level-2" href="#technical-logging-implemented">Technical logging (implemented)</a><a class="toc-level-2" href="#rules-that-still-apply-to-any-new-code">Rules that still apply to any new code</a></nav><main class="principle-main"><p class="generated">Generated from <code>02-logging-principles.md</code> · SHA-256 270ef607d0c8</p><h1 id="02-logging-principles" dir="auto">02 — Logging Principles</h1>
+<p dir="auto">Status: both the <strong>business audit trail</strong> and the **structured technical</p>
+<p dir="auto">logging/request-id path** are implemented. The limits on personal data and</p>
+<p dir="auto">secrets remain mandatory.</p>
+<h2 id="business-audit-trail-implemented" dir="auto">Business audit trail (implemented)</h2>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-01" href="#LOG-01">LOG-01</a> The <code>events</code> table is the append-only audit trail: who did what to
+</ul>
+<p dir="auto">  which handover, when, with outcome. Every state change and every Snipe-IT</p>
+<p dir="auto">  call writes an event.</p>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-02" href="#LOG-02">LOG-02</a> <code>app/repositories/events.py</code> exposes insert and read only. No update
+</ul>
+<p dir="auto">  or delete method exists; <code>tests/test_persistence.py</code> proves it.</p>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-03" href="#LOG-03">LOG-03</a> Event payloads carry identifiers (handover id, serial, Snipe-IT ids,
+</ul>
+<p dir="auto">  HTTP status) and never file bytes, tokens, cookies or full agent payloads.</p>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-04" href="#LOG-04">LOG-04</a> Snipe-IT write events include the operation outcome and the Snipe-IT
+</ul>
+<p dir="auto">  HTTP status when available. The engineer's email is stored with the event</p>
+<p dir="auto">  and in the Snipe-IT note.</p>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-05" href="#LOG-05">LOG-05</a> The Windows <code>partial_key</code> is removed before storage; full payloads
+</ul>
+<p dir="auto">  are never logged.</p>
+<h2 id="technical-logging-implemented" dir="auto">Technical logging (implemented)</h2>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-06" href="#LOG-06">LOG-06</a> <code>app/logging_config.py</code> configures one structured key/value handler
+</ul>
+<p dir="auto">  with UTC timestamps and the configured log level.</p>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-07" href="#LOG-07">LOG-07</a> <code>RequestIdMiddleware</code> creates a server-side request id, returns it in
+</ul>
+<p dir="auto">  <code>X-Request-ID</code>, and adds it to log records. Unexpected errors return a</p>
+<p dir="auto">  generic response with that id; logs contain the exception class only, never</p>
+<p dir="auto">  exception text or stack traces that may include personal data.</p>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-08" href="#LOG-08">LOG-08</a> Startup records the effective database dialect, SSO state and Snipe-IT
+</ul>
+<p dir="auto">  host. The development SSO bypass is a warning.</p>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-09" href="#LOG-09">LOG-09</a> Snipe-IT calls log operation category, target host, status and elapsed
+</ul>
+<p dir="auto">  time. URL paths, tokens, identities, and request bodies are excluded.</p>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-13" href="#LOG-13">LOG-13</a> Third-party HTTP and server-access loggers do not record full URLs or
+</ul>
+<p dir="auto">  query strings, which can contain names, usernames, or email filters.</p>
+<h2 id="rules-that-still-apply-to-any-new-code" dir="auto">Rules that still apply to any new code</h2>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-10" href="#LOG-10">LOG-10</a> NEVER log or store: passwords, API tokens, <code>Authorization</code> headers,
+</ul>
+<p dir="auto">  session cookies, Windows partial product keys, full agent payloads, uploaded</p>
+<p dir="auto">  file contents, or full request bodies. Log identifiers instead.</p>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-11" href="#LOG-11">LOG-11</a> Errors returned to clients stay generic. Do not log exception text or
+</ul>
+<p dir="auto">  stack traces that may carry personal data; log only a safe error category.</p>
+<ul>
+<li dir="auto"><a class="rule-badge" id="LOG-12" href="#LOG-12">LOG-12</a> A test must continue to assert that the Snipe-IT token never appears
+</ul>
+<p dir="auto">  in exception text or captured logs (<code>tests/test_snipeit_client.py</code>).</p></main></div></body></html>

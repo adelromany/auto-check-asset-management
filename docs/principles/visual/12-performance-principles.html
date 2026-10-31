@@ -1,0 +1,34 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>12 — Performance Principles</title><link rel="stylesheet" href="assets/visual.css"><script defer src="assets/visual.js"></script></head><body data-page="principle"><header class="site-header"><a href="index.html">Principles</a><strong>H-Caliper Principles</strong><label class="search-label">Search this principle <input data-search type="search" aria-label="Search principle"></label><button type="button" data-theme>Theme</button><button type="button" data-toggle-rail aria-expanded="true">Hide contents</button></header><div class="layout"><nav class="toc-rail" aria-label="Contents"><strong>On this page</strong><a class="toc-level-2" href="#targets">Targets</a><a class="toc-level-2" href="#rules">Rules</a><a class="toc-level-2" href="#verification">Verification</a></nav><main class="principle-main"><p class="generated">Generated from <code>12-performance-principles.md</code> · SHA-256 106453fea8da</p><h1 id="12-performance-principles" dir="auto">12 — Performance Principles</h1>
+<p dir="auto">Context: a small IT team (about 6 engineers), hundreds to low thousands of handovers per year, LAN deployment. Performance work is about correctness at this scale and avoiding traps, not about heroics.</p>
+<h2 id="targets" dir="auto">Targets</h2>
+<ul>
+<li dir="auto"><a class="rule-badge" id="PRF-01" href="#PRF-01">PRF-01</a> Page and API responses that do not call Snipe-IT: p95 ≤ 300 ms with 10,000 handovers in the database. <strong>Not measured</strong>: no seed script or timing run was executed in this environment.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="PRF-02" href="#PRF-02">PRF-02</a> Dashboard summary: p95 ≤ 500 ms at 10,000 handovers (all aggregates in SQL). <strong>Not measured</strong>; the aggregates are SQL, but the timing target is unverified.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="PRF-03" href="#PRF-03">PRF-03</a> Calls to Snipe-IT: 10 s timeout; the UI shows progress and never freezes; a Snipe-IT slowdown never blocks pages that do not need it.
+</ul>
+<h2 id="rules" dir="auto">Rules</h2>
+<ul>
+<li dir="auto"><a class="rule-badge" id="PRF-04" href="#PRF-04">PRF-04</a> Pagination is mandatory on every list endpoint (default 25, maximum 100). Never return unbounded lists.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="PRF-05" href="#PRF-05">PRF-05</a> Aggregates (counts, averages, group-bys) are computed by the database, never by loading rows into Python.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="PRF-06" href="#PRF-06">PRF-06</a> No N+1 queries: load related rows explicitly in one or two queries (<code>selectinload</code>/joins). The dashboard row query loads stages with <code>selectinload</code>; there is <strong>no automated query-count test</strong> yet (recorded in Q-7), so this is a code-review property, not a measured one.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="PRF-07" href="#PRF-07">PRF-07</a> Indexes exist for every filter used by list and dashboard queries: <code>handovers(status)</code>, <code>handovers(created_at)</code>, <code>handovers(engineer_email)</code>, <code>handovers(device_serial)</code>, <code>handover_stages(handover_id)</code>, <code>events(handover_id, at)</code>. The partial unique index on active handovers is both a rule and an index.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="PRF-08" href="#PRF-08">PRF-08</a> Do not call Snipe-IT inside loops when one call can answer (list a user's assets in one call). Idempotency checks read before they write.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="PRF-09" href="#PRF-09">PRF-09</a> Uploads are streamed with a size cap; the full file is never read into memory beyond the cap.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="PRF-10" href="#PRF-10">PRF-10</a> The event loop is never blocked: no blocking I/O or CPU-heavy work inside <code>async def</code>. File writes for uploads use async-safe patterns or small chunks.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="PRF-11" href="#PRF-11">PRF-11</a> Static assets: the generated CSS is minified (existing build); no new heavy assets; no polling faster than 2 s (the existing agent poll interval).
+</ul>
+<h2 id="verification" dir="auto">Verification</h2>
+<ul>
+<li dir="auto"><a class="rule-badge" id="PRF-12" href="#PRF-12">PRF-12</a> The repeatable <code>scripts/seed_perf.py</code> and <code>docs/performance-notes.md</code> do <strong>not</strong> exist yet. The 10,000-handover timings were not measured, so no performance target is reported as met. This is Q-7 in <code>docs/OPEN_QUESTIONS.md</code>.
+</li><li>
+<li dir="auto"><a class="rule-badge" id="PRF-13" href="#PRF-13">PRF-13</a> Stalled-by-age status is computed in SQL for summary counts and paged rows; no dashboard-wide Python scan is introduced. Query plans and 10,000-row timings remain unmeasured (Q-7).
+</ul></main></div></body></html>

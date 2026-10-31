@@ -166,3 +166,24 @@ same basename for the same scan. The limitation is recorded in D-61 and
 `docs/snipeit-api-verified.md`.
 
 Owner: Snipe-IT/code owner.
+
+## Q-14 — When is the deployment branch published? (OPEN)
+
+Context: installation instructions clone `docs/deployment-guide`, but this
+branch is local until the repository owner publishes it to GitHub.
+
+Conservative option taken: state the branch name and do not claim the GitHub
+clone is verified until it is published.
+
+Owner: repository owner.
+
+## Q-15 — Which Entra callback should be registered for the target machine? (OPEN)
+
+Context: Entra SSO requires `REDIRECT_URI` to exactly match the registered
+callback, and the correct DNS name or address depends on the destination PC and
+network.
+
+Conservative option taken: use the callback for the approved machine address
+and have the Entra administrator register it before enabling SSO.
+
+Owner: Entra/application owner.

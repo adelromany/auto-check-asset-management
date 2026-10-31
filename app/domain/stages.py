@@ -1,4 +1,4 @@
-"""The nine fixed handover stages: keys, order, dependencies and statuses.
+"""The ten fixed handover stages: keys, order, dependencies and statuses.
 
 This module is the single source of truth for stage keys (CLN-05/CLN-06).
 """
