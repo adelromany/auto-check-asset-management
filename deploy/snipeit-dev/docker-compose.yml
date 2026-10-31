@@ -1,0 +1,53 @@
+# Local Snipe-IT for development only. Never use this compose file in production.
+#
+#   cp .env.example .env    (then edit the values)
+#   docker compose up -d
+#
+# The portal talks to this instance over http://localhost:${SNIPEIT_PORT}.
+
+services:
+  snipeit-db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${SNIPEIT_DB_DATABASE:-snipeit}
+      MARIADB_USER: ${SNIPEIT_DB_USERNAME:-snipeit}
+      MARIADB_PASSWORD: ${SNIPEIT_DB_PASSWORD:?set SNIPEIT_DB_PASSWORD in .env}
+      MARIADB_ROOT_PASSWORD: ${SNIPEIT_DB_ROOT_PASSWORD:?set SNIPEIT_DB_ROOT_PASSWORD in .env}
+    volumes:
+      - snipeit-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  snipeit:
+    image: snipe/snipe-it:v8.8.3-alpine
+    restart: unless-stopped
+    depends_on:
+      snipeit-db:
+        condition: service_healthy
+    ports:
+      - "${SNIPEIT_PORT:-8080}:80"
+    environment:
+      APP_URL: ${SNIPEIT_APP_URL:-http://localhost:8080}
+      APP_KEY: ${SNIPEIT_APP_KEY:?set SNIPEIT_APP_KEY in .env}
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_TIMEZONE: UTC
+      DB_CONNECTION: mysql
+      DB_HOST: snipeit-db
+      DB_PORT: "3306"
+      DB_DATABASE: ${SNIPEIT_DB_DATABASE:-snipeit}
+      DB_USERNAME: ${SNIPEIT_DB_USERNAME:-snipeit}
+      DB_PASSWORD: ${SNIPEIT_DB_PASSWORD:?set SNIPEIT_DB_PASSWORD in .env}
+      MAIL_MAILER: log
+      # Development only. Never copy this file or these values to production.
+      APP_TRUSTED_PROXIES: "*"
+    volumes:
+      - snipeit-data:/var/lib/snipeit
+
+volumes:
+  snipeit-db:
+  snipeit-data:
