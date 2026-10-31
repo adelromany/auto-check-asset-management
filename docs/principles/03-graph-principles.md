@@ -26,7 +26,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 |---|---|---|---|
 | module | app/main.py | infra | application factory, middleware and router wiring |
 | module | app/config.py | config | the only place environment variables are read |
-| module | app/dependencies.py | infra | current_user, session-store injection, per-request DB session |
+| module | app/dependencies.py | infra | current_user, session-store and Snipe-IT client injection, per-request DB session |
 | module | app/auth.py | infra | Entra ID SSO routes (/login, /auth/callback, /logout) |
 | module | app/schemas.py | dto | AgentPayload request model |
 | module | app/db/base.py | db | declarative base and stable constraint naming |
@@ -41,10 +41,11 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/repositories/handovers.py | repository | handover, stage and agent-report data access |
 | module | app/repositories/events.py | repository | insert-only business event trail |
 | module | app/services/handovers.py | service | create, get, list, confirm, cancel, recompute, agent report |
+| module | app/services/snipeit_ops.py | service | recipient search/confirm, preview, checkin and verified checkout |
 | module | app/services/sessions.py | service | in-memory short-code session store |
 | module | app/routers/pages.py | router | index page and /api/me |
 | module | app/routers/agent.py | router | session code create/poll/submit |
-| module | app/routers/handovers.py | router | /api/handovers create, list, detail, confirm, cancel |
+| module | app/routers/handovers.py | router | /api/handovers create, list, detail, confirm, cancel, recipient, preview, checkin, checkout |
 | module | app/routers/snipeit.py | router | Snipe-IT device lookup and health |
 | module | app/routers/health.py | router | liveness endpoint |
 | module | app/routers/diag.py | router | clipboard diagnostics page (ENABLE_DIAG) |
@@ -62,6 +63,11 @@ The project graph is a map of what depends on what, so any change can be assesse
 | route | GET /api/handovers/{id} | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/stages/{stage}/confirm | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/cancel | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/recipient/search | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/recipient/confirm | app/routers/handovers.py |
+| route | GET /api/handovers/{id}/preview | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/checkin | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/checkout | app/routers/handovers.py |
 | route | GET /api/snipeit/device | app/routers/snipeit.py |
 | route | GET /api/snipeit/health | app/routers/snipeit.py |
 | route | GET /api/health | app/routers/health.py |
@@ -91,6 +97,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/auth.py | uses | Entra ID (OIDC) |
 | app/main.py | imports | app/routers/* |
 | app/dependencies.py | imports | app/db/engine.py |
+| app/dependencies.py | imports | app/clients/snipeit.py |
 | app/db/engine.py | reads | DATABASE_URL (app/config.py) |
 | app/repositories/events.py | imports | app/db/models/handover.py |
 | app/repositories/handovers.py | imports | app/db/models/handover.py |
@@ -99,7 +106,11 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/services/handovers.py | imports | app/repositories/events.py |
 | app/services/handovers.py | uses | app/domain/handover_rules.py |
 | app/services/handovers.py | imports | app/domain/redaction.py |
+| app/services/snipeit_ops.py | imports | app/services/handovers.py |
+| app/services/snipeit_ops.py | imports | app/clients/snipeit.py |
+| app/services/snipeit_ops.py | imports | app/repositories/events.py |
 | app/routers/handovers.py | imports | app/services/handovers.py |
+| app/routers/handovers.py | imports | app/services/snipeit_ops.py |
 | app/routers/handovers.py | imports | app/dto/handover.py |
 | app/routers/agent.py | imports | app/services/handovers.py |
 | alembic/env.py | imports | app/db/base.py |
@@ -115,6 +126,8 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/db/engine.py | app/dependencies.py get_session; tests that override DATABASE_URL |
 | app/domain/stages.py | app/domain/handover_rules.py; app/services/handovers.py; tests/test_domain_rules.py |
 | app/services/handovers.py | app/routers/handovers.py; app/routers/agent.py; tests/test_handover_service.py; tests/test_handovers_api.py |
-| app/clients/snipeit.py | app/routers/snipeit.py; tests/test_snipeit_client.py; tests/fakes/snipeit_fake.py |
+| app/services/snipeit_ops.py | app/routers/handovers.py; tests/test_snipeit_write_ops.py; tests/fakes/snipeit_fake.py |
+| app/dependencies.py get_snipeit_client | app/routers/handovers.py; tests/test_snipeit_write_ops.py |
+| app/clients/snipeit.py | app/routers/snipeit.py; app/services/snipeit_ops.py; tests/test_snipeit_client.py; tests/fakes/snipeit_fake.py |
 | app/repositories/events.py | every service that writes an event; LOG-07 test |
 <!-- GRAPH:END -->

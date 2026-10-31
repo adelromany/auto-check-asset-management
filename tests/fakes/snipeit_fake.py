@@ -22,6 +22,11 @@ class SnipeItFake:
         self.calls: list[tuple[str, str, dict[str, str]]] = []
         self.fail_get_statuses: list[int] = []
         self.fail_post_statuses: list[int] = []
+        self.fail_post_exception: Exception | None = None
+        # Test hooks for the verification step in Phase 5.
+        self.checkout_assigns = True
+        self.checkin_clears = True
+        self.checkout_notes: list[str] = []
         self.users: dict[int, dict[str, Any]] = {
             1: {
                 "id": 1,
@@ -90,6 +95,10 @@ class SnipeItFake:
         if request.method == "GET" and self.fail_get_statuses:
             status = self.fail_get_statuses.pop(0)
             return httpx.Response(status, json={"status": "error"})
+        if request.method == "POST" and self.fail_post_exception is not None:
+            exc = self.fail_post_exception
+            self.fail_post_exception = None
+            raise exc
         if request.method == "POST" and self.fail_post_statuses:
             status = self.fail_post_statuses.pop(0)
             return httpx.Response(status, json={"status": "error"})
@@ -158,16 +167,19 @@ class SnipeItFake:
             user = self.users.get(int(body["assigned_to"]))
             if user is None:
                 return httpx.Response(404, json={"status": "error"})
-            asset["assigned_to"] = {
-                "id": user["id"],
-                "name": user["name"],
-                "username": user["username"],
-            }
+            self.checkout_notes.append(str(body.get("note") or ""))
+            if self.checkout_assigns:
+                asset["assigned_to"] = {
+                    "id": user["id"],
+                    "name": user["name"],
+                    "username": user["username"],
+                }
             return httpx.Response(
                 200, json={"status": "success", "messages": "Checked out"}
             )
         if action == "checkin":
-            asset["assigned_to"] = None
+            if self.checkin_clears:
+                asset["assigned_to"] = None
             return httpx.Response(
                 200, json={"status": "success", "messages": "Checked in"}
             )

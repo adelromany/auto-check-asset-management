@@ -72,7 +72,7 @@ class HandoverService:
         return handover
 
     async def get_detail(self, handover_id: uuid.UUID) -> HandoverDetailView:
-        return await self._view(await self.get(handover_id, with_details=True))
+        return await self.view(await self.get(handover_id, with_details=True))
 
     async def list(
         self,
@@ -160,11 +160,11 @@ class HandoverService:
         handover = await self.get(handover_id, with_details=True)
         self._ensure_open(handover)
 
-        allowed, reason = can_run(stage_enum, self._states(handover))
+        allowed, reason = can_run(stage_enum, stage_states(handover))
         if not allowed:
             raise StageNotRunnable(reason)
 
-        row = self._stage_row(handover, stage_enum)
+        row = stage_row(handover, stage_enum)
         row.status = StageStatus.PASSED.value
         row.reason = None
         row.actor = actor
@@ -177,7 +177,7 @@ class HandoverService:
             detail={"stage": stage_enum.value},
         )
         await self.recompute_status(handover)
-        return await self._view(handover)
+        return await self.view(handover)
 
     async def cancel(
         self, handover_id: uuid.UUID, *, actor: str
@@ -185,7 +185,7 @@ class HandoverService:
         """Cancel an open handover. Cancelling twice is a no-op."""
         handover = await self.get(handover_id, with_details=True)
         if handover.status == HandoverStatus.CANCELLED.value:
-            return await self._view(handover)
+            return await self.view(handover)
         if handover.status == HandoverStatus.COMPLETED.value:
             raise HandoverCompleted("Completed handovers cannot be cancelled.")
 
@@ -196,7 +196,7 @@ class HandoverService:
             detail={},
         )
         await self.recompute_status(handover, cancelled=True)
-        return await self._view(handover)
+        return await self.view(handover)
 
     async def recompute_status(
         self, handover: Handover, *, cancelled: bool | None = None
@@ -204,7 +204,7 @@ class HandoverService:
         """Derive and store the handover status. The ONLY status writer."""
         if cancelled is None:
             cancelled = handover.status == HandoverStatus.CANCELLED.value
-        status = derive_status(self._states(handover), cancelled=cancelled)
+        status = derive_status(stage_states(handover), cancelled=cancelled)
         handover.status = status.value
         if status in (HandoverStatus.COMPLETED, HandoverStatus.CANCELLED):
             if handover.closed_at is None:
@@ -248,7 +248,7 @@ class HandoverService:
         expected_serial = handover.device_serial.strip()
         matched = bool(reported_serial) and reported_serial == expected_serial
 
-        row = self._stage_row(handover, Stage.AGENT_REPORT)
+        row = stage_row(handover, Stage.AGENT_REPORT)
         row.actor = actor
         row.updated_at = _utcnow()
         if matched:
@@ -279,8 +279,8 @@ class HandoverService:
         return handover
 
     # -- internals --------------------------------------------------------
-    async def _view(self, handover: Handover) -> HandoverDetailView:
-        states = self._states(handover)
+    async def view(self, handover: Handover) -> HandoverDetailView:
+        states = stage_states(handover)
         rows = {row.stage: row for row in handover.stages}
         stages = [
             rows[stage.value] for stage in STAGE_ORDER if stage.value in rows
@@ -294,33 +294,6 @@ class HandoverService:
         )
 
     @staticmethod
-    def _states(handover: Handover) -> list[StageState]:
-        rows = {row.stage: row for row in handover.stages}
-        states: list[StageState] = []
-        for stage in STAGE_ORDER:
-            row = rows.get(stage.value)
-            if row is None:
-                states.append(StageState(stage))
-            else:
-                states.append(
-                    StageState(
-                        stage,
-                        StageStatus(row.status),
-                        row.reason,
-                    )
-                )
-        return states
-
-    @staticmethod
-    def _stage_row(handover: Handover, stage: Stage) -> HandoverStage:
-        for row in handover.stages:
-            if row.stage == stage.value:
-                return row
-        raise HandoverNotFound(
-            f"Handover {handover.id} has no '{stage.value}' stage."
-        )
-
-    @staticmethod
     def _parse_stage(stage: str | Stage) -> Stage:
         if isinstance(stage, Stage):
             return stage
@@ -331,10 +304,38 @@ class HandoverService:
 
     @staticmethod
     def _ensure_open(handover: Handover) -> None:
-        if handover.status == HandoverStatus.CANCELLED.value:
-            raise HandoverCancelled("This handover is cancelled.")
-        if handover.status == HandoverStatus.COMPLETED.value:
-            raise HandoverCompleted("This handover is completed.")
+        ensure_open(handover)
+
+
+def stage_states(handover: Handover) -> list[StageState]:
+    """The nine stage states in fixed order, missing rows treated as pending."""
+    rows = {row.stage: row for row in handover.stages}
+    states: list[StageState] = []
+    for stage in STAGE_ORDER:
+        row = rows.get(stage.value)
+        if row is None:
+            states.append(StageState(stage))
+        else:
+            states.append(StageState(stage, StageStatus(row.status), row.reason))
+    return states
+
+
+def stage_row(handover: Handover, stage: Stage) -> HandoverStage:
+    """The ORM row for one stage; a missing row is a data-integrity error."""
+    for row in handover.stages:
+        if row.stage == stage.value:
+            return row
+    raise HandoverNotFound(
+        f"Handover {handover.id} has no '{stage.value}' stage."
+    )
+
+
+def ensure_open(handover: Handover) -> None:
+    """Reject work on a cancelled or completed handover."""
+    if handover.status == HandoverStatus.CANCELLED.value:
+        raise HandoverCancelled("This handover is cancelled.")
+    if handover.status == HandoverStatus.COMPLETED.value:
+        raise HandoverCompleted("This handover is completed.")
 
 
 def _utcnow() -> datetime:

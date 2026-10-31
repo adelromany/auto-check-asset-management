@@ -2,10 +2,11 @@
 
 from collections.abc import AsyncIterator
 
-from fastapi import HTTPException, Request
+from fastapi import Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import config
+from app.clients.snipeit import ServiceAccountProvider, SnipeItClient
 from app.db.engine import get_sessionmaker
 from app.services.sessions import SessionStore
 
@@ -40,3 +41,19 @@ def current_user(request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Login required")
     return user
+
+
+async def get_snipeit_client(
+    user=Depends(current_user),
+) -> AsyncIterator[SnipeItClient]:
+    """One Snipe-IT client per request; always closed, even on error."""
+    client = SnipeItClient(
+        config.SNIPEIT_URL,
+        ServiceAccountProvider(config.SNIPEIT_TOKEN),
+        timeout=config.SNIPEIT_TIMEOUT_SECONDS,
+        engineer_email=(user or {}).get("email") or "",
+    )
+    try:
+        yield client
+    finally:
+        await client.aclose()

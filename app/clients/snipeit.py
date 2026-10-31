@@ -33,6 +33,10 @@ class SnipeItAuthError(SnipeItError):
 class SnipeItNotFound(SnipeItError):
     """The requested user, asset or file does not exist."""
 
+    def __init__(self, message: str, *, status_code: int = 404):
+        self.status_code = status_code
+        super().__init__(message)
+
 
 class SnipeItRejected(SnipeItError):
     """Snipe-IT answered with an unexpected HTTP status."""
@@ -105,6 +109,7 @@ class SnipeItFile:
 class SnipeItActionResult:
     status: str
     message: str | None = None
+    status_code: int | None = None
 
 
 def _int_or_none(value: Any) -> int | None:
@@ -186,9 +191,11 @@ def _file_from_json(row: dict[str, Any]) -> SnipeItFile:
     )
 
 
-def _action_result(data: Any) -> SnipeItActionResult:
+def _action_result(
+    data: Any, *, status_code: int | None = None
+) -> SnipeItActionResult:
     if not isinstance(data, dict):
-        return SnipeItActionResult(status="success")
+        return SnipeItActionResult(status="success", status_code=status_code)
     status = str(data.get("status") or "success")
     messages = data.get("messages")
     if isinstance(messages, list):
@@ -197,7 +204,9 @@ def _action_result(data: Any) -> SnipeItActionResult:
         message = None
     else:
         message = str(messages)
-    return SnipeItActionResult(status=status, message=message)
+    return SnipeItActionResult(
+        status=status, message=message, status_code=status_code
+    )
 
 
 class SnipeItClient:
@@ -252,6 +261,15 @@ class SnipeItClient:
                 return _user_from_json(row)
         return _user_from_json(rows[0]) if rows else None
 
+    async def search_users(
+        self, query: str, *, limit: int = 10
+    ) -> list[SnipeItUser]:
+        """All users Snipe-IT matches for a free-text query (candidates)."""
+        data = await self._get_json(
+            "/api/v1/users", params={"search": query, "limit": limit}
+        )
+        return [_user_from_json(row) for row in _rows(data)]
+
     async def get_user(self, user_id: int) -> SnipeItUser:
         data = await self._get_json(f"/api/v1/users/{user_id}")
         row = _single_row(data)
@@ -294,7 +312,7 @@ class SnipeItClient:
     async def checkout_asset_to_user(
         self, asset_id: int, user_id: int, note: str
     ) -> SnipeItActionResult:
-        data = await self._post_json(
+        data, status_code = await self._post_json(
             f"/api/v1/hardware/{asset_id}/checkout",
             json={
                 "assigned_to": user_id,
@@ -302,15 +320,15 @@ class SnipeItClient:
                 "note": note,
             },
         )
-        return _action_result(data)
+        return _action_result(data, status_code=status_code)
 
     async def checkin_asset(
         self, asset_id: int, note: str
     ) -> SnipeItActionResult:
-        data = await self._post_json(
+        data, status_code = await self._post_json(
             f"/api/v1/hardware/{asset_id}/checkin", json={"note": note}
         )
-        return _action_result(data)
+        return _action_result(data, status_code=status_code)
 
     async def upload_asset_file(
         self,
@@ -320,12 +338,12 @@ class SnipeItClient:
         content_type: str,
         note: str,
     ) -> SnipeItActionResult:
-        data = await self._post_json(
+        data, status_code = await self._post_json(
             f"/api/v1/hardware/{asset_id}/files",
             files={"file": (filename, content, content_type)},
             data={"note": note} if note else {},
         )
-        return _action_result(data)
+        return _action_result(data, status_code=status_code)
 
     async def list_asset_files(self, asset_id: int) -> list[SnipeItFile]:
         data = await self._get_json(f"/api/v1/hardware/{asset_id}/files")
@@ -365,13 +383,13 @@ class SnipeItClient:
         json: dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
         data: dict[str, Any] | None = None,
-    ) -> Any:
+    ) -> tuple[Any, int]:
         response = await self._request(
             "POST", path, json=json, files=files, data=data, write=True
         )
         if response.status_code == 204 or not getattr(response, "content", b""):
-            return {}
-        return self._json(response)
+            return {}, response.status_code
+        return self._json(response), response.status_code
 
     async def _request(
         self,
