@@ -278,8 +278,16 @@ class SnipeItClient:
         return _user_from_json(row)
 
     async def list_user_assets(self, user_id: int) -> list[SnipeItAsset]:
+        # Snipe-IT only applies the assigned_to filter when assigned_type is
+        # also present (verified against Snipe-IT v8.8.3); without it every
+        # asset in the instance is returned.
         data = await self._get_json(
-            "/api/v1/hardware", params={"assigned_to": user_id, "limit": 500}
+            "/api/v1/hardware",
+            params={
+                "assigned_to": user_id,
+                "assigned_type": "App\\Models\\User",
+                "limit": 500,
+            },
         )
         return [_asset_from_json(row) for row in _rows(data)]
 
@@ -314,8 +322,10 @@ class SnipeItClient:
     ) -> SnipeItActionResult:
         data, status_code = await self._post_json(
             f"/api/v1/hardware/{asset_id}/checkout",
+            # Snipe-IT rejects "assigned_to" on this endpoint (verified against
+            # v8.8.3): the user target must be sent as "assigned_user".
             json={
-                "assigned_to": user_id,
+                "assigned_user": user_id,
                 "checkout_to_type": "user",
                 "note": note,
             },
@@ -340,7 +350,9 @@ class SnipeItClient:
     ) -> SnipeItActionResult:
         data, status_code = await self._post_json(
             f"/api/v1/hardware/{asset_id}/files",
-            files={"file": (filename, content, content_type)},
+            # Snipe-IT expects the multipart field "file[]" (verified against
+            # v8.8.3); a plain "file" field is ignored and the upload fails.
+            files={"file[]": (filename, content, content_type)},
             data={"note": note} if note else {},
         )
         return _action_result(data, status_code=status_code)

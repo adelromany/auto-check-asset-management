@@ -139,6 +139,7 @@ class SnipeItFake:
             rows = list(self.assets.values())
             search = request.url.params.get("search")
             assigned_to = request.url.params.get("assigned_to")
+            assigned_type = request.url.params.get("assigned_type")
             if search is not None:
                 needle = search.casefold()
                 rows = [
@@ -147,7 +148,12 @@ class SnipeItFake:
                     if needle
                     in f"{asset['serial']} {asset['asset_tag']} {asset['name']}".casefold()
                 ]
-            elif assigned_to is not None:
+            elif (
+                assigned_to is not None
+                # Mirrors Snipe-IT v8.8.3: assigned_to is only honored when
+                # assigned_type is present as well.
+                and assigned_type is not None
+            ):
                 user_id = int(assigned_to)
                 rows = [
                     asset
@@ -165,7 +171,10 @@ class SnipeItFake:
         action = parts[4]
         if action == "checkout":
             body = json.loads(request.content or b"{}")
-            user = self.users.get(int(body["assigned_to"]))
+            # Mirrors Snipe-IT v8.8.3, which accepts "assigned_user" here.
+            user = self.users.get(
+                int(body.get("assigned_user") or body.get("assigned_to"))
+            )
             if user is None:
                 return httpx.Response(404, json={"status": "error"})
             self.checkout_notes.append(str(body.get("note") or ""))
@@ -214,7 +223,9 @@ class SnipeItFake:
         )
         message = BytesParser(policy=default).parsebytes(raw)
         for part in message.iter_parts():
-            if part.get_param("name", header="content-disposition") == "file":
+            name = part.get_param("name", header="content-disposition")
+            # Mirrors Snipe-IT v8.8.3, which reads the "file[]" field.
+            if name == "file[]":
                 return (
                     part.get_filename() or "upload.bin",
                     part.get_payload(decode=True) or b"",
