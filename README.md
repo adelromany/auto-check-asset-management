@@ -113,14 +113,27 @@ docs/
   discovery.md             # code map produced before the refactor
 ```
 
-## Principle visuals
+## Visual documentation
 
-The Markdown files in `docs/principles/` remain the source of truth. Build
-their offline HTML versions with `python tools/build_principles_visual.py`.
-The generated `handover-workflow.html` explains the code-defined device handover flow; build it directly with `python tools/build_handover_workflow.py`.
-Check that committed visuals are current with
-`python tools/build_principles_visual.py --check`. Open
-`docs/principles/visual/index.html` in a browser to read them.
+The Markdown files in `docs/principles/` and the application code remain the
+source of truth. The offline HTML diagrams are generated with
+[Archify](https://github.com/tt-a1i/archify) 3.2.0, fetched as a development
+tool into the git-ignored `.tools/archify` folder. Archify is not an
+application dependency.
+
+```bash
+# once per checkout (Node 18 or newer)
+scripts/fetch_archify.sh          # Windows PowerShell: scripts/fetch_archify.ps1
+
+# regenerate every committed source and HTML file
+.venv/bin/python tools/visual/build_visuals.py build
+
+# rebuild sources in memory, validate with --quality showcase, verify hashes
+.venv/bin/python tools/visual/build_visuals.py check
+```
+
+Open `docs/visual/index.html` in a browser to read the visual documentation.
+`tools/visual/build_visuals.py list` prints every registered artifact.
 
 ## UI system
 

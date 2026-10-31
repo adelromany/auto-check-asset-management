@@ -70,6 +70,11 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | tools/build_principles_visual.py | infra | deterministic offline principle visual generator |
 | module | tools/graph_data.py | infra | shared LIVE GRAPH parsing for generation and consistency tests |
 | module | tools/build_handover_workflow.py | infra | generates code-derived handover workflow visual |
+| module | tools/visual/__init__.py | infra | package marker for the Archify visual builder |
+| module | tools/visual/archify.py | infra | pinned Archify CLI wrapper for local build and check |
+| module | tools/visual/artifacts.py | infra | artifact descriptions, hashes and visual manifest |
+| module | tools/visual/build_visuals.py | infra | single build/check/list entry point for visual docs |
+| module | tools/visual/registry.py | infra | ordered registry of committed visual artifacts |
 
 ### Nodes — routes
 | kind | method path | exposed by |
