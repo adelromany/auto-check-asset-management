@@ -23,5 +23,6 @@ Dependencies: 2←1; 3←1; 4←3; 5←4; 6←3; 7←6; 8←7; 9←8.
 - BIZ-12 Old devices of the recipient are checked in only by an explicit per-device engineer decision (a device may be kept, for example during a temporary swap).
 - BIZ-13 Only one active handover per device serial.
 - BIZ-14 Status is derived: `cancelled` explicit; `completed` all passed; `stalled` any `failed`/`blocked`; `draft` all pending; else `in_progress`. The time-based "no progress for N days" rule is an open decision and is not implemented.
-- BIZ-15 The dashboard shows completed versus not-yet-completed handovers and, for each incomplete one, exactly what is missing and why.
+- BIZ-15 The dashboard shows completed versus not-yet-completed handovers and, for each incomplete one, exactly what is missing and why. Implemented in Phase 7: `/handovers` (KPI tiles, filters, stage progress, Missing column) and `/handovers/{id}` (stage checklist and actions).
+- BIZ-17 A dry-run preview (`GET /api/handovers/{id}/preview`) lists the Snipe-IT calls an engineer is about to make and performs no writes. The engineer still confirms each stage explicitly.
 - BIZ-16 Out of scope until the owner decides: Lab Care ticket integration, QR/mailbox scan automation, daily reconciliation dashboard, GPO logon reporting, per-engineer OAuth.

@@ -2,6 +2,7 @@
 
 - CLN-01 Names reveal intent and use the project vocabulary (`handover`, `stage`, `checkout`, `checkin`, `recipient`, `engineer`). No abbreviations except well-known ones (`id`, `url`, `sha256`).
 - CLN-02 Functions do one thing, ≤ 40 lines as a guide, ≤ 4 parameters (group extras into a dataclass or DTO). Files ≤ 400 lines; split by responsibility.
+  **Known exceptions at final sync:** `app/services/snipeit_ops.py` (640 lines) and `static/js/handover_detail.js` (461 lines). Both are cohesive but too large; splitting them is recorded in Q-6 and is not claimed as done.
 - CLN-03 Type hints on every function signature. Return types are explicit. No `Any` unless justified in a comment.
 - CLN-04 Pure functions for rules; side effects only in services, repositories, clients.
 - CLN-05 No duplicated logic: the second copy is extracted. The stage list, status values, and Snipe-IT paths exist in exactly one place.
@@ -12,4 +13,4 @@
 - CLN-10 Keep the existing style: module docstring at top, f-strings, `async def` for I/O, formatting consistent with neighboring files. Do not reformat files you are not changing.
 - CLN-11 Small public surface: helpers are private (`_name`). Routers contain no helper logic worth testing; if it is, it belongs in a service.
 - CLN-12 Dates and times: timezone-aware UTC everywhere; injected clock in domain/services for testability.
-- CLN-13 JavaScript: ES modules, `const` by default, no globals, one responsibility per module, no `innerHTML` with data.
+- CLN-13 JavaScript: ES modules, `const` by default, no globals except the small `window.HandoverShell` bridge, one responsibility per module, no `innerHTML` with data.

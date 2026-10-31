@@ -10,7 +10,9 @@
 
   <script src="/static/js/theme-init.js?v=1"></script>
 </head>
-<body class="min-h-screen bg-background text-foreground">
+<body class="min-h-screen bg-background text-foreground"
+      data-probe-text="clipboard-probe-0123456789"
+      data-report-endpoint="/diag/clipboard/report">
 <div class="mx-auto flex min-h-screen w-full max-w-3xl flex-col">
 
   <header class="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -46,7 +48,10 @@
         <h2 class="card-title text-xs font-semibold uppercase tracking-wider text-muted-foreground">Facts</h2>
       </div>
       <div class="card-content p-0">
-        <table id="facts" class="table"><tbody class="table-body"></tbody></table>
+        <table id="facts" class="table">
+          <caption class="sr-only">Facts include isSecureContext, protocol, host, clipboard support and permission.</caption>
+          <tbody class="table-body"></tbody>
+        </table>
       </div>
     </div>
 

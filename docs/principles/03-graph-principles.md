@@ -97,6 +97,19 @@ The project graph is a map of what depends on what, so any change can be assesse
 | external | Snipe-IT API | app/clients/snipeit.py |
 | external | Entra ID (OIDC) | app/auth.py |
 
+### Nodes — stages (fixed order)
+| kind | stage | depends on |
+|---|---|---|
+| stage | device_prepared | — |
+| stage | user_signed_in | device_prepared |
+| stage | agent_report | device_prepared |
+| stage | recipient_check | agent_report |
+| stage | checkout | recipient_check |
+| stage | report_printed | agent_report |
+| stage | user_signed | report_printed |
+| stage | document_scanned | user_signed |
+| stage | document_pushed | document_scanned |
+
 ### Nodes — tables
 | kind | table | read by | written by |
 |---|---|---|---|
@@ -110,17 +123,22 @@ The project graph is a map of what depends on what, so any change can be assesse
 | kind | path | used by | purpose |
 |---|---|---|---|
 | asset | templates/index.html | GET / | landing page and "Start handover" entry link |
+| asset | templates/diag_clipboard.html | GET /diag/clipboard | clipboard diagnostics page |
+| asset | templates/handover_report.html | GET /api/handovers/{id}/report | printable report |
+| asset | static/css/report.css | handover_report.html | printable report styles, external for CSP |
 | asset | templates/handovers.html | GET /handovers | server-rendered dashboard shell |
 | asset | templates/handover_detail.html | GET /handovers/{id} | server-rendered case page |
 | asset | templates/partials/page_head.html | handovers.html, handover_detail.html | shared head, CSS and theme bootstrap |
 | asset | templates/partials/topbar.html | handovers.html, handover_detail.html | shared navigation and SSO identity |
 | asset | templates/partials/labels.html | handovers.html, handover_detail.html | escaping macros for status/stage labels |
-| asset | static/js/theme-init.js | page_head.html | apply stored theme before first paint (CSP-safe, external) |
 | asset | static/js/shell.js | handovers.html, handover_detail.html | shared topbar/theme/toast helpers |
 | asset | static/js/handovers.js | handovers.html | filters, KPI refresh and table states via textContent |
 | asset | static/js/handover_detail.js | handover_detail.html | stage actions, recipient, preview, upload and push |
 | asset | static/js/diag_clipboard.js | diag_clipboard.html | clipboard diagnostics, external for CSP |
-| asset | static/css/report.css | handover_report.html | printable report styles, external for CSP |
+| asset | static/js/theme-init.js | page_head.html, index.html, diag_clipboard.html | pre-paint theme, external for CSP |
+| asset | static/js/theme.js | index.html, handovers.html, handover_detail.html, diag_clipboard.html | theme toggle |
+| asset | static/js/clipboard.js | index.html | shared copyText utility |
+| asset | static/app.js | index.html | legacy landing-page UI |
 
 ### Edges (selected, source of truth for impact)
 | from | edge | to |
@@ -130,6 +148,14 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/routers/snipeit.py | imports | app/clients/snipeit.py |
 | app/clients/snipeit.py | uses | Snipe-IT API |
 | app/auth.py | uses | Entra ID (OIDC) |
+| stage user_signed_in | depends_on | stage device_prepared |
+| stage agent_report | depends_on | stage device_prepared |
+| stage recipient_check | depends_on | stage agent_report |
+| stage checkout | depends_on | stage recipient_check |
+| stage report_printed | depends_on | stage agent_report |
+| stage user_signed | depends_on | stage report_printed |
+| stage document_scanned | depends_on | stage user_signed |
+| stage document_pushed | depends_on | stage document_scanned |
 | app/main.py | imports | app/routers/* |
 | app/main.py | imports | app/security/startup.py |
 | app/main.py | imports | app/security/csrf.py |

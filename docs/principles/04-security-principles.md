@@ -36,8 +36,13 @@ This system runs inside a company and controls who is recorded as holding compan
 - SEC-21 Employee-activity monitoring (for example logon reporting) requires HR/legal approval and is out of scope.
 
 ## Known gaps (tracked, not hidden)
-- SEC-22 The agent submit endpoint trusts any holder of a valid short code. Binding a single-use token into the generated script is a future decision.
+- SEC-22 The agent submit endpoint trusts any holder of a valid short code. Binding a single-use token into the generated script is a future decision (Q-3).
 - SEC-23 Transport is plain HTTP until HTTPS is implemented (separate branch). Cookies must not be marked `Secure` until then, and this is documented.
+
+## Hardening added in Phase 8
+- SEC-24 `/api/session/{code}/submit` and the recipient search are rate limited by an in-memory sliding window (60 requests per 60 seconds by default). The limiter is single-process; multi-worker deployment needs a shared store (Q-4).
+- SEC-25 The CSP is self-only and contains no `unsafe-inline`, `unsafe-eval` or external host. Theme bootstrap, diagnostics and report styles are self-hosted files; do not reintroduce inline script or style.
+- SEC-26 The CSRF check is skipped when `SSO_ENABLED=false` because no authenticated session cookie exists in the development bypass. Production runs with SSO on.
 
 ## Review checklist (run on every change)
 Secrets absent? Route authenticated? Input validated? Output escaped? Upload rules applied? Token kept out of logs? Failure path returns a generic error? Events written?

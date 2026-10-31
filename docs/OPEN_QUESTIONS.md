@@ -59,3 +59,41 @@ the single-process deployment used today. A shared store (Redis, or a small
 database table) is needed before horizontal scaling.
 
 Owner: platform/operations owner.
+
+## Q-5 — Should structured technical logging and request ids be added? (OPEN)
+
+Context: principle file 02 describes structured `key=value` logs, a request id
+returned as `X-Request-ID`, level policy and a startup configuration summary.
+None of that is implemented: the app relies on uvicorn's default logging and
+the `events` table for the audit trail.
+
+Conservative option taken: do not claim the logging stack exists; keep the
+token/secret logging prohibitions and the append-only event trail. The final
+sync rewrites file 02 to separate implemented audit behavior from the
+unimplemented technical logging.
+
+Owner: platform/operations owner.
+
+## Q-6 — When should the two oversized files be split? (OPEN)
+
+Context: principle 11 asks for files ≤ 400 lines. At final sync
+`app/services/snipeit_ops.py` is 640 lines and `static/js/handover_detail.js`
+is 461 lines. Both are cohesive, and splitting them now would mix refactoring
+with the documentation sync.
+
+Conservative option taken: record the exception in file 11 and defer the split
+to a dedicated `refactor/` branch with its own tests.
+
+Owner: code owner.
+
+## Q-7 — When will the 10,000-handover performance run happen? (OPEN)
+
+Context: principle 12 defines p95 targets and a `scripts/seed_perf.py` plus
+`docs/performance-notes.md`. Neither the script nor the notes exist, and no
+timing run was executed. The dashboard aggregates are SQL and the row query is
+page-sized, but that is not a measurement.
+
+Conservative option taken: report the targets as unverified, not met. Add the
+seed script and record machine/date timings in a follow-up branch.
+
+Owner: performance/code owner.

@@ -2,7 +2,8 @@
 
 /* Clipboard diagnostics page. Self-hosted so the page works under CSP. */
 
-const PROBE_TEXT = "clipboard-probe-0123456789";
+const PROBE_TEXT = document.body.dataset.probeText || "clipboard-probe-0123456789";
+const REPORT_ENDPOINT = document.body.dataset.reportEndpoint || "/diag/clipboard/report";
 const facts = {};
 
 function row(k, v, cls) {
@@ -134,7 +135,7 @@ document.getElementById("btn-json").addEventListener("click", () => {
 
 document.getElementById("btn-send").addEventListener("click", async () => {
   try {
-    const resp = await fetch("/diag/clipboard/report", {
+    const resp = await fetch(REPORT_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(facts),
