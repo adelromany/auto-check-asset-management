@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "1aae2430-4779-4515-8b79-6ed553dc0bff",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/focus-domain.json",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/focus-domain.html",
+  "specification": {
+    "sha256": "41d858db9885e1981aebab7de478c0ef040e780708b53efc5f05eec4ce111536",
+    "bytes": 2807
+  },
+  "artifact": {
+    "sha256": "a7882ad165ea6b28e78594f10a0860d67c0bdb5c5ca51d2d70f151b100247991",
+    "bytes": 832808
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "b86f3314-859e-4433-af30-50a9cac3203e",
+  "status": "current",
+  "command": "deliver",
+  "type": "explainer",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/02-logging-principles.archify.md",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/02-logging-principles.html",
+  "specification": {
+    "sha256": "3f2e9c923a89a7ac0e7f20fd426867933f6509f3eb7d4a4524925de77c369a2f",
+    "bytes": 3146
+  },
+  "artifact": {
+    "sha256": "a647d2a0ac01e79a20b80a4ae48fe910185b28b421927c12f6d8f8a9692cfa58",
+    "bytes": 152297
+  },
+  "explainer": {
+    "preparedSha256": "dee19ab9e4a6d171b8ca5550f8884a17a9eb1dee0234c8e4d2d96d97404d7684",
+    "dependencies": []
+  }
+}

@@ -61,16 +61,16 @@ class Artifact:
             )
         return text if text.endswith("\n") else text + "\n"
 
-    def output_text(self) -> str:
-        return self.source_text()
+    def output_sha256(self) -> str | None:
+        """Hash the committed HTML, or ``None`` before the first build."""
+        if not self.output_path.is_file():
+            return None
+        return sha256_bytes(self.output_path.read_bytes())
 
     def source_sha256(self) -> str | None:
         if self.static:
             return None
         return sha256_text(self.source_text())
-
-    def output_sha256(self) -> str:
-        return sha256_text(self.output_text())
 
 
 def manifest_bytes(artifacts: list[Artifact]) -> bytes:

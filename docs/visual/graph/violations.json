@@ -1,0 +1,84 @@
+{
+  "cards": [
+    {
+      "dot": "emerald",
+      "items": [
+        "Every edge in the LIVE GRAPH passes the three architecture checks.",
+        "A violation would appear here as a labelled problem edge."
+      ],
+      "title": "0 violations"
+    },
+    {
+      "dot": "cyan",
+      "items": [
+        "domain imports standard library only",
+        "routers import no app.db and no httpx",
+        "services import no FastAPI"
+      ],
+      "title": "Checked rules"
+    }
+  ],
+  "components": [
+    {
+      "id": "layer-domain",
+      "label": "domain",
+      "pos": [
+        40,
+        120
+      ],
+      "size": [
+        230,
+        64
+      ],
+      "sublabel": "must import nothing from app",
+      "type": "backend"
+    },
+    {
+      "id": "layer-router",
+      "label": "routers",
+      "pos": [
+        330,
+        120
+      ],
+      "size": [
+        210,
+        64
+      ],
+      "sublabel": "no db, no httpx",
+      "type": "frontend"
+    },
+    {
+      "id": "layer-service",
+      "label": "services",
+      "pos": [
+        600,
+        120
+      ],
+      "size": [
+        210,
+        64
+      ],
+      "sublabel": "no FastAPI",
+      "type": "backend"
+    }
+  ],
+  "connections": [
+    {
+      "from": "layer-router",
+      "label": "allowed",
+      "to": "layer-service"
+    }
+  ],
+  "diagram_type": "architecture",
+  "meta": {
+    "output": "docs/visual/graph/violations.html",
+    "quality_profile": "showcase",
+    "subtitle": "Checked against the same rules as tests/test_architecture_rules.py.",
+    "title": "Layering violations",
+    "viewBox": [
+      880,
+      300
+    ]
+  },
+  "schema_version": 1
+}

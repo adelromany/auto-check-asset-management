@@ -1,0 +1,73 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "Each node is one Python module from the graph.",
+        "The tag is its recorded responsibility.",
+        "Open the architecture page for the allowed dependency direction."
+      ],
+      "title": "How to read it"
+    }
+  ],
+  "components": [
+    {
+      "id": "repositories-handovers",
+      "label": "handovers.py",
+      "pos": [
+        40,
+        70
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "repositories/handovers.py",
+      "tag": "handover, stage and agent-report data access",
+      "type": "backend"
+    },
+    {
+      "id": "repositories-documents",
+      "label": "documents.py",
+      "pos": [
+        40,
+        136
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "repositories/documents.py",
+      "tag": "stored evidence document data access",
+      "type": "backend"
+    },
+    {
+      "id": "repositories-events",
+      "label": "events.py",
+      "pos": [
+        40,
+        202
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "repositories/events.py",
+      "tag": "insert-only business event trail",
+      "type": "backend"
+    }
+  ],
+  "connections": [],
+  "diagram_type": "architecture",
+  "meta": {
+    "output": "docs/visual/graph/focus-repository.html",
+    "quality_profile": "showcase",
+    "subtitle": "3 modules declared as repository in the LIVE GRAPH.",
+    "title": "repositories: module focus",
+    "viewBox": [
+      400,
+      318
+    ]
+  },
+  "schema_version": 1
+}

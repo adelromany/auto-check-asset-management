@@ -1,0 +1,47 @@
+# 05 — Business Principles
+
+Summary (generated from the headings): This page has 4 sections. It keeps every rule in the source file and adds no new rule.
+
+## Vocabulary (use exactly these words in code, API, DB, UI) {#vocabulary-use-exactly-these-words-in-code-api-db-ui-0}
+
+| Rule | Text |
+| --- | --- |
+| BIZ-01 {#biz-01} | **Handover**: one case of giving one device to one employee. **Checkout**: assign an asset to a user in Snipe-IT. **Checkin**: return an asset from a user in Snipe-IT. **Recipient**: the employee receiving the device. **Engineer**: the IT person performing the handover (SSO identity). **Stage**: one verifiable step of a handover. |
+
+## Principles {#principles-1}
+
+| Rule | Text |
+| --- | --- |
+| BIZ-02 {#biz-02} | Snipe-IT is the system of record for assignments. The portal stores workflow state and evidence only. It is not a second asset inventory. |
+| BIZ-03 {#biz-03} | Physical reality is the reference. The engineer works from the physical device and the report; Snipe-IT is corrected as a consequence of verified handovers. |
+| BIZ-04 {#biz-04} | Paper signature is mandatory. No electronic signature is implemented or suggested. The signed sheet is scanned and stored as evidence. |
+| BIZ-05 {#biz-05} | "Done" means verified. A stage that touches Snipe-IT passes only after the portal re-reads Snipe-IT and sees the expected state. Pressing a button is not proof. |
+| BIZ-06 {#biz-06} | A handover is `completed` only when all ten stages are `passed` or `skipped`. |
+
+## The ten stages (fixed order) {#the-ten-stages-fixed-order-2}
+
+`device_prepared` → `user_signed_in` → `agent_report` → `software_check` → `recipient_check` → `checkout` → `report_printed` → `user_signed` → `document_scanned` → `document_pushed`. Dependencies: 2←1; 3←1; 4←3; 5←4; 6←4+5; 7←3; 8←7; 9←8; 10←9. A skipped software check is an explicit, reasoned engineer override and satisfies dependencies.
+
+## Rules {#rules-3}
+
+| Rule | Text |
+| --- | --- |
+| BIZ-07 {#biz-07} | The agent report must match the handover serial and include CPU, positive RAM, and at least one disk; otherwise stage 3 is `failed` with a reason for every missing or mismatched item. |
+| BIZ-18 {#biz-18} | Stage 4 requires every configured software id to be reported installed and Windows activation status code 1. A failed check can be skipped only through the authenticated override with an audit reason. |
+| BIZ-08 {#biz-08} | The recipient is the Snipe-IT user explicitly confirmed by the engineer. If the user does not exist in Snipe-IT, stage 4 is `blocked` ("Recipient not found in Snipe-IT"), the handover is `stalled`, and the dashboard names the missing step. The portal never creates users. |
+| BIZ-09 {#biz-09} | The signed sheet is attached to the DEVICE (the Snipe-IT asset), never to the user. It does not depend on the recipient: stage 9 needs only the stored scan (stage 8) and an existing asset. If the asset serial is unknown in Snipe-IT, stage 9 is `failed` with that reason. |
+| BIZ-10 {#biz-10} | If the detected recipient equals the engineer's own account, the portal warns (the script may have run elevated) and forces an explicit choice. |
+| BIZ-11 {#biz-11} | An asset assigned to someone else is never taken over silently: stage 5 fails and names the current holder. |
+| BIZ-12 {#biz-12} | Old devices of the recipient are checked in only by an explicit per-device engineer decision (a device may be kept, for example during a temporary swap). |
+| BIZ-13 {#biz-13} | Only one active handover per device serial. |
+| BIZ-14 {#biz-14} | Status is derived: `cancelled` explicit; `completed` all passed or skipped; `stalled` any failed/blocked or a draft/in-progress case with no activity for configured `STALL_HOURS` (default 24, zero disables); `draft` all pending and below the age threshold; else `in_progress`. The 24-hour value is PROPOSED pending owner approval (D-66). |
+| BIZ-15 {#biz-15} | The dashboard shows completed versus not-yet-completed handovers and, for each incomplete one, exactly what is missing and why. Implemented in Phase 7: `/handovers` (KPI tiles, filters, stage progress, Missing column) and `/handovers/{id}` (stage checklist and actions). |
+| BIZ-17 {#biz-17} | A dry-run preview (`GET /api/handovers/{id}/preview`) lists the Snipe-IT calls an engineer is about to make and performs no writes. The engineer still confirms each stage explicitly. |
+| BIZ-16 {#biz-16} | Out of scope until the owner decides: Lab Care ticket integration, QR/mailbox scan automation, daily reconciliation dashboard, GPO logon reporting, per-engineer OAuth. |
+
+## Source {#source}
+
+@facts
+| Source Markdown | `docs/principles/05-business-principles.md` |
+| SHA-256 | `addd0c2cfc214c785a72c762ae124e36d37467f49d9d5a8ae950a39c3296a5bb` |
+| Repository link | [Open the Markdown source](https://github.com/adelromany/auto-check-asset-management/blob/main/docs/principles/05-business-principles.md) |

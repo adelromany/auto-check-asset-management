@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "d8ea72d9-4471-436d-ac9c-cedd0b83f6df",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/focus-router.json",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/focus-router.html",
+  "specification": {
+    "sha256": "ba1b36be8750e86af6f77126b0f424f8010e160a1f675d117df74497345e5ad4",
+    "bytes": 3284
+  },
+  "artifact": {
+    "sha256": "d27c1292a9c23b7ef0c6b9b9871eeada1a858c410e342b3a1c1f1649d5f2cbcf",
+    "bytes": 835251
+  }
+}

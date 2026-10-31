@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "b8418373-e5b6-4617-a618-8e852d67df98",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/focus-repository.json",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/focus-repository.html",
+  "specification": {
+    "sha256": "a1d1f7d59e295a3a8e005c18856f99ea73f38cfd5ce1f378bb85c021f36c447b",
+    "bytes": 1566
+  },
+  "artifact": {
+    "sha256": "a1e073a15827b6153d8c475b1b45b8fa88f66536da5eb01c4eee86c3a8d05867",
+    "bytes": 826974
+  }
+}

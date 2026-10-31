@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visual documentation</title>
+<style>
+:root{color-scheme:light dark;--bg:#f6f7f9;--panel:#ffffff;--ink:#16181d;--muted:#5c6370;
+--line:#d9dde5;--accent:#0b63ce;--accent-soft:#e8f1fd;--shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.06)}
+@media (prefers-color-scheme:dark){:root{--bg:#101216;--panel:#171a20;--ink:#e8ebf1;--muted:#9aa3b2;
+--line:#2a2f3a;--accent:#6aa8ff;--accent-soft:#152238;--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3)}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1120px;margin:0 auto;padding:48px 24px 80px}
+header.top{display:flex;gap:24px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-size:34px;line-height:1.15;margin:8px 0 10px;letter-spacing:-.02em}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.search{margin:28px 0 8px;position:relative;max-width:420px}
+.search input{width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:10px;
+background:var(--panel);color:var(--ink);font:inherit;outline:none}
+.search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;
+box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;min-height:150px}
+.card .num{font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted);letter-spacing:.08em}
+.card h2{font-size:17px;line-height:1.3;margin:0}
+.card p{margin:0;color:var(--muted);font-size:14px}
+.meta{margin-top:auto;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;
+gap:8px;font-size:12px;color:var(--muted)}
+.pill{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 9px;font-weight:600}
+.feature{border-color:var(--accent)}
+footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">auto-check-asset-management</div>
+      <h1>Visual documentation</h1>
+      <p class="lede">The twelve principle files and the code-derived handover workflow, rendered as offline Archify pages. The Markdown and the application code remain the source of truth.</p>
+    </div>
+  </header>
+  <div class="search"><input type="search" data-search placeholder="Search pages and rules…" aria-label="Search pages and rules"></div>
+  <section class="grid" aria-live="polite">
+      <a class="card" data-card href="01-test-principles.html">
+        <span class="num">PRINCIPLE 01</span>
+        <h2>Test Principles</h2>
+        <p>The test pyramid, the characterization contract and the checks every change must carry.</p>
+        <span class="meta"><span>18 rules</span><span class="pill">Read</span></span>
+      </a>
+      <a class="card" data-card href="02-logging-principles.html">
+        <span class="num">PRINCIPLE 02</span>
+        <h2>Logging Principles</h2>
+        <p>The append-only audit trail and the structured technical log, with the data they must never hold.</p>
+        <span class="meta"><span>13 rules</span><span class="pill">Read</span></span>
+      </a>
+      <a class="card" data-card href="03-graph-principles.html">
+        <span class="num">PRINCIPLE 03</span>
+        <h2>Graph Principles</h2>
+        <p>The LIVE GRAPH contract: modules, routes, tables and the rules that keep the map honest.</p>
+        <span class="meta"><span>9 rules</span><span class="pill">Read</span></span>
+      </a>
+      <a class="card" data-card href="04-security-principles.html">
+        <span class="num">PRINCIPLE 04</span>
+        <h2>Security Principles</h2>
+        <p>The red line: secrets, identity, input, files and Snipe-IT writes.</p>
+        <span class="meta"><span>27 rules</span><span class="pill">Read</span></span>
+      </a>
+      <a class="card" data-card href="05-business-principles.html">
+        <span class="num">PRINCIPLE 05</span>
+        <h2>Business Principles</h2>
+        <p>The handover vocabulary, the ten fixed stages and the rules that decide what is done.</p>
+        <span class="meta"><span>18 rules</span><span class="pill">Read</span></span>
+      </a>
+      <a class="card" data-card href="06-clean-architecture-and-design-patterns.html">
+        <span class="num">PRINCIPLE 06</span>
+        <h2>Clean Architecture &amp; Design Patterns</h2>
+        <p>The dependency rule, the patterns that earn their place and the database-session contract.</p>
+        <span class="meta"><span>21 rules</span><span class="pill">Read</span></span>
+      </a>
+      <a class="card" data-card href="07-ui-ux-principles.html">
+        <span class="num">PRINCIPLE 07</span>
+        <h2>UI/UX Principles</h2>
+        <p>One consistent server-rendered interface: vocabulary, hierarchy, states and accessibility.</p>
+        <span class="meta"><span>21 rules</span><span class="pill">Read</span></span>
+      </a>
+      <a class="card" data-card href="08-git-branches-principles.html">
+        <span class="num">PRINCIPLE 08</span>
+        <h2>Git Branches Principles</h2>
+        <p>Branch names, commit shape and the checks that keep pushed history intact.</p>
+        <span class="meta"><span>10 rules</span><span class="pill">Read</span></span>
+      </a>
+      <a class="card" data-card href="09-decisions.html">
+        <span class="num">PRINCIPLE 09</span>
+        <h2>Decisions</h2>
+        <p>Owner decisions and engagement decisions, with status, context and consequences.</p>
+        <span class="meta"><span>0 rules</span><span class="pill">Read</span></span>
+      </a>
+      <a class="card" data-card href="10-tech-stack-principles.html">
+        <span class="num">PRINCIPLE 10</span>
+        <h2>Tech Stack Principles</h2>
+        <p>The approved stack, its installed versions and the rules for adding anything new.</p>
+        <span class="meta"><span>9 rules</span><span class="pill">Read</span></span>
+      </a>
+      <a class="card" data-card href="11-clean-code-principles.html">
+        <span class="num">PRINCIPLE 11</span>
+        <h2>Clean Code Principles</h2>
+        <p>Names, function and file size, typing, errors and the JavaScript module contract.</p>
+        <span class="meta"><span>13 rules</span><span class="pill">Read</span></span>
+      </a>
+      <a class="card" data-card href="12-performance-principles.html">
+        <span class="num">PRINCIPLE 12</span>
+        <h2>Performance Principles</h2>
+        <p>Targets, pagination, SQL aggregates and the performance work that remains unmeasured.</p>
+        <span class="meta"><span>13 rules</span><span class="pill">Read</span></span>
+      </a>
+      <a class="card" data-card href="graph/index.html">
+        <span class="num">INTERACTIVE DIAGRAMS</span>
+        <h2>LIVE GRAPH</h2>
+        <p>Architecture, layer focus views, violations and freshness, generated from the machine-checked graph.</p>
+        <span class="meta"><span>Archify architecture</span><span class="pill">Explore</span></span>
+      </a>
+      <a class="card feature" data-card href="handover/index.html">
+        <span class="num">DEVICE HANDOVER WORKFLOW</span>
+        <h2>Device handover workflow</h2>
+        <p>Every stage, the onboarding sequence, the status lifecycle, the database model and the code-versus-briefing differences.</p>
+        <span class="meta"><span>Workflow · sequence · lifecycle · ERD</span><span class="pill">Open</span></span>
+      </a>
+  </section>
+  <p data-empty class="hidden">No page matches that search.</p>
+  <footer>Generated with Archify 3.2.0 from the committed Markdown and code. Open any card; the pages work offline.</footer>
+</main>
+<script>
+const input=document.querySelector('[data-search]');
+const cards=[...document.querySelectorAll('[data-card]')];
+const empty=document.querySelector('[data-empty]');
+if(input){input.addEventListener('input',()=>{const q=input.value.trim().toLowerCase();let shown=0;
+for(const card of cards){const hit=!q||card.textContent.toLowerCase().includes(q);
+card.classList.toggle('hidden',!hit);if(hit)shown++;}
+if(empty)empty.classList.toggle('hidden',shown!==0);});}
+</script>
+</body>
+</html>

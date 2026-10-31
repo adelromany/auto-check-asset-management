@@ -1,0 +1,118 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "Each node is one Python module from the graph.",
+        "The tag is its recorded responsibility.",
+        "Open the architecture page for the allowed dependency direction."
+      ],
+      "title": "How to read it"
+    }
+  ],
+  "components": [
+    {
+      "id": "services-handovers",
+      "label": "handovers.py",
+      "pos": [
+        40,
+        70
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "services/handovers.py",
+      "tag": "create, get, list, confirm, cancel, recompute, agent rep",
+      "type": "backend"
+    },
+    {
+      "id": "services-software-check",
+      "label": "software_check.py",
+      "pos": [
+        40,
+        136
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "services/software_check.py",
+      "tag": "override and re-evaluation of software checks",
+      "type": "backend"
+    },
+    {
+      "id": "services-snipeit-ops",
+      "label": "snipeit_ops.py",
+      "pos": [
+        40,
+        202
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "services/snipeit_ops.py",
+      "tag": "recipient search/confirm, preview, checkin and verified ",
+      "type": "backend"
+    },
+    {
+      "id": "services-documents",
+      "label": "documents.py",
+      "pos": [
+        40,
+        268
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "services/documents.py",
+      "tag": "printable report, safe scan storage, download and verifi",
+      "type": "backend"
+    },
+    {
+      "id": "services-dashboard",
+      "label": "dashboard.py",
+      "pos": [
+        40,
+        334
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "services/dashboard.py",
+      "tag": "database-side dashboard aggregates and page-sized handov",
+      "type": "backend"
+    },
+    {
+      "id": "services-sessions",
+      "label": "sessions.py",
+      "pos": [
+        40,
+        400
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "services/sessions.py",
+      "tag": "in-memory short-code session store",
+      "type": "backend"
+    }
+  ],
+  "connections": [],
+  "diagram_type": "architecture",
+  "meta": {
+    "output": "docs/visual/graph/focus-service.html",
+    "quality_profile": "showcase",
+    "subtitle": "6 modules declared as service in the LIVE GRAPH.",
+    "title": "services: module focus",
+    "viewBox": [
+      400,
+      516
+    ]
+  },
+  "schema_version": 1
+}

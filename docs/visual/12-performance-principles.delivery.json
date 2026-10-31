@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "3f9f15fb-c92b-4f64-85a7-c257413012cb",
+  "status": "current",
+  "command": "deliver",
+  "type": "explainer",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/12-performance-principles.archify.md",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/12-performance-principles.html",
+  "specification": {
+    "sha256": "171e7f3164eca9a9e552095a03fc854ed8276bd9ae41c24a5142ab5ec7f7984b",
+    "bytes": 3247
+  },
+  "artifact": {
+    "sha256": "e54c85bfcff8ae1bd243f65f959eb2363eb1000bb8355a08e7c16b394f82eb20",
+    "bytes": 152443
+  },
+  "explainer": {
+    "preparedSha256": "60aabc98cb8fe95b0fccc120ff060e87e002529dda736ff89f9e2b55621f4548",
+    "dependencies": []
+  }
+}

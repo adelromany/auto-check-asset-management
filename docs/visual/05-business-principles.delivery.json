@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "1152264c-3d6b-44e1-97a8-b25b23476e26",
+  "status": "current",
+  "command": "deliver",
+  "type": "explainer",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/05-business-principles.archify.md",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/05-business-principles.html",
+  "specification": {
+    "sha256": "e3e482d5bb0a90b55125688e7d1d77d6bc515a5ea530f5b0a8e4518acd13f299",
+    "bytes": 4953
+  },
+  "artifact": {
+    "sha256": "b9ab6353122efa701395166e253ef0ec596d836c6b2bcc97d1582edd1d9deb6d",
+    "bytes": 161772
+  },
+  "explainer": {
+    "preparedSha256": "d81d9cd9b45f7678f2dd0ab7cad85d6e195cf0cb24aa4b5862ce92fc0a2804ce",
+    "dependencies": []
+  }
+}

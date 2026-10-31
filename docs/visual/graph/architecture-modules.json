@@ -1,0 +1,895 @@
+{
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "routers (9)",
+      "pad": 12,
+      "wraps": [
+        "routers-pages",
+        "routers-agent",
+        "routers-handovers",
+        "routers-documents",
+        "routers-dashboard",
+        "routers-http-errors",
+        "routers-snipeit",
+        "routers-health",
+        "routers-diag"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "services (6)",
+      "pad": 12,
+      "wraps": [
+        "services-handovers",
+        "services-software-check",
+        "services-snipeit-ops",
+        "services-documents",
+        "services-dashboard",
+        "services-sessions"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "repositories / clients (4)",
+      "pad": 12,
+      "wraps": [
+        "repositories-handovers",
+        "repositories-documents",
+        "repositories-events",
+        "clients-snipeit"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "db / external systems (7)",
+      "pad": 12,
+      "wraps": [
+        "db-base",
+        "db-engine",
+        "db-models-handover",
+        "schemas",
+        "dto-handover",
+        "dto-dashboard",
+        "config"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "domain (pure) (7)",
+      "pad": 12,
+      "wraps": [
+        "domain-stages",
+        "domain-handover-rules",
+        "domain-software-rules",
+        "domain-errors",
+        "domain-redaction",
+        "domain-recipient-identity",
+        "domain-timeutil"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "infrastructure and tools (18)",
+      "pad": 12,
+      "wraps": [
+        "main",
+        "security-startup",
+        "security-csrf",
+        "security-headers",
+        "security-ratelimit",
+        "middleware-request-id",
+        "request-context",
+        "logging-config",
+        "dependencies",
+        "auth",
+        "build-principles-visual",
+        "graph-data",
+        "build-handover-workflow",
+        "visual-init",
+        "visual-archify",
+        "visual-artifacts",
+        "visual-build-visuals",
+        "visual-registry"
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "51 module rows between GRAPH:START and GRAPH:END.",
+        "The node and edge tables remain the source of truth."
+      ],
+      "title": "Source"
+    },
+    {
+      "dot": "amber",
+      "items": [
+        "This view is the inventory, not a route map.",
+        "Open a focus view for one layer."
+      ],
+      "title": "Dense by design"
+    }
+  ],
+  "components": [
+    {
+      "id": "routers-pages",
+      "label": "pages",
+      "pos": [
+        40,
+        80
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "router",
+      "tag": "index, handover dashboard and case pages, ",
+      "type": "backend"
+    },
+    {
+      "id": "routers-agent",
+      "label": "agent",
+      "pos": [
+        40,
+        138
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "router",
+      "tag": "session code create/poll/submit",
+      "type": "backend"
+    },
+    {
+      "id": "routers-handovers",
+      "label": "handovers",
+      "pos": [
+        40,
+        196
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "router",
+      "tag": "/api/handovers create, list, detail, confi",
+      "type": "backend"
+    },
+    {
+      "id": "routers-documents",
+      "label": "documents",
+      "pos": [
+        40,
+        254
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "router",
+      "tag": "report page, document upload/download and ",
+      "type": "backend"
+    },
+    {
+      "id": "routers-dashboard",
+      "label": "dashboard",
+      "pos": [
+        40,
+        312
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "router",
+      "tag": "/api/dashboard summary and paged-row reads",
+      "type": "backend"
+    },
+    {
+      "id": "routers-http-errors",
+      "label": "http_errors",
+      "pos": [
+        40,
+        370
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "router",
+      "tag": "shared domain/client error to HTTP mapping",
+      "type": "backend"
+    },
+    {
+      "id": "routers-snipeit",
+      "label": "snipeit",
+      "pos": [
+        40,
+        428
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "router",
+      "tag": "Snipe-IT device lookup and health",
+      "type": "backend"
+    },
+    {
+      "id": "routers-health",
+      "label": "health",
+      "pos": [
+        40,
+        486
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "router",
+      "tag": "liveness endpoint",
+      "type": "backend"
+    },
+    {
+      "id": "routers-diag",
+      "label": "diag",
+      "pos": [
+        40,
+        544
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "router",
+      "tag": "clipboard diagnostics page (ENABLE_DIAG)",
+      "type": "backend"
+    },
+    {
+      "id": "services-handovers",
+      "label": "handovers",
+      "pos": [
+        236,
+        80
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "service",
+      "tag": "create, get, list, confirm, cancel, recomp",
+      "type": "backend"
+    },
+    {
+      "id": "services-software-check",
+      "label": "software_check",
+      "pos": [
+        236,
+        138
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "service",
+      "tag": "override and re-evaluation of software che",
+      "type": "backend"
+    },
+    {
+      "id": "services-snipeit-ops",
+      "label": "snipeit_ops",
+      "pos": [
+        236,
+        196
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "service",
+      "tag": "recipient search/confirm, preview, checkin",
+      "type": "backend"
+    },
+    {
+      "id": "services-documents",
+      "label": "documents",
+      "pos": [
+        236,
+        254
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "service",
+      "tag": "printable report, safe scan storage, downl",
+      "type": "backend"
+    },
+    {
+      "id": "services-dashboard",
+      "label": "dashboard",
+      "pos": [
+        236,
+        312
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "service",
+      "tag": "database-side dashboard aggregates and pag",
+      "type": "backend"
+    },
+    {
+      "id": "services-sessions",
+      "label": "sessions",
+      "pos": [
+        236,
+        370
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "service",
+      "tag": "in-memory short-code session store",
+      "type": "backend"
+    },
+    {
+      "id": "repositories-handovers",
+      "label": "handovers",
+      "pos": [
+        432,
+        80
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "repository",
+      "tag": "handover, stage and agent-report data acce",
+      "type": "backend"
+    },
+    {
+      "id": "repositories-documents",
+      "label": "documents",
+      "pos": [
+        432,
+        138
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "repository",
+      "tag": "stored evidence document data access",
+      "type": "backend"
+    },
+    {
+      "id": "repositories-events",
+      "label": "events",
+      "pos": [
+        432,
+        196
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "repository",
+      "tag": "insert-only business event trail",
+      "type": "backend"
+    },
+    {
+      "id": "clients-snipeit",
+      "label": "snipeit",
+      "pos": [
+        432,
+        254
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "client",
+      "tag": "Snipe-IT HTTP client, credential provider ",
+      "type": "backend"
+    },
+    {
+      "id": "db-base",
+      "label": "base",
+      "pos": [
+        628,
+        80
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "db",
+      "tag": "declarative base and stable constraint nam",
+      "type": "backend"
+    },
+    {
+      "id": "db-engine",
+      "label": "engine",
+      "pos": [
+        628,
+        138
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "db",
+      "tag": "lazy async engine and session factory (no ",
+      "type": "backend"
+    },
+    {
+      "id": "db-models-handover",
+      "label": "handover",
+      "pos": [
+        628,
+        196
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "db",
+      "tag": "ORM models: Handover, HandoverStage, Agent",
+      "type": "backend"
+    },
+    {
+      "id": "schemas",
+      "label": "schemas",
+      "pos": [
+        628,
+        254
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "dto",
+      "tag": "AgentPayload request model",
+      "type": "backend"
+    },
+    {
+      "id": "dto-handover",
+      "label": "handover",
+      "pos": [
+        628,
+        312
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "dto",
+      "tag": "handover request/response models",
+      "type": "backend"
+    },
+    {
+      "id": "dto-dashboard",
+      "label": "dashboard",
+      "pos": [
+        628,
+        370
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "dto",
+      "tag": "dashboard summary and paged-row response m",
+      "type": "backend"
+    },
+    {
+      "id": "config",
+      "label": "config",
+      "pos": [
+        628,
+        428
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "config",
+      "tag": "the only place environment variables are r",
+      "type": "backend"
+    },
+    {
+      "id": "domain-stages",
+      "label": "stages",
+      "pos": [
+        824,
+        80
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "domain",
+      "tag": "ten fixed stages: keys, order, dependencie",
+      "type": "backend"
+    },
+    {
+      "id": "domain-handover-rules",
+      "label": "handover_rules",
+      "pos": [
+        824,
+        138
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "domain",
+      "tag": "pure derive_status, missing_steps and can_",
+      "type": "backend"
+    },
+    {
+      "id": "domain-software-rules",
+      "label": "software_rules",
+      "pos": [
+        824,
+        196
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "domain",
+      "tag": "pure hardware, required software and activ",
+      "type": "backend"
+    },
+    {
+      "id": "domain-errors",
+      "label": "errors",
+      "pos": [
+        824,
+        254
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "domain",
+      "tag": "typed handover workflow exceptions",
+      "type": "backend"
+    },
+    {
+      "id": "domain-redaction",
+      "label": "redaction",
+      "pos": [
+        824,
+        312
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "domain",
+      "tag": "strip windows_activation.partial_key befor",
+      "type": "backend"
+    },
+    {
+      "id": "domain-recipient-identity",
+      "label": "recipient_identity",
+      "pos": [
+        824,
+        370
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "domain",
+      "tag": "interactive domain-user detection and engi",
+      "type": "backend"
+    },
+    {
+      "id": "domain-timeutil",
+      "label": "timeutil",
+      "pos": [
+        824,
+        428
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "domain",
+      "tag": "normalize persistence datetimes to UTC",
+      "type": "backend"
+    },
+    {
+      "id": "main",
+      "label": "main",
+      "pos": [
+        1020,
+        80
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "application factory, middleware and router",
+      "type": "backend"
+    },
+    {
+      "id": "security-startup",
+      "label": "startup",
+      "pos": [
+        1020,
+        138
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "fail-closed SESSION_SECRET check when SSO ",
+      "type": "backend"
+    },
+    {
+      "id": "security-csrf",
+      "label": "csrf",
+      "pos": [
+        1020,
+        196
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "per-session CSRF token and Origin check fo",
+      "type": "backend"
+    },
+    {
+      "id": "security-headers",
+      "label": "headers",
+      "pos": [
+        1020,
+        254
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "self-only CSP and fixed security headers o",
+      "type": "backend"
+    },
+    {
+      "id": "security-ratelimit",
+      "label": "ratelimit",
+      "pos": [
+        1020,
+        312
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "in-memory limits for agent submit and reci",
+      "type": "backend"
+    },
+    {
+      "id": "middleware-request-id",
+      "label": "request_id",
+      "pos": [
+        1020,
+        370
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "server-generated request ID context and re",
+      "type": "backend"
+    },
+    {
+      "id": "request-context",
+      "label": "request_context",
+      "pos": [
+        1020,
+        428
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "context variable for the current request I",
+      "type": "backend"
+    },
+    {
+      "id": "logging-config",
+      "label": "logging_config",
+      "pos": [
+        1020,
+        486
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "key-value UTC logging setup and request-ID",
+      "type": "backend"
+    },
+    {
+      "id": "dependencies",
+      "label": "dependencies",
+      "pos": [
+        1020,
+        544
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "current_user, session-store and Snipe-IT c",
+      "type": "backend"
+    },
+    {
+      "id": "auth",
+      "label": "auth",
+      "pos": [
+        1020,
+        602
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "Entra ID SSO routes (/login, /auth/callbac",
+      "type": "backend"
+    },
+    {
+      "id": "build-principles-visual",
+      "label": "build_principles_visual",
+      "pos": [
+        1020,
+        660
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "deterministic offline principle visual gen",
+      "type": "backend"
+    },
+    {
+      "id": "graph-data",
+      "label": "graph_data",
+      "pos": [
+        1020,
+        718
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "shared LIVE GRAPH parsing for generation a",
+      "type": "backend"
+    },
+    {
+      "id": "build-handover-workflow",
+      "label": "build_handover_workflow",
+      "pos": [
+        1020,
+        776
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "generates code-derived handover workflow v",
+      "type": "backend"
+    },
+    {
+      "id": "visual-init",
+      "label": "__init__",
+      "pos": [
+        1020,
+        834
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "package marker for the Archify visual buil",
+      "type": "backend"
+    },
+    {
+      "id": "visual-archify",
+      "label": "archify",
+      "pos": [
+        1020,
+        892
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "pinned Archify CLI wrapper for local build",
+      "type": "backend"
+    },
+    {
+      "id": "visual-artifacts",
+      "label": "artifacts",
+      "pos": [
+        1020,
+        950
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "artifact descriptions, hashes and visual m",
+      "type": "backend"
+    },
+    {
+      "id": "visual-build-visuals",
+      "label": "build_visuals",
+      "pos": [
+        1020,
+        1008
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "single build/check/list entry point for vi",
+      "type": "backend"
+    },
+    {
+      "id": "visual-registry",
+      "label": "registry",
+      "pos": [
+        1020,
+        1066
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "ordered registry of committed visual artif",
+      "type": "backend"
+    }
+  ],
+  "connections": [],
+  "diagram_type": "architecture",
+  "meta": {
+    "output": "docs/visual/graph/architecture-modules.html",
+    "quality_profile": "showcase",
+    "subtitle": "Every module node from the LIVE GRAPH, grouped by its declared layer.",
+    "title": "Every module in its band",
+    "viewBox": [
+      1228,
+      1204
+    ]
+  },
+  "schema_version": 1
+}

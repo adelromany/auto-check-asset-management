@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "0d2d058e-8017-4e4c-8d0f-7187528fca04",
+  "status": "current",
+  "command": "deliver",
+  "type": "explainer",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/06-clean-architecture-and-design-patterns.archify.md",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/06-clean-architecture-and-design-patterns.html",
+  "specification": {
+    "sha256": "1982127c5bed908a8c8a0050b0be23c4808be9071787b1eefab736c6e4a250f8",
+    "bytes": 5304
+  },
+  "artifact": {
+    "sha256": "c5d7d582b377fa110b65aca38d9cb864c8ec5012318e78190adf9b515389d5db",
+    "bytes": 559394
+  },
+  "explainer": {
+    "preparedSha256": "99a7307a0da027e79f20f9c079752d296ebbff63d9cdc2d47918558074404b14",
+    "dependencies": [
+      {
+        "kind": "diagram-spec",
+        "id": "layer-map",
+        "inline": true,
+        "sha256": "779c9bb3f4f8190125bdd69ccd0c0247530462b10bc4d18eeb52a22720b5a9bd",
+        "bytes": 1158
+      }
+    ]
+  }
+}

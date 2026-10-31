@@ -1,0 +1,133 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "Each node is one Python module from the graph.",
+        "The tag is its recorded responsibility.",
+        "Open the architecture page for the allowed dependency direction."
+      ],
+      "title": "How to read it"
+    }
+  ],
+  "components": [
+    {
+      "id": "domain-stages",
+      "label": "stages.py",
+      "pos": [
+        40,
+        70
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "domain/stages.py",
+      "tag": "ten fixed stages: keys, order, dependencies and statuses",
+      "type": "backend"
+    },
+    {
+      "id": "domain-handover-rules",
+      "label": "handover_rules.py",
+      "pos": [
+        40,
+        136
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "domain/handover_rules.py",
+      "tag": "pure derive_status, missing_steps and can_run rules",
+      "type": "backend"
+    },
+    {
+      "id": "domain-software-rules",
+      "label": "software_rules.py",
+      "pos": [
+        40,
+        202
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "domain/software_rules.py",
+      "tag": "pure hardware, required software and activation evaluato",
+      "type": "backend"
+    },
+    {
+      "id": "domain-errors",
+      "label": "errors.py",
+      "pos": [
+        40,
+        268
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "domain/errors.py",
+      "tag": "typed handover workflow exceptions",
+      "type": "backend"
+    },
+    {
+      "id": "domain-redaction",
+      "label": "redaction.py",
+      "pos": [
+        40,
+        334
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "domain/redaction.py",
+      "tag": "strip windows_activation.partial_key before storage",
+      "type": "backend"
+    },
+    {
+      "id": "domain-recipient-identity",
+      "label": "recipient_identity.py",
+      "pos": [
+        40,
+        400
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "domain/recipient_identity.py",
+      "tag": "interactive domain-user detection and engineer match",
+      "type": "backend"
+    },
+    {
+      "id": "domain-timeutil",
+      "label": "timeutil.py",
+      "pos": [
+        40,
+        466
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "domain/timeutil.py",
+      "tag": "normalize persistence datetimes to UTC",
+      "type": "backend"
+    }
+  ],
+  "connections": [],
+  "diagram_type": "architecture",
+  "meta": {
+    "output": "docs/visual/graph/focus-domain.html",
+    "quality_profile": "showcase",
+    "subtitle": "7 modules declared as domain in the LIVE GRAPH.",
+    "title": "domain: module focus",
+    "viewBox": [
+      400,
+      582
+    ]
+  },
+  "schema_version": 1
+}

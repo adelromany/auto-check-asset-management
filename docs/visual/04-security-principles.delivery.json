@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "33ff72ed-bd2d-4353-8493-1a5154947b69",
+  "status": "current",
+  "command": "deliver",
+  "type": "explainer",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/04-security-principles.archify.md",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/04-security-principles.html",
+  "specification": {
+    "sha256": "a4a004e1182f522f40d9aabcb48b9c7de39177db5caffa51ac089db6363470e8",
+    "bytes": 6400
+  },
+  "artifact": {
+    "sha256": "a132b2ecc41b8feb993afa8dc755cf27685abd9e88d47241a4bcb614bb320078",
+    "bytes": 178038
+  },
+  "explainer": {
+    "preparedSha256": "7a7b37ce887862ff8bc367a98436ec541dbf0d21aef96ba9d56cdab5e22bf550",
+    "dependencies": []
+  }
+}

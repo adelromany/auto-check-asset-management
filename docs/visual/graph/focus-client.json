@@ -1,0 +1,43 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "Each node is one Python module from the graph.",
+        "The tag is its recorded responsibility.",
+        "Open the architecture page for the allowed dependency direction."
+      ],
+      "title": "How to read it"
+    }
+  ],
+  "components": [
+    {
+      "id": "clients-snipeit",
+      "label": "snipeit.py",
+      "pos": [
+        40,
+        70
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "clients/snipeit.py",
+      "tag": "Snipe-IT HTTP client, credential provider and typed resu",
+      "type": "backend"
+    }
+  ],
+  "connections": [],
+  "diagram_type": "architecture",
+  "meta": {
+    "output": "docs/visual/graph/focus-client.html",
+    "quality_profile": "showcase",
+    "subtitle": "1 modules declared as client in the LIVE GRAPH.",
+    "title": "clients: module focus",
+    "viewBox": [
+      400,
+      240
+    ]
+  },
+  "schema_version": 1
+}

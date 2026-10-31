@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "f55b5e4d-9d04-481b-b6c8-ddeea979d7e5",
+  "status": "current",
+  "command": "deliver",
+  "type": "explainer",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/07-ui-ux-principles.archify.md",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/07-ui-ux-principles.html",
+  "specification": {
+    "sha256": "7573e014ba6777ca5010017305792befa60f9b9af673015023ef96ef3ec109e9",
+    "bytes": 4757
+  },
+  "artifact": {
+    "sha256": "6788d72ae7d14d155ca2f616ba3488d402357fc703b60def3f0c5edbcdd92790",
+    "bytes": 165818
+  },
+  "explainer": {
+    "preparedSha256": "c0d0381eb114cd9f1d6380ef6d7893733ab27a7f4baa97131dd680774fde632e",
+    "dependencies": []
+  }
+}

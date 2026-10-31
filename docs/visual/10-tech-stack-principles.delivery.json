@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "cd206a9d-9688-48b4-b2c7-168af315df88",
+  "status": "current",
+  "command": "deliver",
+  "type": "explainer",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/10-tech-stack-principles.archify.md",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/10-tech-stack-principles.html",
+  "specification": {
+    "sha256": "664f34b578950466e00e9f2fcc195e3766c674c589718e956826c45ff6c8decd",
+    "bytes": 3964
+  },
+  "artifact": {
+    "sha256": "d4bcc7903153bf31e290467d5dbca77296c1b0c45da7d037af52cac42bf953ad",
+    "bytes": 168999
+  },
+  "explainer": {
+    "preparedSha256": "a67e50d0885b8e742bbbc0333b4c11fb976b0b7df62dbd73b22f0f3ddcbb9cf2",
+    "dependencies": []
+  }
+}

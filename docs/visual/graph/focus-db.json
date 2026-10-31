@@ -1,0 +1,73 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "Each node is one Python module from the graph.",
+        "The tag is its recorded responsibility.",
+        "Open the architecture page for the allowed dependency direction."
+      ],
+      "title": "How to read it"
+    }
+  ],
+  "components": [
+    {
+      "id": "db-base",
+      "label": "base.py",
+      "pos": [
+        40,
+        70
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "db/base.py",
+      "tag": "declarative base and stable constraint naming",
+      "type": "backend"
+    },
+    {
+      "id": "db-engine",
+      "label": "engine.py",
+      "pos": [
+        40,
+        136
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "db/engine.py",
+      "tag": "lazy async engine and session factory (no connection at ",
+      "type": "backend"
+    },
+    {
+      "id": "db-models-handover",
+      "label": "handover.py",
+      "pos": [
+        40,
+        202
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "db/models/handover.py",
+      "tag": "ORM models: Handover, HandoverStage, AgentReport, Docume",
+      "type": "backend"
+    }
+  ],
+  "connections": [],
+  "diagram_type": "architecture",
+  "meta": {
+    "output": "docs/visual/graph/focus-db.html",
+    "quality_profile": "showcase",
+    "subtitle": "3 modules declared as db in the LIVE GRAPH.",
+    "title": "database: module focus",
+    "viewBox": [
+      400,
+      318
+    ]
+  },
+  "schema_version": 1
+}

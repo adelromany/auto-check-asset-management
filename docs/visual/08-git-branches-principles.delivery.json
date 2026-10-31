@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "aea0d4e5-f13e-4ed2-a16e-bdd0bbe9d02b",
+  "status": "current",
+  "command": "deliver",
+  "type": "explainer",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/08-git-branches-principles.archify.md",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/08-git-branches-principles.html",
+  "specification": {
+    "sha256": "ee67204a30387ab851ca1c860f70ad8a7a2bc7ec42af4a41cfbc4a016efdb487",
+    "bytes": 960
+  },
+  "artifact": {
+    "sha256": "a7d4aae637dc305f7888bbc33aa69c049949e9903911d206b3636266d2162044",
+    "bytes": 515192
+  },
+  "explainer": {
+    "preparedSha256": "6a76e00a6f8bdf0ad38961c2e0288bdb6f2a10e11744fff7436c7cc1897ac702",
+    "dependencies": [
+      {
+        "kind": "diagram-spec",
+        "id": "branch-families",
+        "inline": true,
+        "sha256": "53eefd4f603c332b22f7a93a0a128c80bbd3c3ef35663e20e297b208ad9465f9",
+        "bytes": 515
+      }
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "108cd82f-7321-42de-a8f9-e6892783f69d",
+  "status": "current",
+  "command": "deliver",
+  "type": "explainer",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/01-test-principles.archify.md",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/01-test-principles.html",
+  "specification": {
+    "sha256": "093599d76dc7de9e91b5a29d61e9cfe5c966fa2ace950e9125f20ed99e229ff5",
+    "bytes": 4262
+  },
+  "artifact": {
+    "sha256": "72d99f7163bb71391f160aef3fe4892d69ff6534e8de3b369393eb15dfc964a5",
+    "bytes": 159756
+  },
+  "explainer": {
+    "preparedSha256": "2a7e45c8ff7c73f110089e657280f7acc21c6770ef52ebba35d7e85f4607f0c9",
+    "dependencies": []
+  }
+}

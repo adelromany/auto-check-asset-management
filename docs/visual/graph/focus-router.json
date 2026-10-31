@@ -1,0 +1,163 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "Each node is one Python module from the graph.",
+        "The tag is its recorded responsibility.",
+        "Open the architecture page for the allowed dependency direction."
+      ],
+      "title": "How to read it"
+    }
+  ],
+  "components": [
+    {
+      "id": "routers-pages",
+      "label": "pages.py",
+      "pos": [
+        40,
+        70
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "routers/pages.py",
+      "tag": "index, handover dashboard and case pages, /api/me",
+      "type": "backend"
+    },
+    {
+      "id": "routers-agent",
+      "label": "agent.py",
+      "pos": [
+        40,
+        136
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "routers/agent.py",
+      "tag": "session code create/poll/submit",
+      "type": "backend"
+    },
+    {
+      "id": "routers-handovers",
+      "label": "handovers.py",
+      "pos": [
+        40,
+        202
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "routers/handovers.py",
+      "tag": "/api/handovers create, list, detail, confirm, cancel, re",
+      "type": "backend"
+    },
+    {
+      "id": "routers-documents",
+      "label": "documents.py",
+      "pos": [
+        40,
+        268
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "routers/documents.py",
+      "tag": "report page, document upload/download and push",
+      "type": "backend"
+    },
+    {
+      "id": "routers-dashboard",
+      "label": "dashboard.py",
+      "pos": [
+        40,
+        334
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "routers/dashboard.py",
+      "tag": "/api/dashboard summary and paged-row reads",
+      "type": "backend"
+    },
+    {
+      "id": "routers-http-errors",
+      "label": "http_errors.py",
+      "pos": [
+        40,
+        400
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "routers/http_errors.py",
+      "tag": "shared domain/client error to HTTP mapping and detail DT",
+      "type": "backend"
+    },
+    {
+      "id": "routers-snipeit",
+      "label": "snipeit.py",
+      "pos": [
+        40,
+        466
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "routers/snipeit.py",
+      "tag": "Snipe-IT device lookup and health",
+      "type": "backend"
+    },
+    {
+      "id": "routers-health",
+      "label": "health.py",
+      "pos": [
+        40,
+        532
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "routers/health.py",
+      "tag": "liveness endpoint",
+      "type": "backend"
+    },
+    {
+      "id": "routers-diag",
+      "label": "diag.py",
+      "pos": [
+        40,
+        598
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "routers/diag.py",
+      "tag": "clipboard diagnostics page (ENABLE_DIAG)",
+      "type": "backend"
+    }
+  ],
+  "connections": [],
+  "diagram_type": "architecture",
+  "meta": {
+    "output": "docs/visual/graph/focus-router.html",
+    "quality_profile": "showcase",
+    "subtitle": "9 modules declared as router in the LIVE GRAPH.",
+    "title": "routers: module focus",
+    "viewBox": [
+      400,
+      714
+    ]
+  },
+  "schema_version": 1
+}

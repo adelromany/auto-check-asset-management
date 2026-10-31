@@ -92,7 +92,7 @@ tests/
   test_diag.py             # 4 original diagnostics tests
   test_architecture_rules.py
   test_graph_consistency.py
-  test_principles_visual.py
+  test_visual_sources.py
   test_persistence.py
   test_handovers_api.py
   test_handover_service.py
@@ -102,9 +102,12 @@ tests/
   test_dashboard.py
   test_security_hardening.py
   test_clipboard_playwright.py  # browser matrix
+tools/
+  graph_data.py            # shared LIVE GRAPH parsing
+  visual/                  # Archify source builders, CLI wrapper and checks
 docs/
+  visual/                  # committed visual docs (Archify single-file HTML + JSON)
   principles/              # H-Caliper: the 12 principle files (01…12)
-    visual/                # generated, offline HTML versions of the principles
   security-review.md       # Phase 8 checklist against principle 04
   snipeit-api-verified.md  # verified API surface / live-verification status
   OPEN_QUESTIONS.md        # open questions and the conservative option taken

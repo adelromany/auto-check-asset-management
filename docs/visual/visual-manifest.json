@@ -1,0 +1,114 @@
+{
+  "artifacts": [
+    {
+      "html": "graph/architecture-modules.html",
+      "html_sha256": "4a6d6ae611665ef9676c994487d7afbce97b0b03990b0b5ada66f9cda213e73a",
+      "key": "graph-modules",
+      "source": "graph/architecture-modules.json",
+      "source_sha256": "4a6d6ae611665ef9676c994487d7afbce97b0b03990b0b5ada66f9cda213e73a",
+      "type": "architecture"
+    },
+    {
+      "html": "graph/architecture-overview.html",
+      "html_sha256": "1e8219e2061f6fbf07b45aa64298f059463dea01b22b9bdd3c6b4c8a8f36376d",
+      "key": "graph-architecture",
+      "source": "graph/architecture-overview.json",
+      "source_sha256": "1e8219e2061f6fbf07b45aa64298f059463dea01b22b9bdd3c6b4c8a8f36376d",
+      "type": "architecture"
+    },
+    {
+      "html": "graph/focus-client.html",
+      "html_sha256": "762b3421bd5796247ed99f3978b5ea07e6a651a191876008bb64aa61fe224bd2",
+      "key": "graph-focus-client",
+      "source": "graph/focus-client.json",
+      "source_sha256": "762b3421bd5796247ed99f3978b5ea07e6a651a191876008bb64aa61fe224bd2",
+      "type": "architecture"
+    },
+    {
+      "html": "graph/focus-config.html",
+      "html_sha256": "6156a911766206ce0d8569700a0a9cdc8019b23f6a71eda8d62d7393dc6378dc",
+      "key": "graph-focus-config",
+      "source": "graph/focus-config.json",
+      "source_sha256": "6156a911766206ce0d8569700a0a9cdc8019b23f6a71eda8d62d7393dc6378dc",
+      "type": "architecture"
+    },
+    {
+      "html": "graph/focus-db.html",
+      "html_sha256": "af7a4c53f67d2a5c9e4f01c15110dfefab6d6c02cd1e27a6f913b60a207d6e53",
+      "key": "graph-focus-db",
+      "source": "graph/focus-db.json",
+      "source_sha256": "af7a4c53f67d2a5c9e4f01c15110dfefab6d6c02cd1e27a6f913b60a207d6e53",
+      "type": "architecture"
+    },
+    {
+      "html": "graph/focus-domain.html",
+      "html_sha256": "41d858db9885e1981aebab7de478c0ef040e780708b53efc5f05eec4ce111536",
+      "key": "graph-focus-domain",
+      "source": "graph/focus-domain.json",
+      "source_sha256": "41d858db9885e1981aebab7de478c0ef040e780708b53efc5f05eec4ce111536",
+      "type": "architecture"
+    },
+    {
+      "html": "graph/focus-dto.html",
+      "html_sha256": "68363742ad9c07df46691f24823e589bf379288fefeb009735da5a547e0f6747",
+      "key": "graph-focus-dto",
+      "source": "graph/focus-dto.json",
+      "source_sha256": "68363742ad9c07df46691f24823e589bf379288fefeb009735da5a547e0f6747",
+      "type": "architecture"
+    },
+    {
+      "html": "graph/focus-infra.html",
+      "html_sha256": "c3094e9584a654185392078dd5ae8e95cc3cce9ae1597f1c331170600f1f45bf",
+      "key": "graph-focus-infra",
+      "source": "graph/focus-infra.json",
+      "source_sha256": "c3094e9584a654185392078dd5ae8e95cc3cce9ae1597f1c331170600f1f45bf",
+      "type": "architecture"
+    },
+    {
+      "html": "graph/focus-repository.html",
+      "html_sha256": "a1d1f7d59e295a3a8e005c18856f99ea73f38cfd5ce1f378bb85c021f36c447b",
+      "key": "graph-focus-repository",
+      "source": "graph/focus-repository.json",
+      "source_sha256": "a1d1f7d59e295a3a8e005c18856f99ea73f38cfd5ce1f378bb85c021f36c447b",
+      "type": "architecture"
+    },
+    {
+      "html": "graph/focus-router.html",
+      "html_sha256": "ba1b36be8750e86af6f77126b0f424f8010e160a1f675d117df74497345e5ad4",
+      "key": "graph-focus-router",
+      "source": "graph/focus-router.json",
+      "source_sha256": "ba1b36be8750e86af6f77126b0f424f8010e160a1f675d117df74497345e5ad4",
+      "type": "architecture"
+    },
+    {
+      "html": "graph/focus-service.html",
+      "html_sha256": "e3d5d650da814f5c446717b936f7e92f494c87826b4afc1731840b1885fa9b84",
+      "key": "graph-focus-service",
+      "source": "graph/focus-service.json",
+      "source_sha256": "e3d5d650da814f5c446717b936f7e92f494c87826b4afc1731840b1885fa9b84",
+      "type": "architecture"
+    },
+    {
+      "html": "graph/index.html",
+      "html_sha256": "c0fe71a49d10c828425a0a9867f4356c7bceb5d63c2920d977051eda0daf21cd",
+      "key": "graph-index",
+      "source": null,
+      "source_sha256": null,
+      "type": "static"
+    },
+    {
+      "html": "graph/violations.html",
+      "html_sha256": "82bdd9a5d772fd430225b593584e66e942fd1d6be534b78fda8b1223a14af92a",
+      "key": "graph-violations",
+      "source": "graph/violations.json",
+      "source_sha256": "82bdd9a5d772fd430225b593584e66e942fd1d6be534b78fda8b1223a14af92a",
+      "type": "architecture"
+    }
+  ],
+  "generator": {
+    "commit": "a4065941f12be7967436261d9934784e381d423c",
+    "name": "Archify",
+    "version": "3.2.0"
+  },
+  "schema_version": 1
+}

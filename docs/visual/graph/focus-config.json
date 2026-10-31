@@ -1,0 +1,43 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "Each node is one Python module from the graph.",
+        "The tag is its recorded responsibility.",
+        "Open the architecture page for the allowed dependency direction."
+      ],
+      "title": "How to read it"
+    }
+  ],
+  "components": [
+    {
+      "id": "config",
+      "label": "config.py",
+      "pos": [
+        40,
+        70
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "config.py",
+      "tag": "the only place environment variables are read",
+      "type": "backend"
+    }
+  ],
+  "connections": [],
+  "diagram_type": "architecture",
+  "meta": {
+    "output": "docs/visual/graph/focus-config.html",
+    "quality_profile": "showcase",
+    "subtitle": "1 modules declared as config in the LIVE GRAPH.",
+    "title": "configuration: module focus",
+    "viewBox": [
+      400,
+      240
+    ]
+  },
+  "schema_version": 1
+}

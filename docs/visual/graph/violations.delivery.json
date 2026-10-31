@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "15d7e15d-7de8-4e5d-b4c1-f6635daca414",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/violations.json",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/violations.html",
+  "specification": {
+    "sha256": "82bdd9a5d772fd430225b593584e66e942fd1d6be534b78fda8b1223a14af92a",
+    "bytes": 1640
+  },
+  "artifact": {
+    "sha256": "04215c78ebba17382646bf26eb4e54456bb052f7dc99a2aa8a13d4bc3382e129",
+    "bytes": 827960
+  }
+}

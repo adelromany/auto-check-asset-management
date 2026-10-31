@@ -1,0 +1,298 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "Each node is one Python module from the graph.",
+        "The tag is its recorded responsibility.",
+        "Open the architecture page for the allowed dependency direction."
+      ],
+      "title": "How to read it"
+    }
+  ],
+  "components": [
+    {
+      "id": "main",
+      "label": "main.py",
+      "pos": [
+        40,
+        70
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "main.py",
+      "tag": "application factory, middleware and router wiring",
+      "type": "backend"
+    },
+    {
+      "id": "security-startup",
+      "label": "startup.py",
+      "pos": [
+        40,
+        136
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "security/startup.py",
+      "tag": "fail-closed SESSION_SECRET check when SSO is on",
+      "type": "backend"
+    },
+    {
+      "id": "security-csrf",
+      "label": "csrf.py",
+      "pos": [
+        40,
+        202
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "security/csrf.py",
+      "tag": "per-session CSRF token and Origin check for cookie-authe",
+      "type": "backend"
+    },
+    {
+      "id": "security-headers",
+      "label": "headers.py",
+      "pos": [
+        40,
+        268
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "security/headers.py",
+      "tag": "self-only CSP and fixed security headers on every respon",
+      "type": "backend"
+    },
+    {
+      "id": "security-ratelimit",
+      "label": "ratelimit.py",
+      "pos": [
+        40,
+        334
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "security/ratelimit.py",
+      "tag": "in-memory limits for agent submit and recipient search",
+      "type": "backend"
+    },
+    {
+      "id": "middleware-request-id",
+      "label": "request_id.py",
+      "pos": [
+        40,
+        400
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "middleware/request_id.py",
+      "tag": "server-generated request ID context and response header",
+      "type": "backend"
+    },
+    {
+      "id": "request-context",
+      "label": "request_context.py",
+      "pos": [
+        40,
+        466
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "request_context.py",
+      "tag": "context variable for the current request ID",
+      "type": "backend"
+    },
+    {
+      "id": "logging-config",
+      "label": "logging_config.py",
+      "pos": [
+        40,
+        532
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "logging_config.py",
+      "tag": "key-value UTC logging setup and request-ID filter",
+      "type": "backend"
+    },
+    {
+      "id": "dependencies",
+      "label": "dependencies.py",
+      "pos": [
+        40,
+        598
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "dependencies.py",
+      "tag": "current_user, session-store and Snipe-IT client injectio",
+      "type": "backend"
+    },
+    {
+      "id": "auth",
+      "label": "auth.py",
+      "pos": [
+        40,
+        664
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "auth.py",
+      "tag": "Entra ID SSO routes (/login, /auth/callback, /logout)",
+      "type": "backend"
+    },
+    {
+      "id": "build-principles-visual",
+      "label": "build_principles_visual.py",
+      "pos": [
+        40,
+        730
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "build_principles_visual.py",
+      "tag": "deterministic offline principle visual generator",
+      "type": "backend"
+    },
+    {
+      "id": "graph-data",
+      "label": "graph_data.py",
+      "pos": [
+        40,
+        796
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "graph_data.py",
+      "tag": "shared LIVE GRAPH parsing for generation and consistency",
+      "type": "backend"
+    },
+    {
+      "id": "build-handover-workflow",
+      "label": "build_handover_workflow.py",
+      "pos": [
+        40,
+        862
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "build_handover_workflow.py",
+      "tag": "generates code-derived handover workflow visual",
+      "type": "backend"
+    },
+    {
+      "id": "visual-init",
+      "label": "__init__.py",
+      "pos": [
+        40,
+        928
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "visual/__init__.py",
+      "tag": "package marker for the Archify visual builder",
+      "type": "backend"
+    },
+    {
+      "id": "visual-archify",
+      "label": "archify.py",
+      "pos": [
+        40,
+        994
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "visual/archify.py",
+      "tag": "pinned Archify CLI wrapper for local build and check",
+      "type": "backend"
+    },
+    {
+      "id": "visual-artifacts",
+      "label": "artifacts.py",
+      "pos": [
+        40,
+        1060
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "visual/artifacts.py",
+      "tag": "artifact descriptions, hashes and visual manifest",
+      "type": "backend"
+    },
+    {
+      "id": "visual-build-visuals",
+      "label": "build_visuals.py",
+      "pos": [
+        40,
+        1126
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "visual/build_visuals.py",
+      "tag": "single build/check/list entry point for visual docs",
+      "type": "backend"
+    },
+    {
+      "id": "visual-registry",
+      "label": "registry.py",
+      "pos": [
+        40,
+        1192
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "visual/registry.py",
+      "tag": "ordered registry of committed visual artifacts",
+      "type": "backend"
+    }
+  ],
+  "connections": [],
+  "diagram_type": "architecture",
+  "meta": {
+    "output": "docs/visual/graph/focus-infra.html",
+    "quality_profile": "showcase",
+    "subtitle": "18 modules declared as infra in the LIVE GRAPH.",
+    "title": "infrastructure and tools: module focus",
+    "viewBox": [
+      400,
+      1308
+    ]
+  },
+  "schema_version": 1
+}

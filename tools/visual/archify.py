@@ -8,6 +8,7 @@ development tool only: nothing here is imported by the portal at runtime.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -48,12 +49,23 @@ def node_version() -> str:
 def run(args: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
     """Run the CLI from the repository root and return the completed process."""
     require()
+    env = dict(os.environ)
+    if "ARCHIFY_CHROME" not in env:
+        candidates = sorted(
+            Path.home().glob(
+                ".cache/ms-playwright/chromium_headless_shell-*/"
+                "chrome-headless-shell-linux64/chrome-headless-shell"
+            )
+        )
+        if candidates:
+            env["ARCHIFY_CHROME"] = str(candidates[-1])
     proc = subprocess.run(
         ["node", str(CLI), *args],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
         check=False,
+        env=env,
     )
     if check and proc.returncode != 0:
         detail = (proc.stdout + "\n" + proc.stderr).strip()
@@ -86,6 +98,7 @@ def validate(
     *,
     quality: str = "showcase",
     writing: str = "strict",
+    repo_root: Path | None = REPO_ROOT,
 ) -> dict[str, Any]:
     args = [
         "validate",
@@ -95,6 +108,8 @@ def validate(
         quality,
         "--json",
     ]
+    if repo_root is not None:
+        args += ["--repo-root", str(repo_root)]
     if diagram_type == "explainer":
         args += ["--writing", writing]
     proc = run(args, check=False)
@@ -113,6 +128,7 @@ def finalize(
     quality: str = "showcase",
     writing: str = "strict",
     out_dir: Path | None = None,
+    repo_root: Path | None = REPO_ROOT,
 ) -> dict[str, Any]:
     args = [
         "finalize",
@@ -127,6 +143,8 @@ def finalize(
         args += ["--writing", writing]
     if out_dir is not None:
         args += ["--out-dir", str(out_dir)]
+    if repo_root is not None:
+        args += ["--repo-root", str(repo_root)]
     proc = run(args, check=False)
     receipt = _json_from_stdout(proc.stdout)
     if proc.returncode != 0:

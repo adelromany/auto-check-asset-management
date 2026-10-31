@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "8fe0f394-9e0a-4f33-a736-0f5a77e9f57c",
+  "status": "current",
+  "command": "deliver",
+  "type": "explainer",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/09-decisions.archify.md",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/09-decisions.html",
+  "specification": {
+    "sha256": "9f23368c6a075c9bc9d912d2199d5b717e0b4f63a48a8392c89b8a8b0c6f1815",
+    "bytes": 19288
+  },
+  "artifact": {
+    "sha256": "e60738e1039218d1dd52005cd2b6d155599dbee63227205fbcb9f617836e89e5",
+    "bytes": 232981
+  },
+  "explainer": {
+    "preparedSha256": "eb355e30762df16bc8ba80cef736dfc4d66fdeaa7abe7573e7237b16405c458e",
+    "dependencies": []
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "26156be5-23e0-4fd7-a2f4-6c37ae5b819c",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/focus-dto.json",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/focus-dto.html",
+  "specification": {
+    "sha256": "68363742ad9c07df46691f24823e589bf379288fefeb009735da5a547e0f6747",
+    "bytes": 1475
+  },
+  "artifact": {
+    "sha256": "75016097bfb899df3f93bf8809f6a606fb04f4309cc12db1590dc43ebf1a6af9",
+    "bytes": 826729
+  }
+}

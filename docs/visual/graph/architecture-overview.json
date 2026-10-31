@@ -1,0 +1,128 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "Routers call services.",
+        "Services call repositories or clients.",
+        "Repositories and clients reach the database or Snipe-IT.",
+        "The domain layer stays pure."
+      ],
+      "title": "One direction"
+    },
+    {
+      "dot": "emerald",
+      "items": [
+        "app/security/* hardens HTTP and may read app/config.py.",
+        "Security is imported by the application wiring, not by business services."
+      ],
+      "title": "Cross-cutting"
+    }
+  ],
+  "components": [
+    {
+      "id": "routers",
+      "label": "routers",
+      "pos": [
+        40,
+        150
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "sublabel": "HTTP input and auth",
+      "type": "frontend"
+    },
+    {
+      "id": "services",
+      "label": "services",
+      "pos": [
+        300,
+        150
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "sublabel": "orchestration",
+      "type": "backend"
+    },
+    {
+      "id": "data",
+      "label": "repositories / clients",
+      "pos": [
+        560,
+        150
+      ],
+      "size": [
+        220,
+        64
+      ],
+      "sublabel": "queries and HTTP",
+      "type": "backend"
+    },
+    {
+      "id": "store",
+      "label": "db / external",
+      "pos": [
+        840,
+        150
+      ],
+      "size": [
+        210,
+        64
+      ],
+      "sublabel": "SQLAlchemy · Snipe-IT",
+      "type": "database"
+    },
+    {
+      "id": "domain",
+      "label": "domain",
+      "pos": [
+        300,
+        340
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "sublabel": "pure rules",
+      "type": "backend"
+    }
+  ],
+  "connections": [
+    {
+      "from": "routers",
+      "label": "calls",
+      "to": "services"
+    },
+    {
+      "from": "services",
+      "label": "uses",
+      "to": "data"
+    },
+    {
+      "from": "data",
+      "label": "reads / writes",
+      "to": "store"
+    },
+    {
+      "from": "services",
+      "label": "pure rules",
+      "to": "domain"
+    }
+  ],
+  "diagram_type": "architecture",
+  "meta": {
+    "output": "docs/visual/graph/architecture-overview.html",
+    "quality_profile": "showcase",
+    "subtitle": "Five layers from the GRAPH principle; edges point downstream only.",
+    "title": "Allowed dependency direction",
+    "viewBox": [
+      1120,
+      470
+    ]
+  },
+  "schema_version": 1
+}
