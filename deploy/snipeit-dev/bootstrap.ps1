@@ -83,8 +83,16 @@ try {
   }
 
   $Seed = '$user = App\Models\User::firstOrCreate(["username" => "TEST-recipient"], ["first_name" => "TEST", "last_name" => "Recipient", "email" => "test.recipient@example.test", "password" => bcrypt(\Illuminate\Support\Str::random(48)), "activated" => 1]); $category = App\Models\Category::firstOrCreate(["name" => "TEST-Computer"], ["category_type" => "asset"]); $manufacturer = App\Models\Manufacturer::firstOrCreate(["name" => "TEST-Manufacturer"]); $model = App\Models\AssetModel::firstOrCreate(["name" => "TEST-Portal Model"], ["category_id" => $category->id, "manufacturer_id" => $manufacturer->id, "model_number" => "TEST-0001", "require_serial" => 1]); $status = App\Models\Statuslabel::firstOrCreate(["name" => "Ready to Deploy"], ["deployable" => 1]); App\Models\Asset::updateOrCreate(["serial" => "TEST-SN-0001"], ["asset_tag" => "TEST-A-0001", "name" => "TEST-Portal Asset", "model_id" => $model->id, "status_id" => $status->id]);'
-  & docker compose exec -T snipeit php artisan tinker --execute=$Seed | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "TEST-only seed failed with exit code $LASTEXITCODE" }
+  $SeedExitCode = 1
+  for ($Attempt = 1; $Attempt -le 3; $Attempt++) {
+    $null = & docker compose exec -T snipeit php artisan tinker "--execute=$Seed" 2>&1
+    $SeedExitCode = $LASTEXITCODE
+    if ($SeedExitCode -eq 0) { break }
+    if ($Attempt -lt 3) { Start-Sleep -Seconds 3 }
+  }
+  if ($SeedExitCode -ne 0) {
+    throw "TEST-only seed failed after three attempts (Artisan exit code $SeedExitCode)."
+  }
 
   $PortalLines = Get-Content -LiteralPath $PortalEnv
   $PortalUrl = "http://localhost:8081"

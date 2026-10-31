@@ -48,7 +48,20 @@ if [[ "$admin_exists" != *true* ]]; then
 fi
 
 seed_code='$user = App\Models\User::firstOrCreate(["username" => "TEST-recipient"], ["first_name" => "TEST", "last_name" => "Recipient", "email" => "test.recipient@example.test", "password" => bcrypt(\Illuminate\Support\Str::random(48)), "activated" => 1]); $category = App\Models\Category::firstOrCreate(["name" => "TEST-Computer"], ["category_type" => "asset"]); $manufacturer = App\Models\Manufacturer::firstOrCreate(["name" => "TEST-Manufacturer"]); $model = App\Models\AssetModel::firstOrCreate(["name" => "TEST-Portal Model"], ["category_id" => $category->id, "manufacturer_id" => $manufacturer->id, "model_number" => "TEST-0001", "require_serial" => 1]); $status = App\Models\Statuslabel::firstOrCreate(["name" => "Ready to Deploy"], ["deployable" => 1]); App\Models\Asset::updateOrCreate(["serial" => "TEST-SN-0001"], ["asset_tag" => "TEST-A-0001", "name" => "TEST-Portal Asset", "model_id" => $model->id, "status_id" => $status->id]);'
-docker compose exec -T snipeit php artisan tinker --execute="$seed_code" >/dev/null
+seed_status=1
+for attempt in 1 2 3; do
+  if docker compose exec -T snipeit php artisan tinker --execute="$seed_code" >/dev/null 2>&1; then
+    seed_status=0
+    break
+  else
+    seed_status=$?
+  fi
+  if [[ "$attempt" -lt 3 ]]; then sleep 3; fi
+done
+if [[ "$seed_status" -ne 0 ]]; then
+  echo "TEST-only seed failed after three attempts (Artisan exit code $seed_status)." >&2
+  exit 1
+fi
 
 portal_token="$(sed -n 's/^SNIPEIT_TOKEN=//p' "$PORTAL_ENV" | head -n 1)"
 if [[ -z "$portal_token" ]]; then
