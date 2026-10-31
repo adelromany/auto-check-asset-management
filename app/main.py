@@ -6,7 +6,8 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app import auth, config
 from app.dependencies import current_user, get_store
-from app.routers import agent, diag, health, pages, snipeit
+from app.routers import agent, diag, health, pages, printing, snipeit
+from app.services import printing as print_service
 
 
 def create_app() -> FastAPI:
@@ -19,10 +20,12 @@ def create_app() -> FastAPI:
         same_site="lax",
         max_age=3600,
     )
+    print_service.setup_logging()          # honors PRINT_LOG_FILE
     application.include_router(auth.router)
     application.include_router(pages.router)
     application.include_router(agent.router)
     application.include_router(snipeit.router)
+    application.include_router(printing.router)
     application.include_router(health.router)
     application.include_router(diag.router)
     return application

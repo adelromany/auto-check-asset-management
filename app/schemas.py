@@ -26,3 +26,8 @@ class AgentPayload(BaseModel):
     # [{id, name, installed: bool, version: str|None, method: str}]
     windows_activation:  Optional[dict] = None
     # {status: str, status_code: int, product_name: str, partial_key: str}
+
+
+class PrintRequest(BaseModel):
+    """Optional body of POST /api/session/{code}/print."""
+    printer: Optional[str] = None   # honored only when PRINT_ALLOW_PRINTER_SELECTOR=true

@@ -488,6 +488,73 @@
     .activation-body table { margin-top: 2px; }
 
     /* ------------------------------------------------------------------ */
+    /* Print Laptop Form (bottom of the device page)                        */
+    /* ------------------------------------------------------------------ */
+    .print-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .print-card h2 {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: .05em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      padding: 10px 14px 8px;
+      background: var(--surface-high);
+      border-bottom: 1px solid var(--border-faint);
+    }
+    .print-body {
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .print-btn {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 8px 18px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background .15s, opacity .15s;
+    }
+    .print-btn:hover:not(:disabled) { background: var(--accent); }
+    .print-btn:disabled { opacity: .5; cursor: default; }
+    .print-select {
+      background: var(--surface-high);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: var(--font-sans);
+      font-size: 0.8rem;
+      padding: 7px 10px;
+    }
+    .print-progress {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+    }
+    .print-status {
+      display: none;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      padding: 10px 14px;
+      border-top: 1px solid var(--border-faint);
+    }
+    .print-status.visible { display: block; }
+    .print-status.ok  { color: var(--success-text); }
+    .print-status.err { color: var(--danger-text); }
+
+    /* ------------------------------------------------------------------ */
     /* Motion                                                               */
     /* ------------------------------------------------------------------ */
     @media (prefers-reduced-motion: reduce) {
@@ -560,6 +627,9 @@
 
   </div><!-- end .page-grid -->
 
+  <!-- ─── Print Laptop Form — shown when agent data arrives ─────────────── -->
+  <div id="print-slot" class="col-full" style="margin-top: 4px;"></div>
+
   <footer class="page-footer">
     <span>Snipe-IT Device Onboarding</span>
     <span>Browser data collected locally. Agent data sent directly to this server.</span>
@@ -568,6 +638,6 @@
 </div><!-- end .shell -->
 
 <script src="/static/js/clipboard.js?v=1"></script>
-<script src="/static/app.js?v=5"></script>
+<script src="/static/app.js?v=6"></script>
 </body>
 </html>

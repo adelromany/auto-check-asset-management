@@ -33,6 +33,54 @@ DEV_USER = {
 # Read-only clipboard diagnostics page (/diag/clipboard). Off by default.
 ENABLE_DIAG = os.getenv("ENABLE_DIAG", "false").strip().lower() == "true"
 
+# ── Windows printing — "Print Laptop Form" ────────────────────────────────────
+# See docs/windows-printing.md for the full Windows Server setup steps.
+#
+# Laptop Form.docx merge template (created/edited in Word; placeholders are
+# {{hostname}}, {{serial}}, ... — see scripts/make_laptop_form_template.py
+# for a generated starting point).
+FORM_TEMPLATE_PATH = os.getenv("FORM_TEMPLATE_PATH",
+                               os.path.join("templates", "Laptop Form.docx"))
+
+# Where filled .docx/.pdf artifacts are written (service account needs Modify).
+FORM_OUTPUT_DIR = os.getenv("FORM_OUTPUT_DIR", os.path.join("var", "print"))
+
+# Printer used by the app. ALWAYS admin-configured here — never the
+# interactive user's default printer. Must match a Windows print queue name
+# (the "Name" column of `Get-Printer`), e.g. "HP LaserJet M101-M106".
+PRINT_PRINTER = os.getenv("PRINT_PRINTER", "")
+
+# When true, authenticated users may pick any installed local printer per
+# request (from those returned by GET /api/print/printers). Default off:
+# only the admin-configured printer is honored.
+PRINT_ALLOW_PRINTER_SELECTOR = (
+    os.getenv("PRINT_ALLOW_PRINTER_SELECTOR", "false").strip().lower() == "true"
+)
+
+# docx→pdf converter: "libreoffice" (recommended unattended) or "word_com"
+# (discouraged: Microsoft does not support server-side Office automation).
+PRINT_PDF_CONVERTER = os.getenv("PRINT_PDF_CONVERTER", "libreoffice").strip().lower()
+
+# Label autofill: corporate forms authored as plain label cells (Model |,
+# Serial |, Processor |, RAM | ...) get their values written into the empty
+# cell right of the label — no {{tokens}} needed in the Word file. Set to
+# "false" to rely on {{tokens}} exclusively.
+PRINT_AUTOFILL_LABELS = (
+    os.getenv("PRINT_AUTOFILL_LABELS", "true").strip().lower() == "true"
+)
+
+# Optional explicit paths; when empty the module auto-detects on PATH plus
+# standard install locations.
+PRINT_SOFFICE_PATH = os.getenv("PRINT_SOFFICE_PATH", "")
+PRINT_GHOSTSCRIPT_PATH = os.getenv("PRINT_GHOSTSCRIPT_PATH", "")
+
+# Per-subprocess timeout for converter / spool submissions.
+PRINT_TIMEOUT_SECONDS = int(os.getenv("PRINT_TIMEOUT_SECONDS", "120"))
+
+# Optional dedicated log file (create_app wires it). When empty, printing
+# logs flow to the default logger output (stdout under uvicorn).
+PRINT_LOG_FILE = os.getenv("PRINT_LOG_FILE", "")
+
 if not SSO_ENABLED:
     print("=" * 70)
     print("WARNING: SSO_ENABLED=false -> authentication is DISABLED.")

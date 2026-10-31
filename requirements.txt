@@ -6,5 +6,9 @@ python-dotenv>=1.0.1
 pydantic
 authlib
 itsdangerous
+python-docx>=1.1.0
+# Optional — only needed when PRINT_PDF_CONVERTER=word_com (unattended Word
+# automation is discouraged; see docs/windows-printing.md):
+# pywin32
 pytest
 pytest-playwright
