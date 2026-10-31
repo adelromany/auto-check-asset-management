@@ -149,20 +149,29 @@ $licenseStatusMap = @{
     6 = "Extended grace period"
 }
 
-$slp = Safe-Get {
-    Get-CimInstance SoftwareLicensingProduct |
+try {
+    $slp = Get-CimInstance -ClassName SoftwareLicensingProduct -ErrorAction Stop |
         Where-Object { $_.Name -match "Windows" -and $_.PartialProductKey } |
         Select-Object -First 1
-}
 
-if ($slp) {
-    $code_int = [int]$slp.LicenseStatus
-    $activationInfo = @{
-        status       = if ($licenseStatusMap.ContainsKey($code_int)) { $licenseStatusMap[$code_int] } else { "Unknown ($code_int)" }
-        status_code  = $code_int
-        product_name = $slp.Name
-        partial_key  = $slp.PartialProductKey
+    if ($slp) {
+        $code_int = [int]$slp.LicenseStatus
+        $activationInfo = @{
+            status       = if ($licenseStatusMap.ContainsKey($code_int)) { $licenseStatusMap[$code_int] } else { "Unknown ($code_int)" }
+            status_code  = $code_int
+            product_name = $slp.Name
+            partial_key  = $slp.PartialProductKey
+        }
+    } else {
+        $activationInfo.status = "No Windows activation record found"
     }
+}
+catch {
+    # The licensing provider commonly denies reads from a non-elevated shell.
+    # Keep the status unverified (never assume licensed) and tell the operator
+    # exactly how to rerun the check instead of silently reporting "Unknown".
+    $activationInfo.status = "Unable to read activation — rerun PowerShell as Administrator"
+    $activationInfo.status_code = -1
 }
 
 # ==============================================================================
@@ -425,6 +434,9 @@ foreach ($app in $softwareChecks) {
 $actColor = if ($activationInfo.status_code -eq 1) { "Green" } else { "Yellow" }
 Write-Host ""
 Write-Host "  Windows activation: $($activationInfo.status)" -ForegroundColor $actColor
+if ($activationInfo.status -like "Unable to read activation*") {
+    Write-Host "  Tip: open PowerShell with Run as administrator, then run the device check again." -ForegroundColor Yellow
+}
 Write-Host ""
 
 # ==============================================================================

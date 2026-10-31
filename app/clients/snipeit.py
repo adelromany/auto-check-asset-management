@@ -223,7 +223,20 @@ def snipeit_file_name_matches(stored_name: str, original_name: str) -> bool:
     stored = stored_name.strip().casefold()
     if stored == original:
         return True
-    decomposed = unicodedata.normalize("NFKD", original)
+    # Snipe-IT's filename slugger transliterates Arabic to Latin (for example,
+    # ``غلاف.png`` becomes ``ghlaf.png``). Python's NFKD normalization does not
+    # transliterate Arabic, so map those letters before applying the same slug.
+    arabic_latin = {
+        "ء": "", "آ": "a", "أ": "a", "ؤ": "w", "إ": "i", "ئ": "y",
+        "ا": "a", "ب": "b", "ة": "h", "ت": "t", "ث": "th", "ج": "j",
+        "ح": "h", "خ": "kh", "د": "d", "ذ": "th", "ر": "r", "ز": "z",
+        "س": "s", "ش": "sh", "ص": "s", "ض": "d", "ط": "t", "ظ": "z",
+        "ع": "a", "غ": "gh", "ف": "f", "ق": "q", "ك": "k", "ل": "l",
+        "م": "m", "ن": "n", "ه": "h", "و": "w", "ى": "a", "ي": "y",
+        "پ": "p", "چ": "ch", "ژ": "zh", "گ": "g",
+    }
+    transliterated = "".join(arabic_latin.get(char, char) for char in original)
+    decomposed = unicodedata.normalize("NFKD", transliterated)
     ascii_name = "".join(
         char for char in decomposed if not unicodedata.combining(char)
     )

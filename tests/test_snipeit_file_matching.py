@@ -20,6 +20,7 @@ from tests.fakes.snipeit_fake import SnipeItFake
         ("asset-4-a1B2c3D4-other.pdf", 42, False),
         ("asset-4-a1B2c3D4-test-live-upload.pdf", 41, True),
         ("asset-4-a1B2c3D4-test-live-upload.pdf", None, True),
+        ("asset-5-2TYTKKFI-ghlaf.png", None, True),
     ],
 )
 def test_file_presence_matches_snipeit_sanitized_suffix(
@@ -29,6 +30,8 @@ def test_file_presence_matches_snipeit_sanitized_suffix(
         original_name=(
             "My_Sheet (Signed).pdf"
             if "my-sheet-signed" in filename
+            else "غلاف.png"
+            if filename.endswith("ghlaf.png")
             else "TEST-live-upload.pdf"
         ),
         size_bytes=42,
