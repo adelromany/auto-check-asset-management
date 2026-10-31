@@ -26,6 +26,10 @@ The project graph is a map of what depends on what, so any change can be assesse
 |---|---|---|---|
 | module | app/main.py | infra | application factory, middleware and router wiring |
 | module | app/config.py | config | the only place environment variables are read |
+| module | app/security/startup.py | infra | fail-closed SESSION_SECRET check when SSO is on |
+| module | app/security/csrf.py | infra | per-session CSRF token and Origin check for cookie-authenticated writes |
+| module | app/security/headers.py | infra | self-only CSP and fixed security headers on every response |
+| module | app/security/ratelimit.py | infra | in-memory limits for agent submit and recipient search |
 | module | app/dependencies.py | infra | current_user, session-store and Snipe-IT client injection, per-request DB session |
 | module | app/auth.py | infra | Entra ID SSO routes (/login, /auth/callback, /logout) |
 | module | app/schemas.py | dto | AgentPayload request model |
@@ -115,6 +119,8 @@ The project graph is a map of what depends on what, so any change can be assesse
 | asset | static/js/shell.js | handovers.html, handover_detail.html | shared topbar/theme/toast helpers |
 | asset | static/js/handovers.js | handovers.html | filters, KPI refresh and table states via textContent |
 | asset | static/js/handover_detail.js | handover_detail.html | stage actions, recipient, preview, upload and push |
+| asset | static/js/diag_clipboard.js | diag_clipboard.html | clipboard diagnostics, external for CSP |
+| asset | static/css/report.css | handover_report.html | printable report styles, external for CSP |
 
 ### Edges (selected, source of truth for impact)
 | from | edge | to |
@@ -125,6 +131,14 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/clients/snipeit.py | uses | Snipe-IT API |
 | app/auth.py | uses | Entra ID (OIDC) |
 | app/main.py | imports | app/routers/* |
+| app/main.py | imports | app/security/startup.py |
+| app/main.py | imports | app/security/csrf.py |
+| app/main.py | imports | app/security/headers.py |
+| app/main.py | imports | app/security/ratelimit.py |
+| app/routers/pages.py | imports | app/security/csrf.py |
+| app/security/startup.py | imports | app/config.py |
+| app/security/csrf.py | imports | app/config.py |
+| app/security/ratelimit.py | imports | app/config.py |
 | app/dependencies.py | imports | app/db/engine.py |
 | app/dependencies.py | imports | app/clients/snipeit.py |
 | app/db/engine.py | reads | DATABASE_URL (app/config.py) |
@@ -173,6 +187,10 @@ The project graph is a map of what depends on what, so any change can be assesse
 | if you change | re-check |
 |---|---|
 | app/config.py | every module reading settings; tests/conftest.py BASE_ENV; .env.example |
+| app/security/startup.py | app/main.py create_app; tests/test_security_hardening.py; deployment .env |
+| app/security/csrf.py | app/main.py; app/routers/pages.py /api/me; static/js/shell.js; every protected POST test |
+| app/security/headers.py | app/main.py; every template (no inline script/style or external host); tests/test_security_hardening.py |
+| app/security/ratelimit.py | app/main.py; agent submit and recipient search tests; deployment worker model |
 | app/services/sessions.py | app/routers/agent.py; tests/test_characterization.py |
 | app/schemas.py (AgentPayload) | static/agent.ps1, static/agent.sh, app/routers/agent.py, the report page |
 | app/routers/snipeit.py response shape | static/app.js lookup rendering; tests/test_characterization.py |

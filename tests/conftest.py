@@ -12,6 +12,7 @@ Convention (keeps tests green across the Phase 2 refactor):
 """
 
 import importlib
+import os
 import sys
 
 import pytest
@@ -32,6 +33,11 @@ BASE_ENV = {
     "SNIPEIT_TOKEN": "",
     "APP_HOST": "",
 }
+
+# The test environment is applied per-client by `make_client`, but the app is
+# also imported at module import time. Phase 8 fails closed on a placeholder
+# SESSION_SECRET, so make sure collection always sees the explicit test secret.
+os.environ.setdefault("SESSION_SECRET", BASE_ENV["SESSION_SECRET"])
 
 
 _SKIP_RELOAD_PREFIXES = ("app.db", "app.domain")

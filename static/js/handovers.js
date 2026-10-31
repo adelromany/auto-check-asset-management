@@ -86,11 +86,16 @@
 
   async function api(path, options) {
     options = options || {};
+    var method = (options.method || "GET").toUpperCase();
     var init = {
-      method: options.method || "GET",
+      method: method,
       credentials: "same-origin",
       headers: { Accept: "application/json" },
     };
+    if (method !== "GET" && method !== "HEAD" && window.HandoverShell) {
+      var token = await window.HandoverShell.csrfToken();
+      if (token) init.headers["X-CSRF-Token"] = token;
+    }
     if (options.json !== undefined) {
       init.headers["Content-Type"] = "application/json";
       init.body = JSON.stringify(options.json);

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import config
 from app.dependencies import current_user, get_session
 from app.domain.errors import HandoverNotFound
+from app.security.csrf import get_or_create_token
 from app.services.dashboard import DashboardService
 from app.services.handovers import HandoverService
 
@@ -99,5 +100,11 @@ async def handover_page(
 
 
 @router.get("/api/me")
-async def me(user=Depends(current_user)):
+async def me(
+    request: Request,
+    response: Response,
+    user=Depends(current_user),
+):
+    token = get_or_create_token(request)
+    response.headers["X-CSRF-Token"] = token
     return {"name": user.get("name"), "email": user.get("email"), "sso": config.SSO_ENABLED}

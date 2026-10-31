@@ -16,11 +16,20 @@ from app.routers import (
     pages,
     snipeit,
 )
+from app.security.csrf import CsrfMiddleware
+from app.security.headers import SecurityHeadersMiddleware
+from app.security.ratelimit import RateLimitMiddleware
+from app.security.startup import validate_startup_config
 
 
 def create_app() -> FastAPI:
+    validate_startup_config()
     application = FastAPI(title="Snipe-IT Onboarding", docs_url=None, redoc_url=None)
     application.mount("/static", StaticFiles(directory="static"), name="static")
+    # Added inner-to-outer: the session must exist before CSRF reads it, and
+    # the header middleware must wrap every response, including errors.
+    application.add_middleware(RateLimitMiddleware)
+    application.add_middleware(CsrfMiddleware)
     application.add_middleware(
         SessionMiddleware,
         secret_key=config.SESSION_SECRET,
@@ -28,6 +37,7 @@ def create_app() -> FastAPI:
         same_site="lax",
         max_age=3600,
     )
+    application.add_middleware(SecurityHeadersMiddleware)
     application.include_router(auth.router)
     application.include_router(pages.router)
     application.include_router(agent.router)

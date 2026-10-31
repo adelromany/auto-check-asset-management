@@ -13,9 +13,14 @@ def test_diag_page_when_enabled(make_client):
     r = client.get("/diag/clipboard")
     assert r.status_code == 200
     assert "text/html" in r.headers["content-type"]
-    for marker in ("isSecureContext", "Method A", "Method B", "paste-target",
-                   "clipboard-probe", "/diag/clipboard/report"):
+    for marker in ("Method A", "Method B", "paste-target", "diag_clipboard.js"):
         assert marker in r.text, marker
+
+    # Phase 8 moved the inline script into a self-hosted file for the CSP.
+    script = client.get("/static/js/diag_clipboard.js")
+    assert script.status_code == 200
+    for marker in ("isSecureContext", "clipboard-probe", "/diag/clipboard/report"):
+        assert marker in script.text, marker
 
 
 def test_diag_report_accepted_when_enabled(make_client):

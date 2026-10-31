@@ -3,22 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>Handover report — {{ handover.device_serial }}</title>
-  <style>
-    @page { margin: 18mm; }
-    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #111; margin: 0; }
-    h1 { font-size: 20px; margin: 0 0 4px; }
-    h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; margin: 22px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-    .meta { color: #555; font-size: 12px; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #e5e5e5; vertical-align: top; }
-    th { width: 28%; color: #444; font-weight: 600; }
-    .ok { color: #166534; font-weight: 600; }
-    .bad { color: #991b1b; font-weight: 600; }
-    .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 28px; }
-    .signature { border-top: 1px solid #111; padding-top: 6px; font-size: 11px; color: #444; }
-    .note { margin-top: 18px; font-size: 11px; color: #666; }
-    @media print { .no-print { display: none; } }
-  </style>
+  <link rel="stylesheet" href="/static/css/report.css?v=1">
 </head>
 <body>
   <h1>Handover report</h1>

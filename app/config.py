@@ -44,6 +44,15 @@ DOCUMENT_MAX_BYTES = int(os.getenv("DOCUMENT_MAX_BYTES", "10485760"))
 SNIPEIT_TIMEOUT_SECONDS = float(os.getenv("SNIPEIT_TIMEOUT_SECONDS", "10"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
+# In-memory rate limits (single process). Counts per client address per rule.
+RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
+RATE_LIMIT_SUBMIT_PER_WINDOW = int(
+    os.getenv("RATE_LIMIT_SUBMIT_PER_WINDOW", "60")
+)
+RATE_LIMIT_RECIPIENT_SEARCH_PER_WINDOW = int(
+    os.getenv("RATE_LIMIT_RECIPIENT_SEARCH_PER_WINDOW", "60")
+)
+
 if not SSO_ENABLED:
     print("=" * 70)
     print("WARNING: SSO_ENABLED=false -> authentication is DISABLED.")

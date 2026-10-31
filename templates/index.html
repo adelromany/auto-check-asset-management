@@ -7,26 +7,13 @@
 
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-
   <link rel="stylesheet" href="/static/css/app.css?v=1" />
 
   <!--
     Applied before first paint so the page never flashes the wrong theme.
-    Order: explicit user choice → OS preference → light.
+    External file: the self-only CSP forbids inline script.
   -->
-  <script>
-    (function () {
-      try {
-        var stored = localStorage.getItem("theme");
-        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var dark = stored === "dark" || (stored !== "light" && prefersDark);
-        document.documentElement.classList.toggle("dark", dark);
-      } catch (e) { /* storage blocked — fall back to light */ }
-    })();
-  </script>
+  <script src="/static/js/theme-init.js?v=1"></script>
 </head>
 <body class="min-h-screen bg-background text-foreground">
 <div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
