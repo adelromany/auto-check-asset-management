@@ -39,13 +39,17 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/clients/snipeit.py | client | Snipe-IT HTTP client, credential provider and typed results |
 | module | app/dto/handover.py | dto | handover request/response models |
 | module | app/repositories/handovers.py | repository | handover, stage and agent-report data access |
+| module | app/repositories/documents.py | repository | stored evidence document data access |
 | module | app/repositories/events.py | repository | insert-only business event trail |
 | module | app/services/handovers.py | service | create, get, list, confirm, cancel, recompute, agent report |
 | module | app/services/snipeit_ops.py | service | recipient search/confirm, preview, checkin and verified checkout |
+| module | app/services/documents.py | service | printable report, safe scan storage, download and verified push |
 | module | app/services/sessions.py | service | in-memory short-code session store |
 | module | app/routers/pages.py | router | index page and /api/me |
 | module | app/routers/agent.py | router | session code create/poll/submit |
 | module | app/routers/handovers.py | router | /api/handovers create, list, detail, confirm, cancel, recipient, preview, checkin, checkout |
+| module | app/routers/documents.py | router | report page, document upload/download and push |
+| module | app/routers/http_errors.py | router | shared domain/client error to HTTP mapping and detail DTO |
 | module | app/routers/snipeit.py | router | Snipe-IT device lookup and health |
 | module | app/routers/health.py | router | liveness endpoint |
 | module | app/routers/diag.py | router | clipboard diagnostics page (ENABLE_DIAG) |
@@ -68,6 +72,10 @@ The project graph is a map of what depends on what, so any change can be assesse
 | route | GET /api/handovers/{id}/preview | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/checkin | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/checkout | app/routers/handovers.py |
+| route | GET /api/handovers/{id}/report | app/routers/documents.py |
+| route | POST /api/handovers/{id}/document | app/routers/documents.py |
+| route | GET /api/handovers/{id}/document | app/routers/documents.py |
+| route | POST /api/handovers/{id}/document/push | app/routers/documents.py |
 | route | GET /api/snipeit/device | app/routers/snipeit.py |
 | route | GET /api/snipeit/health | app/routers/snipeit.py |
 | route | GET /api/health | app/routers/health.py |
@@ -84,7 +92,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | table | handovers | app/repositories/handovers.py | app/repositories/handovers.py |
 | table | handover_stages | app/repositories/handovers.py | app/repositories/handovers.py |
 | table | agent_reports | app/repositories/handovers.py | app/repositories/handovers.py |
-| table | documents | — (repository arrives in Phase 6) | — |
+| table | documents | app/repositories/documents.py | app/repositories/documents.py |
 | table | events | app/repositories/events.py | app/repositories/events.py |
 
 ### Edges (selected, source of truth for impact)
@@ -99,6 +107,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/dependencies.py | imports | app/db/engine.py |
 | app/dependencies.py | imports | app/clients/snipeit.py |
 | app/db/engine.py | reads | DATABASE_URL (app/config.py) |
+| app/repositories/documents.py | imports | app/db/models/handover.py |
 | app/repositories/events.py | imports | app/db/models/handover.py |
 | app/repositories/handovers.py | imports | app/db/models/handover.py |
 | app/repositories/handovers.py | imports | app/domain/stages.py |
@@ -109,9 +118,20 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/services/snipeit_ops.py | imports | app/services/handovers.py |
 | app/services/snipeit_ops.py | imports | app/clients/snipeit.py |
 | app/services/snipeit_ops.py | imports | app/repositories/events.py |
+| app/services/documents.py | imports | app/repositories/documents.py |
+| app/services/documents.py | imports | app/repositories/events.py |
+| app/services/documents.py | imports | app/services/handovers.py |
+| app/services/documents.py | imports | app/services/snipeit_ops.py |
+| app/services/documents.py | imports | app/clients/snipeit.py |
 | app/routers/handovers.py | imports | app/services/handovers.py |
 | app/routers/handovers.py | imports | app/services/snipeit_ops.py |
 | app/routers/handovers.py | imports | app/dto/handover.py |
+| app/routers/handovers.py | imports | app/routers/http_errors.py |
+| app/routers/documents.py | imports | app/services/documents.py |
+| app/routers/documents.py | imports | app/routers/http_errors.py |
+| app/routers/http_errors.py | imports | app/services/handovers.py |
+| app/routers/http_errors.py | imports | app/clients/snipeit.py |
+| app/routers/http_errors.py | imports | app/domain/errors.py |
 | app/routers/agent.py | imports | app/services/handovers.py |
 | alembic/env.py | imports | app/db/base.py |
 
@@ -127,6 +147,9 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/domain/stages.py | app/domain/handover_rules.py; app/services/handovers.py; tests/test_domain_rules.py |
 | app/services/handovers.py | app/routers/handovers.py; app/routers/agent.py; tests/test_handover_service.py; tests/test_handovers_api.py |
 | app/services/snipeit_ops.py | app/routers/handovers.py; tests/test_snipeit_write_ops.py; tests/fakes/snipeit_fake.py |
+| app/services/documents.py | app/routers/documents.py; templates/handover_report.html; tests/test_documents.py |
+| app/repositories/documents.py | app/services/documents.py; documents table |
+| app/routers/http_errors.py | app/routers/handovers.py; app/routers/documents.py; every error-status test |
 | app/dependencies.py get_snipeit_client | app/routers/handovers.py; tests/test_snipeit_write_ops.py |
 | app/clients/snipeit.py | app/routers/snipeit.py; app/services/snipeit_ops.py; tests/test_snipeit_client.py; tests/fakes/snipeit_fake.py |
 | app/repositories/events.py | every service that writes an event; LOG-07 test |

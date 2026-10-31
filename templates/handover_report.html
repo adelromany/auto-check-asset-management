@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Handover report — {{ handover.device_serial }}</title>
+  <style>
+    @page { margin: 18mm; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #111; margin: 0; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; margin: 22px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    .meta { color: #555; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #e5e5e5; vertical-align: top; }
+    th { width: 28%; color: #444; font-weight: 600; }
+    .ok { color: #166534; font-weight: 600; }
+    .bad { color: #991b1b; font-weight: 600; }
+    .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 28px; }
+    .signature { border-top: 1px solid #111; padding-top: 6px; font-size: 11px; color: #444; }
+    .note { margin-top: 18px; font-size: 11px; color: #666; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <h1>Handover report</h1>
+  <p class="meta">
+    Case {{ handover.id }} · Device serial <strong>{{ handover.device_serial }}</strong>
+    {% if handover.ticket_ref %} · Ticket {{ handover.ticket_ref }}{% endif %}
+  </p>
+
+  <h2>Handover</h2>
+  <table>
+    <tr><th>Engineer</th><td>{{ handover.engineer_name or "—" }} ({{ handover.engineer_email }})</td></tr>
+    <tr><th>Created</th><td>{{ handover.created_at }}</td></tr>
+    <tr><th>Recipient (reported)</th><td>{{ handover.recipient_reported_username or "—" }}</td></tr>
+    <tr><th>Recipient (confirmed)</th><td>{{ handover.recipient_snipeit_username or "—" }}</td></tr>
+  </table>
+
+  <h2>Hardware</h2>
+  <table>
+    <tr><th>Hostname</th><td>{{ payload.hostname or "—" }}</td></tr>
+    <tr><th>Serial</th><td>{{ payload.serial or "—" }}</td></tr>
+    <tr><th>Manufacturer / model</th><td>{{ payload.manufacturer or "—" }} / {{ payload.model or "—" }}</td></tr>
+    <tr><th>CPU</th><td>{{ payload.cpu or "—" }}{% if payload.cpu_cores %} ({{ payload.cpu_cores }} cores){% endif %}</td></tr>
+    <tr><th>RAM</th><td>{% if payload.ram_gb %}{{ payload.ram_gb }} GB{% else %}—{% endif %}</td></tr>
+    <tr><th>Operating system</th><td>{{ payload.os_name or "—" }} {{ payload.os_version or "" }} {{ payload.os_arch or "" }}</td></tr>
+    <tr><th>Agent OS</th><td>{{ payload.agent_os or "—" }}</td></tr>
+    <tr><th>Collected at</th><td>{{ payload.collected_at or "—" }}</td></tr>
+  </table>
+
+  {% if payload.disks %}
+  <h2>Disks</h2>
+  <table>
+    <tr><th>Name</th><th>Size (GB)</th><th>Type</th></tr>
+    {% for disk in payload.disks %}
+    <tr><td>{{ disk.name or "—" }}</td><td>{{ disk.size_gb if disk.size_gb is not none else "—" }}</td><td>{{ disk.type or "—" }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  {% if payload.ip_addresses %}
+  <h2>Network</h2>
+  <table>
+    <tr><th>Interface</th><th>IP address</th></tr>
+    {% for address in payload.ip_addresses %}
+    <tr><td>{{ address.iface or "—" }}</td><td>{{ address.ip or "—" }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  {% if payload.windows_activation %}
+  <h2>Windows activation</h2>
+  <table>
+    <tr><th>Status</th><td>{{ payload.windows_activation.status or "—" }}</td></tr>
+    <tr><th>Product</th><td>{{ payload.windows_activation.product_name or "—" }}</td></tr>
+  </table>
+  {% endif %}
+
+  {% if payload.software_checks %}
+  <h2>Software checks</h2>
+  <table>
+    <tr><th>Software</th><th>Installed</th><th>Version</th><th>Method</th></tr>
+    {% for check in payload.software_checks %}
+    <tr>
+      <td>{{ check.name or check.id or "—" }}</td>
+      <td class="{{ 'ok' if check.installed else 'bad' }}">{{ "Yes" if check.installed else "No" }}</td>
+      <td>{{ check.version or "—" }}</td>
+      <td>{{ check.method or "—" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  <div class="signatures">
+    <div class="signature">Recipient signature and date</div>
+    <div class="signature">Engineer signature and date</div>
+  </div>
+
+  <p class="note">
+    The paper sheet is the legal record; this page is the handover evidence summary.
+    Case {{ handover.id }}.
+  </p>
+</body>
+</html>

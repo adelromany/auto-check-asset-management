@@ -207,3 +207,19 @@ class CheckinOutcome(BaseModel):
 class CheckinResult(BaseModel):
     handover_id: uuid.UUID
     results: list[CheckinOutcome]
+
+
+# -- Phase 6: documents -----------------------------------------------------
+
+
+class DocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    original_name: str
+    content_type: str
+    size_bytes: int
+    sha256: str
+    uploaded_by: str
+    uploaded_at: datetime
+    pushed_to_snipeit_at: datetime | None = None

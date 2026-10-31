@@ -37,6 +37,17 @@ class HandoverRepository:
         await self._session.flush()
         return report
 
+    async def latest_agent_report(
+        self, handover_id: uuid.UUID
+    ) -> AgentReport | None:
+        result = await self._session.execute(
+            select(AgentReport)
+            .where(AgentReport.handover_id == handover_id)
+            .order_by(AgentReport.received_at.desc(), AgentReport.id)
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
     async def get(
         self, handover_id: uuid.UUID, *, with_details: bool = False
     ) -> Handover | None:

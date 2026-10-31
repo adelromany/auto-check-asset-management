@@ -347,7 +347,7 @@ class SnipeItHandoverService:
                     message=str(exc),
                 ),
                 actor=actor,
-                detail=_error_detail(exc),
+                detail=snipeit_error_detail(exc),
             )
 
         if asset.id == handover.snipeit_asset_id or (
@@ -415,7 +415,7 @@ class SnipeItHandoverService:
                     message=str(exc),
                 ),
                 actor=actor,
-                detail=_error_detail(exc),
+                detail=snipeit_error_detail(exc),
             )
 
         if verified.assigned_to_id is not None:
@@ -499,10 +499,10 @@ class SnipeItHandoverService:
                 reason=(
                     ASSET_NOT_FOUND_REASON
                     if isinstance(exc, SnipeItNotFound)
-                    else _error_reason(exc)
+                    else snipeit_error_reason(exc)
                 ),
                 actor=actor,
-                detail=_error_detail(exc),
+                detail=snipeit_error_detail(exc),
             )
 
         handover.snipeit_asset_id = asset.id
@@ -543,9 +543,9 @@ class SnipeItHandoverService:
         except SnipeItError as exc:
             return await self._fail_checkout(
                 handover,
-                reason=_error_reason(exc),
+                reason=snipeit_error_reason(exc),
                 actor=actor,
-                detail=_error_detail(exc),
+                detail=snipeit_error_detail(exc),
             )
 
         if result.status != "success":
@@ -568,7 +568,7 @@ class SnipeItHandoverService:
                     "after checkout."
                 ),
                 actor=actor,
-                detail=_error_detail(exc),
+                detail=snipeit_error_detail(exc),
             )
 
         if verified.assigned_to_id != recipient_id:
@@ -683,7 +683,7 @@ def _holder_label(asset: SnipeItAsset) -> str:
     return "someone else"
 
 
-def _error_reason(exc: SnipeItError) -> str:
+def snipeit_error_reason(exc: SnipeItError) -> str:
     if isinstance(exc, SnipeItUnavailable):
         return "Could not reach Snipe-IT."
     if isinstance(exc, SnipeItAuthError):
@@ -695,7 +695,7 @@ def _error_reason(exc: SnipeItError) -> str:
     return str(exc)
 
 
-def _error_detail(exc: SnipeItError) -> dict[str, Any]:
+def snipeit_error_detail(exc: SnipeItError) -> dict[str, Any]:
     return {
         "error": type(exc).__name__,
         "snipeit_status": getattr(exc, "status_code", None),
@@ -704,3 +704,4 @@ def _error_detail(exc: SnipeItError) -> dict[str, Any]:
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
+

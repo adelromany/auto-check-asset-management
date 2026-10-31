@@ -9,28 +9,12 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clients.snipeit import (
-    SnipeItAuthError,
-    SnipeItClient,
-    SnipeItError,
-    SnipeItNotFound,
-    SnipeItRejected,
-    SnipeItUnavailable,
-)
+from app.clients.snipeit import SnipeItClient, SnipeItError
 from app.dependencies import current_user, get_session, get_snipeit_client
-from app.domain.errors import (
-    HandoverAlreadyExists,
-    HandoverCancelled,
-    HandoverCompleted,
-    HandoverError,
-    HandoverNotFound,
-    InvalidStage,
-    ManualStageRequired,
-    StageNotRunnable,
-)
+from app.domain.errors import HandoverError
 from app.domain.stages import HandoverStatus
 from app.dto.handover import (
     CheckinRequest,
@@ -43,55 +27,18 @@ from app.dto.handover import (
     RecipientConfirm,
     RecipientSearchResult,
 )
-from app.services.handovers import HandoverDetailView, HandoverService
+from app.routers.http_errors import (
+    handover_detail,
+    handover_http_error,
+    snipeit_http_error,
+)
+from app.services.handovers import HandoverService
 from app.services.snipeit_ops import SnipeItHandoverService
 
 router = APIRouter(prefix="/api/handovers", tags=["handovers"])
 
-_CONFLICT_ERRORS = (
-    HandoverAlreadyExists,
-    HandoverCancelled,
-    HandoverCompleted,
-    ManualStageRequired,
-    StageNotRunnable,
-)
-
-
 def _actor(user: dict) -> str:
     return user["email"]
-
-
-def _detail(view: HandoverDetailView) -> HandoverDetail:
-    return HandoverDetail.from_parts(
-        view.handover,
-        stages=view.stages,
-        missing_steps=view.missing_steps,
-        events=view.events,
-    )
-
-
-def _http_error(exc: HandoverError) -> HTTPException:
-    if isinstance(exc, HandoverNotFound):
-        return HTTPException(status_code=404, detail=str(exc))
-    if isinstance(exc, InvalidStage):
-        return HTTPException(status_code=422, detail=str(exc))
-    if isinstance(exc, _CONFLICT_ERRORS):
-        return HTTPException(status_code=409, detail=str(exc))
-    return HTTPException(status_code=400, detail=str(exc))
-
-
-def _snipeit_http_error(exc: SnipeItError) -> HTTPException:
-    """Translate client errors without ever exposing the token."""
-    if isinstance(exc, SnipeItUnavailable):
-        return HTTPException(status_code=502, detail=str(exc))
-    if isinstance(exc, SnipeItAuthError):
-        return HTTPException(status_code=exc.status_code, detail=str(exc))
-    if isinstance(exc, SnipeItNotFound):
-        return HTTPException(status_code=404, detail=str(exc))
-    if isinstance(exc, SnipeItRejected):
-        status = exc.status_code if exc.status_code < 500 else 502
-        return HTTPException(status_code=status, detail=str(exc))
-    return HTTPException(status_code=502, detail="Snipe-IT request failed.")
 
 
 @router.post("", response_model=HandoverSummary, status_code=201)
@@ -109,7 +56,7 @@ async def create_handover(
             ticket_ref=payload.ticket_ref,
         )
     except HandoverError as exc:
-        raise _http_error(exc) from exc
+        raise handover_http_error(exc) from exc
     return HandoverSummary.model_validate(handover)
 
 
@@ -151,8 +98,8 @@ async def get_handover(
     try:
         view = await service.get_detail(handover_id)
     except HandoverError as exc:
-        raise _http_error(exc) from exc
-    return _detail(view)
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
 
 
 @router.post(
@@ -170,8 +117,8 @@ async def confirm_stage(
             handover_id, stage, actor=_actor(user)
         )
     except HandoverError as exc:
-        raise _http_error(exc) from exc
-    return _detail(view)
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
 
 
 @router.post("/{handover_id}/cancel", response_model=HandoverDetail)
@@ -184,8 +131,8 @@ async def cancel_handover(
     try:
         view = await service.cancel(handover_id, actor=_actor(user))
     except HandoverError as exc:
-        raise _http_error(exc) from exc
-    return _detail(view)
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
 
 
 # -- Phase 5: Snipe-IT write operations -------------------------------------
@@ -212,9 +159,9 @@ async def search_recipient(
             engineer_name=user.get("name") or "",
         )
     except HandoverError as exc:
-        raise _http_error(exc) from exc
+        raise handover_http_error(exc) from exc
     except SnipeItError as exc:
-        raise _snipeit_http_error(exc) from exc
+        raise snipeithandover_http_error(exc) from exc
 
 
 @router.post(
@@ -238,10 +185,10 @@ async def confirm_recipient(
             client=client,
         )
     except HandoverError as exc:
-        raise _http_error(exc) from exc
+        raise handover_http_error(exc) from exc
     except SnipeItError as exc:
-        raise _snipeit_http_error(exc) from exc
-    return _detail(view)
+        raise snipeithandover_http_error(exc) from exc
+    return handover_detail(view)
 
 
 @router.get("/{handover_id}/preview", response_model=HandoverPreview)
@@ -255,9 +202,9 @@ async def preview_handover(
     try:
         return await service.preview(handover_id, client=client)
     except HandoverError as exc:
-        raise _http_error(exc) from exc
+        raise handover_http_error(exc) from exc
     except SnipeItError as exc:
-        raise _snipeit_http_error(exc) from exc
+        raise snipeithandover_http_error(exc) from exc
 
 
 @router.post("/{handover_id}/checkin", response_model=CheckinResult)
@@ -277,9 +224,9 @@ async def checkin_assets(
             client=client,
         )
     except HandoverError as exc:
-        raise _http_error(exc) from exc
+        raise handover_http_error(exc) from exc
     except SnipeItError as exc:
-        raise _snipeit_http_error(exc) from exc
+        raise snipeithandover_http_error(exc) from exc
     return CheckinResult(handover_id=handover_id, results=outcomes)
 
 
@@ -296,7 +243,7 @@ async def checkout_handover(
             handover_id, actor=_actor(user), client=client
         )
     except HandoverError as exc:
-        raise _http_error(exc) from exc
+        raise handover_http_error(exc) from exc
     except SnipeItError as exc:
-        raise _snipeit_http_error(exc) from exc
-    return _detail(view)
+        raise snipeithandover_http_error(exc) from exc
+    return handover_detail(view)

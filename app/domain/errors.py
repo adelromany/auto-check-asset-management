@@ -42,3 +42,19 @@ class InvalidStage(HandoverError):
     def __init__(self, key: str):
         self.key = key
         super().__init__(f"Unknown stage: {key}")
+
+
+class DocumentNotFound(HandoverError):
+    """No stored document exists for this handover."""
+
+
+class DocumentTooLarge(HandoverError):
+    """The uploaded document exceeds DOCUMENT_MAX_BYTES."""
+
+
+class UnsupportedDocumentType(HandoverError):
+    """The uploaded bytes are not a PDF, PNG or JPEG."""
+
+
+class AgentReportNotFound(HandoverError):
+    """The printable report needs a stored agent report first."""

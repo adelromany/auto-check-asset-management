@@ -26,6 +26,7 @@ class SnipeItFake:
         # Test hooks for the verification step in Phase 5.
         self.checkout_assigns = True
         self.checkin_clears = True
+        self.upload_records_file = True
         self.checkout_notes: list[str] = []
         self.users: dict[int, dict[str, Any]] = {
             1: {
@@ -195,7 +196,8 @@ class SnipeItFake:
                 "size": len(payload),
             }
             self._next_file_id += 1
-            self.files.setdefault(asset["id"], []).append(record)
+            if self.upload_records_file:
+                self.files.setdefault(asset["id"], []).append(record)
             return httpx.Response(
                 200, json={"status": "success", "messages": "Uploaded"}
             )
