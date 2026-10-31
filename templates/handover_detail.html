@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  {% include "partials/page_head.html" %}
+</head>
+<body class="min-h-screen bg-background text-foreground">
+{% from "partials/labels.html" import stage_label, stage_badge, handover_badge %}
+<div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
+  {% include "partials/topbar.html" %}
+
+  <main class="flex-1 px-4 py-6" data-handover-id="{{ handover.id }}">
+    <a href="/handovers" class="text-xs text-muted-foreground underline-offset-4 hover:underline">← All handovers</a>
+
+    <div class="mt-2 mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <h1 class="font-mono text-xl font-semibold tracking-tight" dir="ltr">{{ handover.device_serial }}</h1>
+          {{ handover_badge(handover.status) }}
+        </div>
+        <p class="mt-1 text-sm text-muted-foreground">
+          {% if handover.ticket_ref %}Ticket {{ handover.ticket_ref }} · {% endif %}
+          {{ handover.engineer_name or handover.engineer_email }} · created {{ handover.created_at }}
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a class="btn btn-outline btn-sm" href="/api/handovers/{{ handover.id }}/report"
+           target="_blank" rel="noopener">Print report</a>
+        <button type="button" class="btn btn-destructive btn-sm" data-action="cancel"
+                {% if handover.status in ("cancelled", "completed") %}disabled{% endif %}>
+          Cancel handover
+        </button>
+      </div>
+    </div>
+
+    {% if handover.status == "cancelled" %}
+    <div class="alert alert-warning mb-6" role="status">
+      <p class="alert-title">This handover is cancelled</p>
+      <p class="alert-description">No further stage can be confirmed. The case stays visible for the audit trail.</p>
+    </div>
+    {% elif handover.status == "completed" %}
+    <div class="alert alert-success mb-6" role="status">
+      <p class="alert-title">Handover complete</p>
+      <p class="alert-description">All nine stages passed. The signed sheet is attached and pushed to Snipe-IT.</p>
+    </div>
+    {% elif missing %}
+    <div class="alert alert-warning mb-6" role="status">
+      <p class="alert-title">Still missing</p>
+      <p class="alert-description">
+        {{ missing | length }} step{{ "" if missing | length == 1 else "s" }} left.
+        Next: {{ missing[0].hint }}
+      </p>
+    </div>
+    {% endif %}
+
+    <div class="grid items-start gap-6 lg:grid-cols-[1.15fr_1fr]">
+      <!-- Stages ------------------------------------------------------- -->
+      <section aria-labelledby="stages-heading">
+        <h2 id="stages-heading" class="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Stages
+        </h2>
+        <ol class="flex flex-col gap-2" id="stage-list">
+          {% for stage in stages %}
+          <li class="card p-3" data-stage="{{ stage.stage }}">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-mono text-xs text-muted-foreground">{{ loop.index }}</span>
+                  <h3 class="text-sm font-medium">{{ stage_label(stage.stage) }}</h3>
+                  <span data-stage-status>{{ stage_badge(stage.status) }}</span>
+                </div>
+                {% if stage.reason %}
+                <p class="mt-1 text-xs text-destructive" data-stage-reason>{{ stage.reason }}</p>
+                {% endif %}
+                <p class="mt-1 text-xs text-muted-foreground">
+                  {% if stage.actor %}{{ stage.actor }} · {% endif %}{{ stage.updated_at }}
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                {% set retry = stage.status in ("failed", "blocked") %}
+                {% if stage.status != "passed" %}
+                  {% if stage.stage in ("device_prepared", "user_signed_in", "report_printed", "user_signed") %}
+                  <button type="button" class="btn btn-default btn-sm" data-action="confirm-stage"
+                          data-stage="{{ stage.stage }}">{{ "Retry" if retry else "Confirm" }}</button>
+                  {% elif stage.stage == "agent_report" %}
+                  <a class="btn btn-outline btn-sm" href="/">Open onboarding</a>
+                  {% elif stage.stage == "recipient_check" %}
+                  <button type="button" class="btn btn-default btn-sm" data-action="focus-recipient">
+                    {{ "Retry" if retry else "Search recipient" }}
+                  </button>
+                  {% elif stage.stage == "checkout" %}
+                  <button type="button" class="btn btn-outline btn-sm" data-action="preview">Preview</button>
+                  <button type="button" class="btn btn-default btn-sm" data-action="checkout">
+                    {{ "Retry" if retry else "Checkout" }}
+                  </button>
+                  {% elif stage.stage == "document_scanned" %}
+                  <button type="button" class="btn btn-default btn-sm" data-action="focus-upload">
+                    {{ "Retry" if retry else "Upload scan" }}
+                  </button>
+                  {% elif stage.stage == "document_pushed" %}
+                  <button type="button" class="btn btn-default btn-sm" data-action="push-document">
+                    {{ "Retry" if retry else "Push to Snipe-IT" }}
+                  </button>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </div>
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+
+      <!-- Right column ------------------------------------------------- -->
+      <div class="flex flex-col gap-4">
+        <section class="card" id="recipient-card" aria-labelledby="recipient-heading">
+          <div class="card-header">
+            <h2 id="recipient-heading" class="card-title text-sm">Recipient</h2>
+            <p class="card-description">Reported by the agent, then confirmed against Snipe-IT by the engineer.</p>
+          </div>
+          <div class="card-content flex flex-col gap-3">
+            <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+              <dt class="text-muted-foreground">Reported</dt>
+              <dd class="font-mono text-xs" dir="ltr">{{ handover.recipient_reported_username or "—" }}</dd>
+              <dt class="text-muted-foreground">Confirmed</dt>
+              <dd class="font-mono text-xs" dir="ltr">{{ handover.recipient_snipeit_username or "—" }}</dd>
+              <dt class="text-muted-foreground">Confirmed by</dt>
+              <dd class="text-xs">{{ handover.recipient_confirmed_by or "—" }}</dd>
+              <dt class="text-muted-foreground">Confirmed at</dt>
+              <dd class="text-xs">{{ handover.recipient_confirmed_at or "—" }}</dd>
+            </dl>
+
+            <form id="recipient-search-form" class="flex gap-2">
+              <label class="sr-only" for="recipient-query">Search Snipe-IT users</label>
+              <input id="recipient-query" name="q" class="input" required maxlength="200"
+                     autocomplete="off" placeholder="Name, username or email" />
+              <button type="submit" class="btn btn-default btn-sm">Search</button>
+            </form>
+            <div id="recipient-results" class="flex flex-col gap-2" aria-live="polite"></div>
+            <button type="button" class="btn btn-outline btn-sm self-start" data-action="recipient-not-found">
+              Not in Snipe-IT
+            </button>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="snipeit-heading">
+          <div class="card-header">
+            <h2 id="snipeit-heading" class="card-title text-sm">Snipe-IT</h2>
+            <p class="card-description">Checkout the new device, checkin the recipient's old devices.</p>
+          </div>
+          <div class="card-content flex flex-col gap-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p class="text-xs text-muted-foreground">New device</p>
+                <p class="font-mono text-sm" dir="ltr">{{ handover.device_serial }}</p>
+                {% if handover.snipeit_asset_tag %}
+                <p class="text-xs text-muted-foreground">Asset tag {{ handover.snipeit_asset_tag }}</p>
+                {% endif %}
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline btn-sm" data-action="preview">Preview (dry run)</button>
+                <button type="button" class="btn btn-default btn-sm" data-action="checkout">Checkout</button>
+              </div>
+            </div>
+
+            <div id="preview-panel" class="hidden rounded-md border p-3 text-sm" aria-live="polite"></div>
+
+            <div>
+              <p class="text-xs font-medium text-muted-foreground">Recipient's current devices</p>
+              <div id="recipient-devices" class="mt-2 flex flex-col gap-2">
+                <p class="text-sm text-muted-foreground">
+                  Use Preview to list the devices currently assigned to the confirmed recipient.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="sheet-heading">
+          <div class="card-header">
+            <h2 id="sheet-heading" class="card-title text-sm">Signed sheet</h2>
+            <p class="card-description">The paper sheet is the legal record; the scan is the evidence copy.</p>
+          </div>
+          <div class="card-content flex flex-col gap-3">
+            {% if handover.documents %}
+            {% set document = handover.documents | last %}
+            <p class="text-xs text-muted-foreground">
+              Attached: <span class="font-medium">{{ document.original_name }}</span>
+              · {{ document.size_bytes }} bytes
+              · SHA-256 <span class="font-mono">{{ document.sha256[:12] }}…</span>
+            </p>
+            <a class="btn btn-outline btn-sm self-start" href="/api/handovers/{{ handover.id }}/document">
+              Download scan
+            </a>
+            {% else %}
+            <p class="text-xs text-muted-foreground">No scan attached yet.</p>
+            {% endif %}
+
+            <form id="upload-form" class="flex flex-col gap-2">
+              <label for="document-file" class="text-xs font-medium text-muted-foreground">
+                Scan (PDF, PNG or JPEG)
+              </label>
+              <input id="document-file" name="file" type="file" class="input h-auto py-1.5"
+                     accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" />
+              <button type="submit" class="btn btn-default btn-sm self-start">Attach scan</button>
+            </form>
+
+            <button type="button" class="btn btn-outline btn-sm self-start" data-action="push-document">
+              Push to Snipe-IT
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Events --------------------------------------------------------- -->
+    <section class="card mt-6" aria-labelledby="events-heading">
+      <div class="card-header">
+        <h2 id="events-heading" class="card-title text-sm">Events</h2>
+        <p class="card-description">Append-only audit trail, newest last.</p>
+      </div>
+      <div class="card-content">
+        <ol class="timeline" id="event-list">
+          {% for event in events %}
+          <li class="timeline-item">
+            <p class="text-xs text-muted-foreground">{{ event.at }} · {{ event.actor }}</p>
+            <p class="text-sm font-medium">{{ event.type }}</p>
+            {% if event.detail %}
+            <pre class="mt-1 overflow-x-auto text-xs text-muted-foreground">{{ event.detail | tojson(indent=2) }}</pre>
+            {% endif %}
+          </li>
+          {% else %}
+          <li class="text-sm text-muted-foreground">No events yet.</li>
+          {% endfor %}
+        </ol>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t px-4 py-4">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <span>Handover Portal</span>
+      <span>Every Snipe-IT write is explicit, verified and recorded in the event trail.</span>
+    </div>
+  </footer>
+</div>
+
+<div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+
+<script src="/static/js/theme.js?v=1"></script>
+<script src="/static/js/shell.js?v=1"></script>
+<script src="/static/js/handover_detail.js?v=1"></script>
+</body>
+</html>

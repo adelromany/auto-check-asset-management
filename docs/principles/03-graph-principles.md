@@ -38,17 +38,20 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/domain/redaction.py | domain | strip windows_activation.partial_key before storage |
 | module | app/clients/snipeit.py | client | Snipe-IT HTTP client, credential provider and typed results |
 | module | app/dto/handover.py | dto | handover request/response models |
+| module | app/dto/dashboard.py | dto | dashboard summary and paged-row response models |
 | module | app/repositories/handovers.py | repository | handover, stage and agent-report data access |
 | module | app/repositories/documents.py | repository | stored evidence document data access |
 | module | app/repositories/events.py | repository | insert-only business event trail |
 | module | app/services/handovers.py | service | create, get, list, confirm, cancel, recompute, agent report |
 | module | app/services/snipeit_ops.py | service | recipient search/confirm, preview, checkin and verified checkout |
 | module | app/services/documents.py | service | printable report, safe scan storage, download and verified push |
+| module | app/services/dashboard.py | service | database-side dashboard aggregates and page-sized handover rows |
 | module | app/services/sessions.py | service | in-memory short-code session store |
-| module | app/routers/pages.py | router | index page and /api/me |
+| module | app/routers/pages.py | router | index, handover dashboard and case pages, /api/me |
 | module | app/routers/agent.py | router | session code create/poll/submit |
 | module | app/routers/handovers.py | router | /api/handovers create, list, detail, confirm, cancel, recipient, preview, checkin, checkout |
 | module | app/routers/documents.py | router | report page, document upload/download and push |
+| module | app/routers/dashboard.py | router | /api/dashboard summary and paged-row reads |
 | module | app/routers/http_errors.py | router | shared domain/client error to HTTP mapping and detail DTO |
 | module | app/routers/snipeit.py | router | Snipe-IT device lookup and health |
 | module | app/routers/health.py | router | liveness endpoint |
@@ -58,6 +61,8 @@ The project graph is a map of what depends on what, so any change can be assesse
 | kind | method path | exposed by |
 |---|---|---|
 | route | GET / | app/routers/pages.py |
+| route | GET /handovers | app/routers/pages.py |
+| route | GET /handovers/{id} | app/routers/pages.py |
 | route | GET /api/me | app/routers/pages.py |
 | route | GET /api/session/new | app/routers/agent.py |
 | route | GET /api/session/{code}/data | app/routers/agent.py |
@@ -76,6 +81,8 @@ The project graph is a map of what depends on what, so any change can be assesse
 | route | POST /api/handovers/{id}/document | app/routers/documents.py |
 | route | GET /api/handovers/{id}/document | app/routers/documents.py |
 | route | POST /api/handovers/{id}/document/push | app/routers/documents.py |
+| route | GET /api/dashboard/handovers/summary | app/routers/dashboard.py |
+| route | GET /api/dashboard/handovers | app/routers/dashboard.py |
 | route | GET /api/snipeit/device | app/routers/snipeit.py |
 | route | GET /api/snipeit/health | app/routers/snipeit.py |
 | route | GET /api/health | app/routers/health.py |
@@ -89,11 +96,25 @@ The project graph is a map of what depends on what, so any change can be assesse
 ### Nodes — tables
 | kind | table | read by | written by |
 |---|---|---|---|
-| table | handovers | app/repositories/handovers.py | app/repositories/handovers.py |
-| table | handover_stages | app/repositories/handovers.py | app/repositories/handovers.py |
+| table | handovers | app/repositories/handovers.py; app/services/dashboard.py | app/repositories/handovers.py |
+| table | handover_stages | app/repositories/handovers.py; app/services/dashboard.py | app/repositories/handovers.py |
 | table | agent_reports | app/repositories/handovers.py | app/repositories/handovers.py |
 | table | documents | app/repositories/documents.py | app/repositories/documents.py |
 | table | events | app/repositories/events.py | app/repositories/events.py |
+
+### Nodes — assets (templates / static JS)
+| kind | path | used by | purpose |
+|---|---|---|---|
+| asset | templates/index.html | GET / | landing page and "Start handover" entry link |
+| asset | templates/handovers.html | GET /handovers | server-rendered dashboard shell |
+| asset | templates/handover_detail.html | GET /handovers/{id} | server-rendered case page |
+| asset | templates/partials/page_head.html | handovers.html, handover_detail.html | shared head, CSS and theme bootstrap |
+| asset | templates/partials/topbar.html | handovers.html, handover_detail.html | shared navigation and SSO identity |
+| asset | templates/partials/labels.html | handovers.html, handover_detail.html | escaping macros for status/stage labels |
+| asset | static/js/theme-init.js | page_head.html | apply stored theme before first paint (CSP-safe, external) |
+| asset | static/js/shell.js | handovers.html, handover_detail.html | shared topbar/theme/toast helpers |
+| asset | static/js/handovers.js | handovers.html | filters, KPI refresh and table states via textContent |
+| asset | static/js/handover_detail.js | handover_detail.html | stage actions, recipient, preview, upload and push |
 
 ### Edges (selected, source of truth for impact)
 | from | edge | to |
@@ -129,6 +150,19 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/routers/handovers.py | imports | app/routers/http_errors.py |
 | app/routers/documents.py | imports | app/services/documents.py |
 | app/routers/documents.py | imports | app/routers/http_errors.py |
+| app/routers/dashboard.py | imports | app/services/dashboard.py |
+| app/routers/dashboard.py | imports | app/dto/dashboard.py |
+| app/services/dashboard.py | imports | app/services/handovers.py |
+| app/services/dashboard.py | imports | app/dto/dashboard.py |
+| app/services/dashboard.py | imports | app/dto/handover.py |
+| app/services/dashboard.py | reads | handovers table |
+| app/services/dashboard.py | reads | handover_stages table |
+| app/routers/pages.py | imports | app/services/dashboard.py |
+| app/routers/pages.py | imports | app/services/handovers.py |
+| app/routers/pages.py | renders | templates/handovers.html |
+| app/routers/pages.py | renders | templates/handover_detail.html |
+| templates/handovers.html | uses | static/js/handovers.js |
+| templates/handover_detail.html | uses | static/js/handover_detail.js |
 | app/routers/http_errors.py | imports | app/services/handovers.py |
 | app/routers/http_errors.py | imports | app/clients/snipeit.py |
 | app/routers/http_errors.py | imports | app/domain/errors.py |
@@ -153,4 +187,10 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/dependencies.py get_snipeit_client | app/routers/handovers.py; tests/test_snipeit_write_ops.py |
 | app/clients/snipeit.py | app/routers/snipeit.py; app/services/snipeit_ops.py; tests/test_snipeit_client.py; tests/fakes/snipeit_fake.py |
 | app/repositories/events.py | every service that writes an event; LOG-07 test |
+| app/services/dashboard.py | app/routers/dashboard.py; app/routers/pages.py; templates/handovers.html; static/js/handovers.js; tests/test_dashboard.py |
+| app/dto/dashboard.py | app/services/dashboard.py; app/routers/dashboard.py; static/js/handovers.js |
+| app/routers/dashboard.py | static/js/handovers.js; tests/test_dashboard.py; every dashboard date-filter test |
+| templates/partials/labels.html | templates/handovers.html; templates/handover_detail.html; escaping test |
+| static/js/shell.js | templates/partials/topbar.html; both handover pages; toast rendering |
+| static/js/handover_detail.js | templates/handover_detail.html; every stage/recipient/document action test |
 <!-- GRAPH:END -->

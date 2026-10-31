@@ -1,0 +1,39 @@
+{% from "partials/logo.html" import logo_lockup %}
+<header class="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+  <div class="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
+    <a href="/" class="rounded-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+       aria-label="Handover Portal home">
+      {{ logo_lockup(18) }}
+    </a>
+
+    <nav class="ml-2 flex items-center gap-1" aria-label="Main">
+      <a href="/" class="btn btn-ghost btn-sm">Onboarding</a>
+      <a href="/handovers" class="btn btn-ghost btn-sm">Handovers</a>
+    </nav>
+
+    <div class="flex-1"></div>
+
+    <span id="clock" class="hidden font-mono text-xs tabular-nums text-muted-foreground md:inline" aria-live="off"></span>
+    <div id="user-info" class="max-w-[38vw] truncate text-xs text-muted-foreground md:max-w-none"></div>
+
+    <button type="button" data-theme-toggle
+            class="btn btn-ghost btn-icon-sm"
+            aria-label="Toggle theme" title="Toggle light / dark theme">
+      <svg data-theme-icon="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           class="hidden size-4">
+        <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </svg>
+      <svg data-theme-icon="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           class="size-4">
+        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+      </svg>
+      <svg data-theme-icon="monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           class="hidden size-4">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>
+      </svg>
+    </button>
+  </div>
+</header>

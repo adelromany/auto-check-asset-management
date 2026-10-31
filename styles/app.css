@@ -395,6 +395,59 @@
     @apply animate-pulse rounded-md bg-muted;
   }
 
+  /* Dashboard KPI ------------------------------------------------------- */
+  .kpi {
+    @apply rounded-xl border bg-card p-4 text-card-foreground shadow-sm;
+  }
+  .kpi-label {
+    @apply text-xs font-medium uppercase tracking-wider text-muted-foreground;
+  }
+  .kpi-value {
+    @apply mt-1 text-2xl font-semibold tabular-nums;
+  }
+
+  /* Compact stage progress --------------------------------------------- */
+  .stage-dots {
+    @apply inline-flex items-center gap-1;
+  }
+  .stage-dot {
+    @apply size-2 rounded-full bg-muted-foreground/30;
+  }
+  .stage-dot-passed {
+    @apply bg-success;
+  }
+  .stage-dot-failed {
+    @apply bg-destructive;
+  }
+  .stage-dot-blocked {
+    @apply bg-warning;
+  }
+  .stage-dot-skipped {
+    @apply bg-muted-foreground/60;
+  }
+
+  /* Toasts -------------------------------------------------------------- */
+  .toast-stack {
+    @apply fixed right-4 bottom-4 z-50 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2;
+  }
+  .toast {
+    @apply rounded-lg border bg-card px-4 py-3 text-sm text-card-foreground shadow-lg;
+  }
+  .toast-success {
+    @apply border-success/60;
+  }
+  .toast-error {
+    @apply border-destructive/60;
+  }
+
+  /* Events timeline ----------------------------------------------------- */
+  .timeline {
+    @apply flex flex-col gap-3;
+  }
+  .timeline-item {
+    @apply border-l-2 border-border pl-3;
+  }
+
   /* Status dot ---------------------------------------------------------- */
   .api-status {
     @apply size-2 shrink-0 rounded-full bg-muted-foreground;

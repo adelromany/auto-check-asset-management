@@ -1,0 +1,67 @@
+{#- Shared on-screen vocabulary. Snipe-IT words: Checkout / Checkin. -#}
+
+{%- macro stage_label(key) -%}
+{%- if key == "device_prepared" -%}Device prepared
+{%- elif key == "user_signed_in" -%}User signed in
+{%- elif key == "agent_report" -%}Agent report
+{%- elif key == "recipient_check" -%}Recipient check
+{%- elif key == "checkout" -%}Checkout
+{%- elif key == "report_printed" -%}Report printed
+{%- elif key == "user_signed" -%}User signed
+{%- elif key == "document_scanned" -%}Scan uploaded
+{%- elif key == "document_pushed" -%}Pushed to Snipe-IT
+{%- else -%}{{ key }}
+{%- endif -%}
+{%- endmacro -%}
+
+
+{%- macro stage_badge(status) -%}
+{%- if status == "passed" -%}<span class="badge badge-success">Passed</span>
+{%- elif status == "failed" -%}<span class="badge badge-destructive">Failed</span>
+{%- elif status == "blocked" -%}<span class="badge badge-warning">Blocked</span>
+{%- elif status == "skipped" -%}<span class="badge badge-outline">Skipped</span>
+{%- else -%}<span class="badge badge-secondary">Pending</span>
+{%- endif -%}
+{%- endmacro -%}
+
+
+{%- macro handover_status_label(status) -%}
+{%- if status == "completed" -%}Completed
+{%- elif status == "in_progress" -%}In progress
+{%- elif status == "stalled" -%}Stalled
+{%- elif status == "draft" -%}Draft
+{%- elif status == "cancelled" -%}Cancelled
+{%- else -%}{{ status }}
+{%- endif -%}
+{%- endmacro -%}
+
+
+{%- macro handover_badge(status) -%}
+{%- if status == "completed" -%}<span class="badge badge-success">Completed</span>
+{%- elif status == "in_progress" -%}<span class="badge badge-default">In progress</span>
+{%- elif status == "stalled" -%}<span class="badge badge-warning">Stalled</span>
+{%- elif status == "cancelled" -%}<span class="badge badge-outline">Cancelled</span>
+{%- else -%}<span class="badge badge-secondary">Draft</span>
+{%- endif -%}
+{%- endmacro -%}
+
+
+{%- macro progress(stages) -%}
+{%- set passed = stages | selectattr("status", "equalto", "passed") | list | length -%}
+<span class="inline-flex items-center gap-2">
+  <span class="stage-dots" aria-hidden="true">
+    {%- for item in stages -%}
+    <span class="stage-dot stage-dot-{{ item.status }}" title="{{ stage_label(item.stage) }}: {{ item.status }}"></span>
+    {%- endfor -%}
+  </span>
+  <span class="text-xs tabular-nums text-muted-foreground">{{ passed }}/{{ stages | length }}</span>
+</span>
+{%- endmacro -%}
+
+
+{%- macro missing_text(missing, status) -%}
+{%- if status == "cancelled" -%}Cancelled
+{%- elif missing -%}{{ missing[0].hint }}
+{%- else -%}Complete
+{%- endif -%}
+{%- endmacro -%}

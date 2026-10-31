@@ -6,7 +6,16 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app import auth, config
 from app.dependencies import current_user, get_store
-from app.routers import agent, diag, documents, handovers, health, pages, snipeit
+from app.routers import (
+    agent,
+    dashboard,
+    diag,
+    documents,
+    handovers,
+    health,
+    pages,
+    snipeit,
+)
 
 
 def create_app() -> FastAPI:
@@ -24,6 +33,7 @@ def create_app() -> FastAPI:
     application.include_router(agent.router)
     application.include_router(handovers.router)
     application.include_router(documents.router)
+    application.include_router(dashboard.router)
     application.include_router(snipeit.router)
     application.include_router(health.router)
     application.include_router(diag.router)

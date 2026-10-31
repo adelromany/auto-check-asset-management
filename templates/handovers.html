@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  {% include "partials/page_head.html" %}
+</head>
+<body class="min-h-screen bg-background text-foreground">
+{% from "partials/labels.html" import handover_badge, progress, missing_text %}
+<div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
+  {% include "partials/topbar.html" %}
+
+  <main class="flex-1 px-4 py-6">
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight">Handovers</h1>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Every device handover, what is done and exactly what is still missing.
+        </p>
+      </div>
+
+      <form id="new-handover-form" class="flex flex-wrap items-end gap-2">
+        <div>
+          <label for="new-serial" class="mb-1 block text-xs font-medium text-muted-foreground">Serial</label>
+          <input id="new-serial" name="device_serial" class="input w-48" required maxlength="100"
+                 autocomplete="off" placeholder="e.g. TEST-SN-0001" />
+        </div>
+        <div>
+          <label for="new-ticket" class="mb-1 block text-xs font-medium text-muted-foreground">Ticket (optional)</label>
+          <input id="new-ticket" name="ticket_ref" class="input w-40" maxlength="100"
+                 autocomplete="off" placeholder="LAB-123" />
+        </div>
+        <button type="submit" class="btn btn-default btn-lg">Start handover</button>
+      </form>
+    </div>
+
+    <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Key figures">
+      <div class="kpi">
+        <p class="kpi-label">Completed</p>
+        <p id="kpi-completed" class="kpi-value">{{ summary.completed }}</p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-label">In progress</p>
+        <p id="kpi-in-progress" class="kpi-value">{{ summary.by_status.get("in_progress", 0) }}</p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-label">Stalled</p>
+        <p id="kpi-stalled" class="kpi-value">{{ summary.by_status.get("stalled", 0) }}</p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-label">Total</p>
+        <p id="kpi-total" class="kpi-value">{{ summary.total }}</p>
+      </div>
+    </section>
+
+    <form id="filter-form" class="card mt-6 p-4" aria-label="Handover filters">
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div>
+          <label for="filter-status" class="mb-1 block text-xs font-medium text-muted-foreground">Status</label>
+          <select id="filter-status" name="status" class="input">
+            <option value="">All statuses</option>
+            <option value="draft">Draft</option>
+            <option value="in_progress">In progress</option>
+            <option value="stalled">Stalled</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div>
+          <label for="filter-engineer" class="mb-1 block text-xs font-medium text-muted-foreground">Engineer</label>
+          <input id="filter-engineer" name="engineer" class="input" list="engineer-options"
+                 autocomplete="off" placeholder="engineer@example.com" />
+          <datalist id="engineer-options">
+            {% for engineer in summary.by_engineer %}
+            <option value="{{ engineer.email }}">{{ engineer.name or engineer.email }}</option>
+            {% endfor %}
+          </datalist>
+        </div>
+        <div>
+          <label for="range-preset" class="mb-1 block text-xs font-medium text-muted-foreground">Date range</label>
+          <select id="range-preset" name="preset" class="input">
+            <option value="all">All time</option>
+            <option value="day">Today</option>
+            <option value="week">This week</option>
+            <option value="month">This month</option>
+            <option value="year">This year</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div>
+          <label for="filter-from" class="mb-1 block text-xs font-medium text-muted-foreground">From</label>
+          <input id="filter-from" name="from" type="date" class="input" />
+        </div>
+        <div>
+          <label for="filter-to" class="mb-1 block text-xs font-medium text-muted-foreground">To</label>
+          <input id="filter-to" name="to" type="date" class="input" />
+        </div>
+      </div>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-default btn-sm">Apply filters</button>
+        <button type="reset" id="filter-reset" class="btn btn-outline btn-sm">Reset</button>
+        <span id="filter-summary" class="self-center text-xs text-muted-foreground" aria-live="polite">
+          Showing {{ total }} handover{{ "" if total == 1 else "s" }}.
+        </span>
+      </div>
+    </form>
+
+    <div id="dashboard-alert" class="alert alert-destructive mt-4 hidden" role="alert">
+      <p class="alert-title">Could not load handovers</p>
+      <p id="dashboard-alert-text" class="alert-description"></p>
+    </div>
+
+    <section class="card mt-4 overflow-hidden" aria-label="Handover list">
+      <div class="overflow-x-auto">
+        <table class="table table-compact">
+          <thead class="table-header">
+            <tr>
+              <th class="table-head">Status</th>
+              <th class="table-head">Serial</th>
+              <th class="table-head">Recipient</th>
+              <th class="table-head">Engineer</th>
+              <th class="table-head">Progress</th>
+              <th class="table-head">Missing</th>
+            </tr>
+          </thead>
+          <tbody id="handover-rows" class="table-body">
+            {% for row in rows %}
+            <tr class="table-row">
+              <td class="table-cell">{{ handover_badge(row.handover.status) }}</td>
+              <td class="table-cell">
+                <a class="font-mono text-xs underline-offset-4 hover:underline"
+                   href="/handovers/{{ row.handover.id }}" dir="ltr">{{ row.handover.device_serial }}</a>
+              </td>
+              <td class="table-cell">
+                {{ row.handover.recipient_snipeit_username or row.handover.recipient_reported_username or "—" }}
+              </td>
+              <td class="table-cell text-xs text-muted-foreground">{{ row.handover.engineer_email }}</td>
+              <td class="table-cell">{{ progress(row.stages) }}</td>
+              <td class="table-cell text-xs">{{ missing_text(row.missing_steps, row.handover.status) }}</td>
+            </tr>
+            {% else %}
+            <tr id="handover-empty">
+              <td colspan="6" class="table-cell py-10 text-center text-sm text-muted-foreground">
+                No handovers yet. Start one with the form above.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t px-4 py-4">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <span>Handover Portal</span>
+      <span>Numbers are computed from the handover database; Snipe-IT is only written by explicit actions.</span>
+    </div>
+  </footer>
+</div>
+
+<div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+
+<script src="/static/js/theme.js?v=1"></script>
+<script src="/static/js/shell.js?v=1"></script>
+<script src="/static/js/handovers.js?v=1"></script>
+</body>
+</html>
