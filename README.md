@@ -17,11 +17,25 @@ app/
     base.py             # declarative Base + stable constraint names
     engine.py           # lazy async engine/sessionmaker (no connection at import)
     models/handover.py  # Handover, HandoverStage, AgentReport, Document, Event
-  repositories/events.py  # insert-only business event trail
-  services/sessions.py  # SessionStore (create/get/submit/expire)
+  domain/
+    stages.py           # the nine fixed stages, order, dependencies, statuses
+    handover_rules.py   # pure derive_status / missing_steps / can_run
+    errors.py           # typed handover workflow errors
+    redaction.py        # strip windows_activation.partial_key before storage
+  clients/
+    snipeit.py          # SnipeItClient, credential provider, typed results
+  dto/
+    handover.py         # handover request/response models
+  repositories/
+    handovers.py        # handover, stage and agent-report data access
+    events.py           # insert-only business event trail
+  services/
+    sessions.py         # SessionStore (create/get/submit/expire)
+    handovers.py        # create/get/list/confirm/cancel/recompute/agent report
   routers/
     pages.py            # / and /api/me
     agent.py            # /api/session/new, /data, /submit
+    handovers.py        # /api/handovers create/list/detail/confirm/cancel
     snipeit.py          # /api/snipeit/device, /api/snipeit/health
     health.py           # /api/health
     diag.py             # /diag/clipboard (behind ENABLE_DIAG)

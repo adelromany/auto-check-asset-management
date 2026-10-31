@@ -36,6 +36,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/domain/handover_rules.py | domain | pure derive_status, missing_steps and can_run rules |
 | module | app/domain/errors.py | domain | typed handover workflow exceptions |
 | module | app/domain/redaction.py | domain | strip windows_activation.partial_key before storage |
+| module | app/clients/snipeit.py | client | Snipe-IT HTTP client, credential provider and typed results |
 | module | app/dto/handover.py | dto | handover request/response models |
 | module | app/repositories/handovers.py | repository | handover, stage and agent-report data access |
 | module | app/repositories/events.py | repository | insert-only business event trail |
@@ -68,7 +69,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 ### Nodes — external systems
 | kind | name | used by |
 |---|---|---|
-| external | Snipe-IT API | app/routers/snipeit.py |
+| external | Snipe-IT API | app/clients/snipeit.py |
 | external | Entra ID (OIDC) | app/auth.py |
 
 ### Nodes — tables
@@ -85,7 +86,8 @@ The project graph is a map of what depends on what, so any change can be assesse
 |---|---|---|
 | app/routers/agent.py | imports | app/services/sessions.py |
 | app/routers/agent.py | imports | app/schemas.py |
-| app/routers/snipeit.py | uses | Snipe-IT API |
+| app/routers/snipeit.py | imports | app/clients/snipeit.py |
+| app/clients/snipeit.py | uses | Snipe-IT API |
 | app/auth.py | uses | Entra ID (OIDC) |
 | app/main.py | imports | app/routers/* |
 | app/dependencies.py | imports | app/db/engine.py |
@@ -113,5 +115,6 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/db/engine.py | app/dependencies.py get_session; tests that override DATABASE_URL |
 | app/domain/stages.py | app/domain/handover_rules.py; app/services/handovers.py; tests/test_domain_rules.py |
 | app/services/handovers.py | app/routers/handovers.py; app/routers/agent.py; tests/test_handover_service.py; tests/test_handovers_api.py |
+| app/clients/snipeit.py | app/routers/snipeit.py; tests/test_snipeit_client.py; tests/fakes/snipeit_fake.py |
 | app/repositories/events.py | every service that writes an event; LOG-07 test |
 <!-- GRAPH:END -->

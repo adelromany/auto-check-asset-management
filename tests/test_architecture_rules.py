@@ -14,10 +14,9 @@ import pytest
 APP_DIR = Path(__file__).resolve().parents[1] / "app"
 REPO_ROOT = APP_DIR.parent
 
-# Legacy exemption, not a precedent: app/routers/snipeit.py speaks HTTP
-# directly today. Phase 3 moves all Snipe-IT HTTP into app/clients/snipeit.py
-# and deletes this entry; the guard below fails if the entry goes stale.
-LEGACY_HTTP_ROUTERS = {"app/routers/snipeit.py"}
+# Phase 3 moved all Snipe-IT HTTP into app/clients/snipeit.py, so no router
+# exemptions remain. The guard below stays to catch a future stale entry.
+LEGACY_HTTP_ROUTERS: set[str] = set()
 
 
 def _python_files(package: str) -> list[Path]:

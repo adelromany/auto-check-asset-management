@@ -1,13 +1,33 @@
-"""Snipe-IT proxy (token stays server-side)."""
+"""Snipe-IT proxy (token stays server-side).
 
-import httpx
+All HTTP lives in ``app/clients/snipeit.py``. This router only validates the
+request, calls one client method and maps typed client errors to HTTP.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
 from app import config
+from app.clients.snipeit import (
+    ServiceAccountProvider,
+    SnipeItAuthError,
+    SnipeItClient,
+    SnipeItNotFound,
+    SnipeItRejected,
+    SnipeItUnavailable,
+)
 from app.dependencies import current_user
 
 router = APIRouter()
+
+
+def _client(user: dict) -> SnipeItClient:
+    return SnipeItClient(
+        config.SNIPEIT_URL,
+        ServiceAccountProvider(config.SNIPEIT_TOKEN),
+        timeout=config.SNIPEIT_TIMEOUT_SECONDS,
+        engineer_email=(user or {}).get("email") or "",
+    )
 
 
 @router.get("/api/snipeit/device")
@@ -18,76 +38,72 @@ async def lookup_device(serial: str, user=Depends(current_user)):
     if not config.SNIPEIT_TOKEN:
         raise HTTPException(status_code=503, detail="Snipe-IT token not configured.")
 
-    headers = {
-        "Authorization": f"Bearer {config.SNIPEIT_TOKEN}",
-        "Accept":        "application/json",
-        "Content-Type":  "application/json",
-    }
+    client = _client(user)
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(
-                f"{config.SNIPEIT_URL}/api/v1/hardware",
-                headers=headers,
-                params={"search": serial.strip(), "limit": 10},
-            )
-        resp.raise_for_status()
-        data = resp.json()
-    except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail=f"Could not reach Snipe-IT: {exc}")
-    except httpx.HTTPStatusError as exc:
-        raise HTTPException(
-            status_code=exc.response.status_code,
-            detail=f"Snipe-IT error: {exc.response.text}",
-        )
-
-    rows = data.get("rows", [])
-    exact = next((r for r in rows if r.get("serial", "").strip() == serial.strip()), None)
-    asset = exact or (rows[0] if rows else None)
-
-    if not asset:
-        raise HTTPException(status_code=404, detail=f"No device found for serial: {serial}")
+        asset = await client.get_asset_by_serial(serial)
+    except SnipeItUnavailable as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except SnipeItAuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    except SnipeItNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except SnipeItRejected as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    finally:
+        await client.aclose()
 
     return JSONResponse({
         "found":         True,
-        "asset_tag":     asset.get("asset_tag"),
-        "name":          asset.get("name"),
-        "serial":        asset.get("serial"),
-        "status":        asset.get("status_label", {}).get("name")      if asset.get("status_label") else None,
-        "model":         asset.get("model", {}).get("name")              if asset.get("model")        else None,
-        "category":      asset.get("category", {}).get("name")           if asset.get("category")     else None,
-        "manufacturer":  asset.get("manufacturer", {}).get("name")       if asset.get("manufacturer") else None,
-        "assigned_to":   asset.get("assigned_to", {}).get("name")        if asset.get("assigned_to")  else None,
-        "location":      asset.get("location", {}).get("name")           if asset.get("location")     else None,
-        "last_checkout": asset.get("last_checkout"),
-        "purchase_date": asset.get("purchase_date", {}).get("formatted") if asset.get("purchase_date") else None,
-        "warranty_months": asset.get("warranty_months"),
-        "notes":         asset.get("notes"),
+        "asset_tag":     asset.asset_tag,
+        "name":          asset.name,
+        "serial":        asset.serial,
+        "status":        asset.status,
+        "model":         asset.model,
+        "category":      asset.category,
+        "manufacturer":  asset.manufacturer,
+        "assigned_to":   asset.assigned_to_name,
+        "location":      asset.location,
+        "last_checkout": asset.last_checkout,
+        "purchase_date": asset.purchase_date,
+        "warranty_months": asset.warranty_months,
+        "notes":         asset.notes,
     })
 
 
 @router.get("/api/snipeit/health")
-async def snipeit_health():
-    """Check whether the configured Snipe-IT API is reachable with the current token."""
+async def snipeit_health(user=Depends(current_user)):
+    """Check whether the configured Snipe-IT API is reachable with the token."""
     if not config.SNIPEIT_TOKEN:
         return JSONResponse({"connected": False, "reason": "token_not_configured"})
 
-    headers = {
-        "Authorization": f"Bearer {config.SNIPEIT_TOKEN}",
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-    }
+    client = _client(user)
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(
-                f"{config.SNIPEIT_URL}/api/v1/hardware",
-                headers=headers,
-                params={"limit": 1},
-            )
-    except httpx.RequestError:
+        await client.whoami()
+    except SnipeItUnavailable:
         return JSONResponse({"connected": False, "reason": "unreachable"})
+    except SnipeItAuthError as exc:
+        return JSONResponse(
+            {
+                "connected": False,
+                "reason": "api_error",
+                "status_code": exc.status_code,
+            }
+        )
+    except SnipeItNotFound:
+        return JSONResponse(
+            {"connected": False, "reason": "api_error", "status_code": 404}
+        )
+    except SnipeItRejected as exc:
+        return JSONResponse(
+            {
+                "connected": False,
+                "reason": "api_error",
+                "status_code": exc.status_code,
+            }
+        )
+    finally:
+        await client.aclose()
 
-    return JSONResponse({
-        "connected": resp.is_success,
-        "reason": None if resp.is_success else "api_error",
-        "status_code": resp.status_code,
-    })
+    return JSONResponse(
+        {"connected": True, "reason": None, "status_code": 200}
+    )
