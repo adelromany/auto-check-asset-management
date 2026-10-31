@@ -6,13 +6,13 @@ Scope: every change in this repository. IDs (TST-xx) are cited in reviews and re
 - TST-01 Pyramid: many fast unit tests (domain, services), fewer integration tests (API + DB), very few browser tests (Playwright).
 - TST-02 Characterization tests (`tests/test_characterization.py`, `tests/test_diag.py`) pin existing behavior. They are read-only: never edited to make a change pass. If one fails, the change is wrong. The 29 tests in these two files are the compatibility contract and are still green.
 - TST-03 Pure logic (`app/domain/*`) is developed test-first with table-driven cases. Coverage target 100%.
-- TST-04 Services and repositories: coverage target ≥ 85% lines. Whole `app/` target ≥ 75%. **Not measured in this environment**: `pytest-cov` could not be downloaded, so no coverage percentage is claimed. The target stays as the review standard once the tool is installed.
+- TST-04 Services and repositories: coverage target ≥ 85% lines. Whole `app/` target ≥ 75%. Measured 2026-10-31: `pytest-cov` 7.1.0 installed, whole-`app` coverage 94 % on the default suite. Targets met, recorded in D-59.
 - TST-05 Every bug fix starts with a failing test that reproduces it.
 
 ## Test types and tooling
 - TST-06 Async code is tested with `pytest-asyncio` (`asyncio_mode = auto`). API tests use `httpx.AsyncClient` with `ASGITransport` so the test and the app share one event loop.
-- TST-07 Database tests use SQLite in memory (aiosqlite). When `TEST_DATABASE_URL` points to PostgreSQL, the migration and constraint tests also run there. **Not exercised in this environment**: `asyncpg` could not be installed, so the PostgreSQL run is reported as skipped, never as passed.
-- TST-08 External systems are never called for real: Snipe-IT is replaced by the stateful fake in `tests/fakes/snipeit_fake.py` (built on `httpx.MockTransport`). Live tests are marked `live`, opt-in via `SNIPEIT_LIVE_TEST=1`, and may only touch records whose names start with `TEST-`. Live verification is BLOCKED here (Docker Hub timeouts); see `docs/snipeit-api-verified.md`.
+- TST-07 Database tests use SQLite in memory (aiosqlite). When `TEST_DATABASE_URL` points to PostgreSQL, the migration and constraint tests also run there. Exercised 2026-10-31: `asyncpg` 0.32.0 installed, `test_migration_runs_on_postgres` passed against a real PostgreSQL 16 container, plus a manual upgrade→downgrade→upgrade cycle (D-59). Without the variable the test still reports skipped, never implied-pass.
+- TST-08 External systems are never called for real: Snipe-IT is replaced by the stateful fake in `tests/fakes/snipeit_fake.py` (built on `httpx.MockTransport`). Live tests are marked `live`, opt-in via `SNIPEIT_LIVE_TEST=1`, and may only touch records whose names start with `TEST-`. Live verification completed 2026-10-31 against Snipe-IT v8.8.3 (Docker): 5 passed, 1 product-limitation failure; real shapes and client fixes recorded in `docs/snipeit-api-verified.md` (D-31, D-60).
 - TST-09 Tests must be deterministic: no sleeps for timing, no dependence on test order, no dependence on a developer's `.env`. Freeze or inject time where it matters.
 - TST-10 Each test creates its own data and leaves no state behind.
 

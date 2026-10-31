@@ -47,11 +47,33 @@ docker compose exec snipeit php artisan snipeit:create-admin `
 Check the command's `--help` first if the options differ in your image
 version; the web setup is the fallback.
 
+> Prefer the web setup wizard: it also creates the `settings` row that several
+> database-backed flows assume. On an instance created purely from models/CLI,
+> bootstrap that row explicitly before trying the API (verified gap in this
+> stack's fresh runs on v8.8.3).
+
+### 3b. Generate the OAuth keys and make them readable (required for the API)
+
+The Snipe-IT API uses Passport keys. On v8.8.3 in this image a fresh container
+does not have them, and the generated ones are root-only while the web server
+runs as `apache`. Both give an HTTP 500 on every API call with a Laravel log
+entry `Key path ".../oauth-public.key" does not exist or is not readable`.
+
+```powershell
+docker compose exec snipeit php artisan passport:keys --force
+docker compose exec snipeit php artisan passport:install --force
+docker compose exec snipeit sh -c "chmod 644 /var/lib/snipeit/keys/oauth-*"
+```
+
+`passport:install` also creates the personal/password grant clients that
+`snipeit:make-api-key` (step 5) requires; without it the key command fails with
+"Personal access client not found".
+
 ## 4. Create the test user and test asset
 
 In the UI:
 
-1. **Create a user** named `TEST-Recipient` with username `test.recipient`
+1. **Create a user** named `TEST-Recipient` with username `TEST-recipient`
    and email `test.recipient@example.test`.
 2. **Create an asset** with serial `TEST-SN-0001`, asset tag `TEST-A-0001`,
    a model and a category, and status **Ready to Deploy**. Leave it
@@ -59,12 +81,19 @@ In the UI:
 3. Optionally create a second asset and check it out to the test user, so the
    "recipient's old devices" flow has data.
 
-Every object the live tests touch must start with `TEST-`; the live tests
-refuse to modify anything else.
+Every object the live tests touch must start with `TEST-` — this includes the
+**username** (`test.recipient` is rejected by their guard; `TEST-recipient`
+works) — and the live tests refuse to modify anything else.
 
 ## 5. Create an API token
 
-In Snipe-IT: **Admin → API keys → Create New**. Copy the token once.
+In Snipe-IT: **Admin → API keys → Create New**. Copy the token once. On a
+headless instance you can mint one with the admin user's id instead:
+
+```powershell
+docker compose exec snipeit php artisan snipeit:make-api-key `
+  --user_id=1 --name=dev-portal --key-only
+```
 
 ## 6. Point the portal at it
 
@@ -95,6 +124,14 @@ python -m pytest tests/test_snipeit_live.py -m live -q
 
 The live tests create/clean up only `TEST-` objects and are skipped by
 default. They are not part of the normal suite.
+
+Last full run (2026-10-31, v8.8.3-alpine, admin + `TEST-recipient` +
+`TEST-SN-0001` seeded): **5 passed, 1 failed**. The failure is
+`test_upload_and_list_test_asset_file` and is a Snipe-IT product limitation —
+uploaded filenames are always rewritten to
+`{item_id}-{random8}-{slug}.{ext}` (see `docs/snipeit-api-verified.md`), so the
+assertion `any(item.filename == <original name>)` can never hold on a real
+instance.
 
 ## Reset
 

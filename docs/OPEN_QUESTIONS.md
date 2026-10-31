@@ -97,3 +97,23 @@ Conservative option taken: report the targets as unverified, not met. Add the
 seed script and record machine/date timings in a follow-up branch.
 
 Owner: performance/code owner.
+
+## Q-8 — Stage 9 duplicate uploads when Snipe-IT rewrites stored filenames (OPEN)
+
+Context: live verification (2026-10-31, `docs/snipeit-api-verified.md`) proved
+that Snipe-IT v8.8.3 stores every upload as
+`{item_id}-{random8}-{slug(original basename)}.{ext}` and never exposes the
+original name in the files listing. D-40's idempotency check matches by the
+portal's sanitized name and byte size, so on a real instance the check will not
+recognize an already-pushed file whose stored name was rewritten; a retry would
+upload a second copy. UNVERIFIED whether duplicates cause any further error,
+and whether the portal's byte-size check is sufficient against the stored-name
+form.
+
+Conservative option taken: keep stage 9's existing decision logic (upload only
+when the sanitized-name + size match fails); record the divergence and do not
+weaken the check without a decision. Options for the owner: match on the
+lowercased original basename inside the stored filename, add
+`upload_original_filename` behavior upstream, or accept possible duplicates.
+
+Owner: Snipe-IT/code owner.
