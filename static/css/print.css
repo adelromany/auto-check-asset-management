@@ -1,0 +1,61 @@
+/* Print Laptop Form card (bottom of the device page).
+ * Standalone so it does not depend on the compiled Tailwind theme variables. */
+.print-card {
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.print-card h2 {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 10px 14px 8px;
+  background: rgba(128, 128, 128, 0.12);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+}
+.print-body {
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.print-btn {
+  border: 1px solid #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+  color: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.print-btn:hover:not(:disabled) { background: rgba(59, 130, 246, 0.35); }
+.print-btn:disabled { opacity: 0.5; cursor: default; }
+.print-select {
+  border: 1px solid rgba(128, 128, 128, 0.4);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.8rem;
+  padding: 7px 10px;
+}
+.print-progress {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  opacity: 0.8;
+}
+.print-status {
+  display: none;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(128, 128, 128, 0.25);
+}
+.print-status.visible { display: block; }
+.print-status.ok  { color: #3fb950; }
+.print-status.err { color: #f85149; }

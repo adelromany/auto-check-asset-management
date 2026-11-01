@@ -18,6 +18,7 @@ from app.routers import (
     handovers,
     health,
     pages,
+    printing,
     snipeit,
 )
 from app.security.csrf import CsrfMiddleware
@@ -27,6 +28,7 @@ from app.security.startup import validate_startup_config
 from app.logging_config import configure_logging
 from app.middleware.request_id import RequestIdMiddleware
 from app.request_context import request_id_var
+from app.services import printing as print_service
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,7 @@ def create_app() -> FastAPI:
     application.add_middleware(SecurityHeadersMiddleware)
     # Added last so the server-generated id wraps every other middleware.
     application.add_middleware(RequestIdMiddleware)
+    print_service.setup_logging()          # honors PRINT_LOG_FILE
     application.include_router(auth.router)
     application.include_router(pages.router)
     application.include_router(agent.router)
@@ -58,6 +61,7 @@ def create_app() -> FastAPI:
     application.include_router(documents.router)
     application.include_router(dashboard.router)
     application.include_router(snipeit.router)
+    application.include_router(printing.router)
     application.include_router(health.router)
     application.include_router(diag.router)
     database_scheme = urlsplit(config.DATABASE_URL).scheme or "unknown"

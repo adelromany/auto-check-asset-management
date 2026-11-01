@@ -11,3 +11,4 @@ data/
 venv/
 .tools/
 .receipts/
+var/

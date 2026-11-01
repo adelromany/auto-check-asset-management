@@ -58,6 +58,8 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/services/documents.py | service | printable report, safe scan storage, download and verified push |
 | module | app/services/dashboard.py | service | database-side dashboard aggregates and page-sized handover rows |
 | module | app/services/sessions.py | service | in-memory short-code session store |
+| module | app/services/printing.py | service | Windows print system: queue enumeration, spooler job state, Ghostscript submission |
+| module | app/services/laptop_form.py | service | Laptop Form.docx token/label fill, DOCX to PDF conversion, print pipeline |
 | module | app/routers/pages.py | router | index, handover dashboard and case pages, /api/me |
 | module | app/routers/agent.py | router | session code create/poll/submit |
 | module | app/routers/handovers.py | router | /api/handovers create, list, detail, confirm, cancel, recipient, preview, checkin, checkout |
@@ -67,6 +69,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/routers/snipeit.py | router | Snipe-IT device lookup and health |
 | module | app/routers/health.py | router | liveness endpoint |
 | module | app/routers/diag.py | router | clipboard diagnostics page (ENABLE_DIAG) |
+| module | app/routers/printing.py | router | printer and spooler-job listing, plus the legacy in-memory session print |
 | module | tools/graph_data.py | infra | shared LIVE GRAPH parsing for generation and consistency tests |
 | module | tools/visual/__init__.py | infra | package marker for the Archify visual builder |
 | module | tools/visual/archify.py | infra | pinned Archify CLI wrapper for local build and check |
@@ -88,6 +91,9 @@ The project graph is a map of what depends on what, so any change can be assesse
 | route | GET /api/session/new | app/routers/agent.py |
 | route | GET /api/session/{code}/data | app/routers/agent.py |
 | route | POST /api/session/{code}/submit | app/routers/agent.py |
+| route | GET /api/print/printers | app/routers/printing.py |
+| route | GET /api/print/jobs | app/routers/printing.py |
+| route | POST /api/session/{code}/print | app/routers/printing.py |
 | route | POST /api/handovers | app/routers/handovers.py |
 | route | GET /api/handovers | app/routers/handovers.py |
 | route | GET /api/handovers/{id} | app/routers/handovers.py |
@@ -115,6 +121,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 |---|---|---|
 | external | Snipe-IT API | app/clients/snipeit.py |
 | external | Entra ID (OIDC) | app/auth.py |
+| external | Windows print spooler (Get-Printer / Get-PrintJob / Ghostscript mswinpr2) | app/services/printing.py |
 
 ### Nodes — stages (fixed order)
 | kind | stage | depends on |
@@ -159,6 +166,8 @@ The project graph is a map of what depends on what, so any change can be assesse
 | asset | static/js/theme.js | index.html, handovers.html, handover_detail.html, diag_clipboard.html | theme toggle |
 | asset | static/js/clipboard.js | index.html | shared copyText utility |
 | asset | static/app.js | index.html | legacy landing-page UI |
+| asset | templates/Laptop Form.docx | app/services/laptop_form.py | corporate merge template for the handover form |
+| asset | static/css/print.css | index.html | landing-page print card styles, external for CSP |
 
 ### Edges (selected, source of truth for impact)
 | from | edge | to |
@@ -166,6 +175,14 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/routers/agent.py | imports | app/services/sessions.py |
 | app/routers/agent.py | imports | app/schemas.py |
 | app/routers/snipeit.py | imports | app/clients/snipeit.py |
+| app/routers/printing.py | imports | app/services/printing.py |
+| app/routers/printing.py | imports | app/services/laptop_form.py |
+| app/routers/printing.py | imports | app/clients/snipeit.py |
+| app/routers/printing.py | imports | app/schemas.py |
+| app/services/laptop_form.py | imports | app/services/printing.py |
+| app/services/laptop_form.py | imports | app/config.py |
+| app/services/printing.py | imports | app/config.py |
+| app/services/printing.py | uses | Windows print spooler |
 | app/clients/snipeit.py | uses | Snipe-IT API |
 | app/auth.py | uses | Entra ID (OIDC) |
 | stage user_signed_in | depends_on | stage device_prepared |

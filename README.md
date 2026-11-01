@@ -7,6 +7,16 @@ Snipe-IT after an engineer's explicit, verified action.
 
 For installation on another computer, see the [Windows deployment guide](docs/deployment/INSTALL-WINDOWS.md), [Linux/macOS draft](docs/deployment/INSTALL-LINUX-MAC.md), and [troubleshooting guide](docs/deployment/TROUBLESHOOTING.md).
 
+## Print Laptop Form
+
+From the device details page, **Print Laptop Form** fills the
+`templates/Laptop Form.docx` merge template with the device's latest
+inventory (plus a best-effort Snipe-IT record lookup), converts it to PDF
+with unattended LibreOffice, and submits it to the Windows Server print
+queue configured in `PRINT_PRINTER`. Windows Server setup steps (printer,
+tools, dedicated service account, permissions, logging, troubleshooting):
+**docs/windows-printing.md**.
+
 ## Project structure
 
 ```
@@ -60,6 +70,7 @@ app/
     documents.py           # report page, document upload/download/push
     dashboard.py           # /api/dashboard/handovers/summary and /handovers
     snipeit.py             # /api/snipeit/device, /api/snipeit/health
+    printing.py            # Print Laptop Form: /api/print/*, /api/session/{code}/print
     health.py              # /api/health
     diag.py                # /diag/clipboard (behind ENABLE_DIAG)
     http_errors.py         # shared domain/client error -> HTTP mapping
@@ -71,6 +82,8 @@ templates/
   handover_detail.html     # case page
   handover_report.html     # printable report
   diag_clipboard.html      # clipboard diagnostics
+  Laptop Form.docx         # merge template ({{tokens}}) — starter committed,
+                           # regenerate with scripts/make_laptop_form_template.py
   partials/                # logo, page head, topbar, labels
 static/
   css/app.css              # built stylesheet (generated — do not edit)
@@ -86,6 +99,19 @@ static/
   app.js                   # legacy landing-page UI (not extended for the dashboard)
   agent.ps1 / agent.sh     # device agent scripts
 styles/app.css             # Tailwind + shadcn design-system source
+services (app/services):
+  printing.py             # Windows print system: Get-Printer/Get-PrintJob/Ghostscript
+  laptop_form.py          # {{token}} fill → PDF conversion → print submission
+scripts/
+  make_laptop_form_template.py  # generates the Laptop Form.docx starter
+  print_smoke_test.py           # server-side pipeline sanity check (no print)
+gpo/
+  README.md               # GPO-based fleet collection (startup script + CSV share)
+  agent-gpo.ps1           # headless twin of static/agent.ps1 (no session code)
+  Launcher.bat            # GPO Startup wrapper (caches + runs agent-gpo.ps1)
+  Deploy-AssetGPO.ps1     # one-shot AD setup: share + GPO + SysVol + link
+  collect-anywhere.ps1    # collect from chosen machines right now (WinRM)
+  Merge-DeviceData.ps1    # rollup: one row per device, Excel snapshot
 tests/
   conftest.py              # env-isolated app factory
   test_characterization.py # 25 original compatibility tests
@@ -101,6 +127,8 @@ tests/
   test_documents.py
   test_dashboard.py
   test_security_hardening.py
+  test_print.py            # Print Laptop Form (mocked print system)
+  test_gpo_scripts.py      # GPO script sanity checks
   test_clipboard_playwright.py  # browser matrix
 tools/
   graph_data.py            # shared LIVE GRAPH parsing
@@ -114,6 +142,7 @@ docs/
   https-deployment.md      # deferred TLS cutover checklist
   copy-diagnosis.md        # clipboard root cause and manual matrix
   discovery.md             # code map produced before the refactor
+  windows-printing.md      # Print Laptop Form: server setup, service account, log
 ```
 
 ## Visual documentation

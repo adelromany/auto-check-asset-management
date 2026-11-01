@@ -155,6 +155,161 @@ function onAgentData(data) {
   if (data.serial) {
     lookupAndRenderSnipeIT(data.serial);
   }
+
+  // Bottom of the device page: Print Laptop Form
+  enablePrintSection();
+}
+
+// ---------------------------------------------------------------------------
+// Print Laptop Form (bottom of the device page)
+// ---------------------------------------------------------------------------
+
+let printBusy = false;
+
+function enablePrintSection() {
+  const slot = document.getElementById("print-slot");
+  if (!slot || slot.querySelector(".print-card")) return;   // idempotent
+
+  const card = el("section", { className: "print-card" });
+  card.appendChild(el("h2", {}, "Laptop form"));
+
+  const body = el("div", { className: "print-body" });
+  const btn = el("button", { className: "print-btn", type: "button" },
+    "Print Laptop Form");
+  body.appendChild(btn);
+
+  // Filled only when PRINT_ALLOW_PRINTER_SELECTOR=true (authorized selector)
+  const holder = el("span");
+  body.appendChild(holder);
+
+  const progress = el("span", { className: "print-progress" });
+  const dot = el("span", { className: "waiting-dot" });
+  progress.appendChild(dot);
+  progress.appendChild(document.createTextNode(" Generating form and sending to printer…"));
+  body.appendChild(progress);
+
+  card.appendChild(body);
+
+  const status = el("div", { className: "print-status" });
+  card.appendChild(status);
+
+  btn.addEventListener("click", () => submitPrint(btn, progress, status));
+  slot.appendChild(card);
+
+  loadPrinterSelector(holder, btn, status);
+}
+
+async function loadPrinterSelector(holder, btn, status) {
+  try {
+    const resp = await fetch("/api/print/printers");
+    if (!resp.ok) {
+      const info = await resp.json().catch(() => ({}));
+      if (resp.status === 503 && info.detail) {
+        status.className = "print-status err visible";
+        status.textContent = `✕ ${info.detail}`;
+        btn.disabled = true;
+      }
+      return;
+    }
+    const info = await resp.json();
+    if (info.selector_enabled &&
+        Array.isArray(info.printer_names) && info.printer_names.length > 0) {
+      const select = el("select", { className: "print-select" });
+      select.setAttribute("aria-label", "Printer");
+      info.printer_names.forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        if (name === info.configured) opt.selected = true;
+        select.appendChild(opt);
+      });
+      holder.appendChild(select);
+    }
+    if (!info.template_found) {
+      status.className = "print-status err visible";
+      status.textContent =
+        "✕ Laptop Form template is not configured on the server — ask the " +
+        "administrator (see docs/windows-printing.md).";
+      btn.disabled = true;
+    }
+  } catch (_) { /* network blip — the click will surface the real error */ }
+}
+
+async function submitPrint(btn, progress, status) {
+  if (printBusy) return;
+  printBusy = true;
+  btn.disabled = true;
+  status.className = "print-status";
+  status.textContent = "";
+  progress.style.display = "inline-flex";
+
+  const select = document.querySelector("#print-slot .print-select");
+  const body = {};
+  if (select && select.value) body.printer = select.value;
+
+  try {
+    const resp = await fetch(`/api/session/${encodeURIComponent(sessionCode)}/print`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const result = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      status.className = "print-status err visible";
+      status.textContent = `✕ ${(result.detail ?? `HTTP ${resp.status}`)}`;
+      return;
+    }
+
+    // Submission accepted by the Windows print spooler. Poll the queue so the
+    // UI can distinguish "accepted" from "physically printed".
+    status.className = "print-status ok visible";
+    let extra = "";
+    if (result.job && result.job.job_id != null) {
+      extra = ` (job #${result.job.job_id})`;
+    }
+    if (Array.isArray(result.tokens_missing) && result.tokens_missing.length) {
+      extra += ` — note: these template fields had no data: ${result.tokens_missing.join(", ")}`;
+    }
+    status.textContent = `✓ Sent to “${result.printer}”${extra}. Accepted by the print spooler.`;
+    pollJobStatus(result, status);
+  } catch (e) {
+    status.className = "print-status err visible";
+    status.textContent = `✕ Print request failed: ${e.message}`;
+  } finally {
+    printBusy = false;
+    btn.disabled = false;
+    progress.style.display = "none";
+  }
+}
+
+async function pollJobStatus(result, status) {
+  if (!result.printer || !result.document_name) return;
+  let seenInQueue = false;
+  for (let i = 0; i < 6; i++) {
+    await new Promise(res => setTimeout(res, 2000));
+    try {
+      const resp = await fetch(
+        `/api/print/jobs?printer=${encodeURIComponent(result.printer)}`);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const jobs = (data.jobs || [])
+        .filter(j => (j.document_name || "").startsWith(result.document_name));
+      if (jobs.length) {
+        seenInQueue = true;
+        const j = jobs[0];
+        status.textContent =
+          `✓ Job #${j.job_id} on “${result.printer}” — ` +
+          `${j.job_status ?? "spooling"}`;
+        continue;
+      }
+      if (seenInQueue) {
+        // Job left the queue: printed or purged by an operator.
+        status.textContent =
+          `✓ Job finished on “${result.printer}” — check the printed page at the printer.`;
+        return;
+      }
+    } catch (_) { /* keep polling silently */ }
+  }
 }
 
 // ---------------------------------------------------------------------------
