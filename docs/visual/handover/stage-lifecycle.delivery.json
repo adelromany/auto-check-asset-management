@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "c96207d3-f684-4d20-831e-2c2d203a64c5",
+  "status": "current",
+  "command": "deliver",
+  "type": "lifecycle",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/handover/stage-lifecycle.json",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/handover/stage-lifecycle.html",
+  "specification": {
+    "sha256": "f0c95ae89e477e1bdfa055b2e908f672122c71f2d28db3aa8c1016c4a3b1bda0",
+    "bytes": 2946
+  },
+  "artifact": {
+    "sha256": "d9a356420ed31d53d09befeae96798218b2b73baca82e87f8ec95c8c4e7d18ab",
+    "bytes": 837290
+  }
+}

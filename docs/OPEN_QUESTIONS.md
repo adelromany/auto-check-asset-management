@@ -187,3 +187,17 @@ Conservative option taken: use the callback for the approved machine address
 and have the Entra administrator register it before enabling SSO.
 
 Owner: Entra/application owner.
+
+## Q-16 — Which generator produces the visual documentation? (RESOLVED)
+
+Context: the repository needs committed, offline, interactive HTML versions of
+the twelve principle files and the handover diagrams. A home-made generator
+existed under `docs/principles/visual/` and was replaced.
+
+Resolution (2026-10-31, owner instruction): use Archify 3.2.0 pinned at commit
+`a4065941f12be7967436261d9934784e381d423c`, fetched into the git-ignored
+`.tools/archify` directory. It is a development tool, not a runtime dependency,
+and its source is not copied into the repository. License and notices are in
+`docs/visual/THIRD_PARTY.md`; see D-68.
+
+Owner: documentation/code owner.

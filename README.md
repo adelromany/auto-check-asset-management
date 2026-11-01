@@ -136,7 +136,9 @@ scripts/fetch_archify.sh          # Windows PowerShell: scripts/fetch_archify.ps
 ```
 
 Open `docs/visual/index.html` in a browser to read the visual documentation.
-`tools/visual/build_visuals.py list` prints every registered artifact.
+`tools/visual/build_visuals.py list` prints every registered artifact. The
+pinned version, license and embedded font notice are recorded in
+[`docs/visual/THIRD_PARTY.md`](docs/visual/THIRD_PARTY.md).
 
 ## UI system
 

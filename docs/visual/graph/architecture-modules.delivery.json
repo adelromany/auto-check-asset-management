@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "receiptId": "e2ca8319-a8b4-4360-b4dc-5e7bed558335",
+  "receiptId": "511f5186-deaa-4244-8cb1-017a8f09981b",
   "status": "current",
   "command": "deliver",
   "type": "architecture",
   "input": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/architecture-modules.json",
   "output": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/architecture-modules.html",
   "specification": {
-    "sha256": "4a6d6ae611665ef9676c994487d7afbce97b0b03990b0b5ada66f9cda213e73a",
-    "bytes": 17174
+    "sha256": "5db943b042cc9a23a10fa7c90daf81b400b99a905e05c491dad3c10f4f961f99",
+    "bytes": 17725
   },
   "artifact": {
-    "sha256": "4fdafec6000194f6500ac9ae190a3ecd2b87f95094b436c3b9b6e8a2575975fa",
-    "bytes": 895669
+    "sha256": "e23f75349c375ac7a30345d120dd671ec79bd3dd19ddb3d544572e6d486c5e58",
+    "bytes": 898263
   }
 }

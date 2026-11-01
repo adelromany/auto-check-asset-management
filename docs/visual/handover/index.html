@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Device handover workflow</title>
+<style>
+:root{color-scheme:light dark;--bg:#f6f7f9;--panel:#ffffff;--ink:#16181d;--muted:#5c6370;
+--line:#d9dde5;--accent:#0b63ce;--accent-soft:#e8f1fd;--shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.06)}
+@media (prefers-color-scheme:dark){:root{--bg:#101216;--panel:#171a20;--ink:#e8ebf1;--muted:#9aa3b2;
+--line:#2a2f3a;--accent:#6aa8ff;--accent-soft:#152238;--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3)}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1120px;margin:0 auto;padding:48px 24px 80px}
+header.top{display:flex;gap:24px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-size:34px;line-height:1.15;margin:8px 0 10px;letter-spacing:-.02em}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.search{margin:28px 0 8px;position:relative;max-width:420px}
+.search input{width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:10px;
+background:var(--panel);color:var(--ink);font:inherit;outline:none}
+.search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;
+box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;min-height:150px}
+.card .num{font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted);letter-spacing:.08em}
+.card h2{font-size:17px;line-height:1.3;margin:0}
+.card p{margin:0;color:var(--muted);font-size:14px}
+.meta{margin-top:auto;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;
+gap:8px;font-size:12px;color:var(--muted)}
+.pill{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 9px;font-weight:600}
+.feature{border-color:var(--accent)}
+footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">auto-check-asset-management</div>
+      <h1>Device handover workflow</h1>
+      <p class="lede">The handover built from the application code: ten fixed stages, the onboarding sequence, both status lifecycles, the database model and the differences from the task prompt.</p>
+    </div>
+  </header>
+  <div class="search"><input type="search" data-search placeholder="Search handover diagrams…" aria-label="Search handover diagrams"></div>
+  <section class="grid" aria-live="polite">
+      <a class="card" data-card href="workflow.html">
+        <span class="num">WORKFLOW</span>
+        <h2>Device handover workflow</h2>
+        <p>All ten stages in order, the actor at each step, and every failure side path.</p>
+        <span class="meta"><span>Archify artifact</span><span class="pill">Workflow</span></span>
+      </a>
+      <a class="card" data-card href="dependencies.html">
+        <span class="num">WORKFLOW</span>
+        <h2>Stage dependencies</h2>
+        <p>The dependency table as a DAG: every edge is a row of STAGE_DEPENDENCIES.</p>
+        <span class="meta"><span>Archify artifact</span><span class="pill">Workflow</span></span>
+      </a>
+      <a class="card" data-card href="sequence.html">
+        <span class="num">SEQUENCE</span>
+        <h2>Onboarding at the employee&#x27;s PC</h2>
+        <p>The SSO browser session, the one-time agent code and the verified Snipe-IT writes.</p>
+        <span class="meta"><span>Archify artifact</span><span class="pill">Sequence</span></span>
+      </a>
+      <a class="card" data-card href="lifecycle.html">
+        <span class="num">LIFECYCLE</span>
+        <h2>Case lifecycle</h2>
+        <p>Draft, in progress, stalled, completed and cancelled, with the rule for each move.</p>
+        <span class="meta"><span>Archify artifact</span><span class="pill">Lifecycle</span></span>
+      </a>
+      <a class="card" data-card href="stage-lifecycle.html">
+        <span class="num">LIFECYCLE</span>
+        <h2>Stage lifecycle</h2>
+        <p>Pending, passed, failed, blocked and skipped, including the software override.</p>
+        <span class="meta"><span>Archify artifact</span><span class="pill">Lifecycle</span></span>
+      </a>
+      <a class="card" data-card href="erd.html">
+        <span class="num">ERD</span>
+        <h2>Database model</h2>
+        <p>Five tables, their columns, keys, indexes and the one-active-case-per-serial rule.</p>
+        <span class="meta"><span>Archify artifact</span><span class="pill">ERD</span></span>
+      </a>
+      <a class="card" data-card href="differences.html">
+        <span class="num">EXPLAINER</span>
+        <h2>Code versus task prompt</h2>
+        <p>Where the task prompt and the implemented behavior disagree, shown side by side.</p>
+        <span class="meta"><span>Archify artifact</span><span class="pill">Read</span></span>
+      </a>
+  </section>
+  <p data-empty class="hidden">No diagram matches that search.</p>
+  <footer>Generated with Archify 3.2.0 from the committed code. Open any card; the pages work offline. <a href="../index.html">Back to all visuals</a>.</footer>
+</main>
+<script>
+const input=document.querySelector('[data-search]');
+const cards=[...document.querySelectorAll('[data-card]')];
+const empty=document.querySelector('[data-empty]');
+if(input){input.addEventListener('input',()=>{const q=input.value.trim().toLowerCase();let shown=0;
+for(const card of cards){const hit=!q||card.textContent.toLowerCase().includes(q);
+card.classList.toggle('hidden',!hit);if(hit)shown++;}
+if(empty)empty.classList.toggle('hidden',shown!==0);});}
+</script>
+</body>
+</html>

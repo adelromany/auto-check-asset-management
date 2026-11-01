@@ -1,16 +1,112 @@
 {
   "artifacts": [
     {
+      "html": "01-test-principles.html",
+      "html_sha256": "ff3223794154114f25e4d30f157a3df21745cf79d1297a2222bf3e48b6dad36b",
+      "key": "principle-01",
+      "source": "01-test-principles.archify.md",
+      "source_sha256": "4d2e5f92d81c8f57007270338fb79280ac06804165369de89d56e8c25c83fe2a",
+      "type": "explainer"
+    },
+    {
+      "html": "02-logging-principles.html",
+      "html_sha256": "d2fbd348d6fc08e237c5ec552a3872c39bdcc9e92d2f3e63d6b101c4e7a38e93",
+      "key": "principle-02",
+      "source": "02-logging-principles.archify.md",
+      "source_sha256": "1789e447fbd628d1faa446192863c7f51589b50aa8c1c643dc55015217ce4cc9",
+      "type": "explainer"
+    },
+    {
+      "html": "03-graph-principles.html",
+      "html_sha256": "681e0e124bc13de7e2f735c6adba5c77ca023d9f3cef79208b99488478dbe020",
+      "key": "principle-03",
+      "source": "03-graph-principles.archify.md",
+      "source_sha256": "953eaecd297322b74704210eb5c756174bad78b5d43634ae76d2e9eb68fc76ca",
+      "type": "explainer"
+    },
+    {
+      "html": "04-security-principles.html",
+      "html_sha256": "be6e036e4be0ad9f176718941dfd02c16baa21aa6b46bd2f2ff0ce6af6a5b44f",
+      "key": "principle-04",
+      "source": "04-security-principles.archify.md",
+      "source_sha256": "eb551fd79d284898aae694ec689b0e367569ade398f9a3b6a78d72489fe9ccc3",
+      "type": "explainer"
+    },
+    {
+      "html": "05-business-principles.html",
+      "html_sha256": "e9f06948d0edf69f5d05a0ee8176aec528e7c67b98eaa9da3b48197f4c1c81e9",
+      "key": "principle-05",
+      "source": "05-business-principles.archify.md",
+      "source_sha256": "4a6324dd73afd91555029010424cb6b4461e3f7097314417cdcc2d4c235356e2",
+      "type": "explainer"
+    },
+    {
+      "html": "06-clean-architecture-and-design-patterns.html",
+      "html_sha256": "e3caf8efa8b27b68fafeb2550e051f483209e58d85efe765e4d91df329c2e1e7",
+      "key": "principle-06",
+      "source": "06-clean-architecture-and-design-patterns.archify.md",
+      "source_sha256": "576d2b7f5cb50144caad7228e21944486ba86c81272e22e3502c2fe41f59fd95",
+      "type": "explainer"
+    },
+    {
+      "html": "07-ui-ux-principles.html",
+      "html_sha256": "c853229c7357c69f3f41a7e53291efee2b129f8f65227f8b59de1a067e493b64",
+      "key": "principle-07",
+      "source": "07-ui-ux-principles.archify.md",
+      "source_sha256": "c92d5012c725dc21317cd5ba959ec79da686aa6a0cf63361a5639ec647112a58",
+      "type": "explainer"
+    },
+    {
+      "html": "08-git-branches-principles.html",
+      "html_sha256": "2939135856ce927d06dee4a244f9ce6e95e5118471152b214122b7a0744cd719",
+      "key": "principle-08",
+      "source": "08-git-branches-principles.archify.md",
+      "source_sha256": "04064fee091da445d2ca6a7e9a7a20f676364eb2fd7b25b6363d27cea592bc42",
+      "type": "explainer"
+    },
+    {
+      "html": "09-decisions.html",
+      "html_sha256": "f2ee4204666562a2683e622f0604b5d36cf0417dbca75bcc6953ed7f371f13a1",
+      "key": "principle-09",
+      "source": "09-decisions.archify.md",
+      "source_sha256": "f7ef4b3d79bd807800a304153322970a025820a6086a879b7bb156a54139be3b",
+      "type": "explainer"
+    },
+    {
+      "html": "10-tech-stack-principles.html",
+      "html_sha256": "b6dbd0033acb035cf798e155e1c2bf86820080ee5812b376b5e36e307105791d",
+      "key": "principle-10",
+      "source": "10-tech-stack-principles.archify.md",
+      "source_sha256": "fd968fc8fac50833354dab3011ef392ead4488b6515d84c5e39802b1040c32c5",
+      "type": "explainer"
+    },
+    {
+      "html": "11-clean-code-principles.html",
+      "html_sha256": "7739ea4de8b5e3623086dabd7810a90a69fb4d465818f3f7559e0fc23e5cdec7",
+      "key": "principle-11",
+      "source": "11-clean-code-principles.archify.md",
+      "source_sha256": "a7f7efb2f9ac551f0095cb8ab8a4790e3e180791103105993e6ccdfe018d5781",
+      "type": "explainer"
+    },
+    {
+      "html": "12-performance-principles.html",
+      "html_sha256": "c618b24f4876dbdde9fb2578dc3fa58085badb00ed8b2d4e71cb66624a68bd2b",
+      "key": "principle-12",
+      "source": "12-performance-principles.archify.md",
+      "source_sha256": "70313dfeefc88e7fcda4dbc8509aa70bc05f10e492cd4f58c9a7c0dc280bd930",
+      "type": "explainer"
+    },
+    {
       "html": "graph/architecture-modules.html",
-      "html_sha256": "4a6d6ae611665ef9676c994487d7afbce97b0b03990b0b5ada66f9cda213e73a",
+      "html_sha256": "e23f75349c375ac7a30345d120dd671ec79bd3dd19ddb3d544572e6d486c5e58",
       "key": "graph-modules",
       "source": "graph/architecture-modules.json",
-      "source_sha256": "4a6d6ae611665ef9676c994487d7afbce97b0b03990b0b5ada66f9cda213e73a",
+      "source_sha256": "5db943b042cc9a23a10fa7c90daf81b400b99a905e05c491dad3c10f4f961f99",
       "type": "architecture"
     },
     {
       "html": "graph/architecture-overview.html",
-      "html_sha256": "1e8219e2061f6fbf07b45aa64298f059463dea01b22b9bdd3c6b4c8a8f36376d",
+      "html_sha256": "aa231c378883fa9e280da2461728ad0f499fa88630ea8d6021f145bb1d977051",
       "key": "graph-architecture",
       "source": "graph/architecture-overview.json",
       "source_sha256": "1e8219e2061f6fbf07b45aa64298f059463dea01b22b9bdd3c6b4c8a8f36376d",
@@ -18,7 +114,7 @@
     },
     {
       "html": "graph/focus-client.html",
-      "html_sha256": "762b3421bd5796247ed99f3978b5ea07e6a651a191876008bb64aa61fe224bd2",
+      "html_sha256": "2c9a504897218a1e46fa600cfb64c5de1480f2af56b8bf6e5f39e627c96786bc",
       "key": "graph-focus-client",
       "source": "graph/focus-client.json",
       "source_sha256": "762b3421bd5796247ed99f3978b5ea07e6a651a191876008bb64aa61fe224bd2",
@@ -26,7 +122,7 @@
     },
     {
       "html": "graph/focus-config.html",
-      "html_sha256": "6156a911766206ce0d8569700a0a9cdc8019b23f6a71eda8d62d7393dc6378dc",
+      "html_sha256": "5101f7e76010da98077e09bc26f8a8a987d159af107f60f4226ed518a2a78a16",
       "key": "graph-focus-config",
       "source": "graph/focus-config.json",
       "source_sha256": "6156a911766206ce0d8569700a0a9cdc8019b23f6a71eda8d62d7393dc6378dc",
@@ -34,7 +130,7 @@
     },
     {
       "html": "graph/focus-db.html",
-      "html_sha256": "af7a4c53f67d2a5c9e4f01c15110dfefab6d6c02cd1e27a6f913b60a207d6e53",
+      "html_sha256": "aef936e2a16e281ba4a250932a0e4fc0f66160bace14dcf284f2dad83217bdf2",
       "key": "graph-focus-db",
       "source": "graph/focus-db.json",
       "source_sha256": "af7a4c53f67d2a5c9e4f01c15110dfefab6d6c02cd1e27a6f913b60a207d6e53",
@@ -42,7 +138,7 @@
     },
     {
       "html": "graph/focus-domain.html",
-      "html_sha256": "41d858db9885e1981aebab7de478c0ef040e780708b53efc5f05eec4ce111536",
+      "html_sha256": "a7882ad165ea6b28e78594f10a0860d67c0bdb5c5ca51d2d70f151b100247991",
       "key": "graph-focus-domain",
       "source": "graph/focus-domain.json",
       "source_sha256": "41d858db9885e1981aebab7de478c0ef040e780708b53efc5f05eec4ce111536",
@@ -50,7 +146,7 @@
     },
     {
       "html": "graph/focus-dto.html",
-      "html_sha256": "68363742ad9c07df46691f24823e589bf379288fefeb009735da5a547e0f6747",
+      "html_sha256": "75016097bfb899df3f93bf8809f6a606fb04f4309cc12db1590dc43ebf1a6af9",
       "key": "graph-focus-dto",
       "source": "graph/focus-dto.json",
       "source_sha256": "68363742ad9c07df46691f24823e589bf379288fefeb009735da5a547e0f6747",
@@ -58,15 +154,15 @@
     },
     {
       "html": "graph/focus-infra.html",
-      "html_sha256": "c3094e9584a654185392078dd5ae8e95cc3cce9ae1597f1c331170600f1f45bf",
+      "html_sha256": "393eea35462eabbe9be4c507cf852899ae8d1324e4dea56005f44c271ac37e6b",
       "key": "graph-focus-infra",
       "source": "graph/focus-infra.json",
-      "source_sha256": "c3094e9584a654185392078dd5ae8e95cc3cce9ae1597f1c331170600f1f45bf",
+      "source_sha256": "f29f874eeecc3c5dff1858ba090b09f7b5391432b432e7f64ed7f5a61dd73169",
       "type": "architecture"
     },
     {
       "html": "graph/focus-repository.html",
-      "html_sha256": "a1d1f7d59e295a3a8e005c18856f99ea73f38cfd5ce1f378bb85c021f36c447b",
+      "html_sha256": "a1e073a15827b6153d8c475b1b45b8fa88f66536da5eb01c4eee86c3a8d05867",
       "key": "graph-focus-repository",
       "source": "graph/focus-repository.json",
       "source_sha256": "a1d1f7d59e295a3a8e005c18856f99ea73f38cfd5ce1f378bb85c021f36c447b",
@@ -74,7 +170,7 @@
     },
     {
       "html": "graph/focus-router.html",
-      "html_sha256": "ba1b36be8750e86af6f77126b0f424f8010e160a1f675d117df74497345e5ad4",
+      "html_sha256": "d27c1292a9c23b7ef0c6b9b9871eeada1a858c410e342b3a1c1f1649d5f2cbcf",
       "key": "graph-focus-router",
       "source": "graph/focus-router.json",
       "source_sha256": "ba1b36be8750e86af6f77126b0f424f8010e160a1f675d117df74497345e5ad4",
@@ -82,7 +178,7 @@
     },
     {
       "html": "graph/focus-service.html",
-      "html_sha256": "e3d5d650da814f5c446717b936f7e92f494c87826b4afc1731840b1885fa9b84",
+      "html_sha256": "4136004df1b3cf70604732cdb96440f330e7e1a5458106462f2e2339a2015f05",
       "key": "graph-focus-service",
       "source": "graph/focus-service.json",
       "source_sha256": "e3d5d650da814f5c446717b936f7e92f494c87826b4afc1731840b1885fa9b84",
@@ -90,7 +186,7 @@
     },
     {
       "html": "graph/index.html",
-      "html_sha256": "c0fe71a49d10c828425a0a9867f4356c7bceb5d63c2920d977051eda0daf21cd",
+      "html_sha256": "9dbf89cae39b7f363210c4e7d373538cd81454c5bb1b061bbda18d2db5e04467",
       "key": "graph-index",
       "source": null,
       "source_sha256": null,
@@ -98,11 +194,83 @@
     },
     {
       "html": "graph/violations.html",
-      "html_sha256": "82bdd9a5d772fd430225b593584e66e942fd1d6be534b78fda8b1223a14af92a",
+      "html_sha256": "04215c78ebba17382646bf26eb4e54456bb052f7dc99a2aa8a13d4bc3382e129",
       "key": "graph-violations",
       "source": "graph/violations.json",
       "source_sha256": "82bdd9a5d772fd430225b593584e66e942fd1d6be534b78fda8b1223a14af92a",
       "type": "architecture"
+    },
+    {
+      "html": "handover/dependencies.html",
+      "html_sha256": "446418781d46ad430c5d6ae7c5531528a5ae776ef8fed338419406d0d8e36691",
+      "key": "handover-dependencies",
+      "source": "handover/dependencies.json",
+      "source_sha256": "45f0324034ba4ff190b7656be8f8f6e5180ba6a9358b8bf9cfa3cb281d44a7b5",
+      "type": "workflow"
+    },
+    {
+      "html": "handover/differences.html",
+      "html_sha256": "90f745e546ec54bc48c649a6ad29b8254d90ea63538b35599fec73b31b9a74ff",
+      "key": "handover-differences",
+      "source": "handover/differences.archify.md",
+      "source_sha256": "3449f0bbc4d65ae244e01f83c40b1b06e321289ffc4e43bec1fdbf37646b5d80",
+      "type": "explainer"
+    },
+    {
+      "html": "handover/erd.html",
+      "html_sha256": "f2bbd9b8e800625fcd310358d5f96f9d95ba774df2953103a3e1ec66f1ff5c66",
+      "key": "handover-erd",
+      "source": "handover/erd.json",
+      "source_sha256": "a454c23563b2f7857783b32b2dac1462826f943882b9e23861c16cde7006d99f",
+      "type": "erd"
+    },
+    {
+      "html": "handover/index.html",
+      "html_sha256": "a35161af8340341104c11bd5500ed4d01e519aa70e142c411a776956e8f87b0d",
+      "key": "handover-index",
+      "source": null,
+      "source_sha256": null,
+      "type": "static"
+    },
+    {
+      "html": "handover/lifecycle.html",
+      "html_sha256": "95c6d06cc5e90a2523cc5687466db83cfc29ee6af04e3743d304c7a3d272cb47",
+      "key": "handover-lifecycle",
+      "source": "handover/lifecycle.json",
+      "source_sha256": "fa7090582511c243c82ab4def5bf86f9345ed88467bdcc68d659a0a5aeaa0bea",
+      "type": "lifecycle"
+    },
+    {
+      "html": "handover/sequence.html",
+      "html_sha256": "ae52531a8f95ce41a184587d3a3f7e0547f6c96cbe6dafc5d7c2d4e2038ec29d",
+      "key": "handover-sequence",
+      "source": "handover/sequence.json",
+      "source_sha256": "b4514c318c73500d124cfe9560bea02d7b1cdd0a9d8239b5eef0a9e086031254",
+      "type": "sequence"
+    },
+    {
+      "html": "handover/stage-lifecycle.html",
+      "html_sha256": "d9a356420ed31d53d09befeae96798218b2b73baca82e87f8ec95c8c4e7d18ab",
+      "key": "handover-stage-lifecycle",
+      "source": "handover/stage-lifecycle.json",
+      "source_sha256": "f0c95ae89e477e1bdfa055b2e908f672122c71f2d28db3aa8c1016c4a3b1bda0",
+      "type": "lifecycle"
+    },
+    {
+      "html": "handover/workflow.html",
+      "html_sha256": "a4464224dfacf414a30fe4cabe916d1e4c2a1ff83c6dfab2603a380a30de9789",
+      "key": "handover-workflow",
+      "source": "handover/workflow.json",
+      "source_sha256": "3c46e224270fe4210dc1969e46eeeab3a7b31f37daebfb4d1390a5c69a606af8",
+      "type": "workflow"
+    },
+    {
+      "html": "index.html",
+      "html_sha256": "29bb49f0e68515e708657b9e408383bd85da142569b95f89776048ac712cea5f",
+      "key": "index",
+      "source": null,
+      "source_sha256": null,
+      "type": "static"
     }
   ],
   "generator": {

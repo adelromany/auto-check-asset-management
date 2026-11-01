@@ -1,21 +1,21 @@
 {
   "schemaVersion": 1,
-  "receiptId": "cd206a9d-9688-48b4-b2c7-168af315df88",
+  "receiptId": "42e49c14-dfba-4500-9341-5c6efd581f02",
   "status": "current",
   "command": "deliver",
   "type": "explainer",
   "input": "/home/ec2-user/auto-check-asset-management/docs/visual/10-tech-stack-principles.archify.md",
   "output": "/home/ec2-user/auto-check-asset-management/docs/visual/10-tech-stack-principles.html",
   "specification": {
-    "sha256": "664f34b578950466e00e9f2fcc195e3766c674c589718e956826c45ff6c8decd",
-    "bytes": 3964
+    "sha256": "fd968fc8fac50833354dab3011ef392ead4488b6515d84c5e39802b1040c32c5",
+    "bytes": 3981
   },
   "artifact": {
-    "sha256": "d4bcc7903153bf31e290467d5dbca77296c1b0c45da7d037af52cac42bf953ad",
-    "bytes": 168999
+    "sha256": "b6dbd0033acb035cf798e155e1c2bf86820080ee5812b376b5e36e307105791d",
+    "bytes": 169102
   },
   "explainer": {
-    "preparedSha256": "a67e50d0885b8e742bbbc0333b4c11fb976b0b7df62dbd73b22f0f3ddcbb9cf2",
+    "preparedSha256": "eab0d3e05ac91680c3678f41f0a4cc9ffa8fa214976a7497880f8fdf0b269880",
     "dependencies": []
   }
 }

@@ -9,7 +9,7 @@
 - GIT-07 Line endings: `.gitattributes` enforces LF. Do not commit mass line-ending changes together with real changes.
 - GIT-08 Before each commit: run the suite, run `git status`, review `git diff --staged` for secrets and unrelated edits.
 - GIT-09 Integration into `feature/sso` happens by the owner, in order, after review.
-- GIT-10 When a principle `.md` changes, regenerate its visual version in the same commit.
+- GIT-10 When a principle `.md` or any code that feeds a diagram changes, run the visual build and commit the regenerated files in the same commit.
 
 ## Final-sync checklist
-- When a principle `.md` changes, regenerate its visual version in the same commit.
+- When a principle `.md` or any code that feeds a diagram changes, run the visual build and commit the regenerated files in the same commit.

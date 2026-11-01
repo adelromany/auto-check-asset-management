@@ -1,0 +1,403 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "The ten stages and their dependency table come from app/domain/stages.py",
+        "A stage runs only when every dependency is passed or skipped",
+        "A skipped dependency is satisfied, not missing"
+      ],
+      "title": "Order is fixed"
+    },
+    {
+      "dot": "rose",
+      "items": [
+        "Agent, software, recipient, checkout and push failures are separate labeled nodes",
+        "A failed or blocked stage makes the case stalled",
+        "The same stage can be re-run after the cause is fixed"
+      ],
+      "title": "Failures are visible"
+    },
+    {
+      "dot": "emerald",
+      "items": [
+        "The engineer confirms the four manual stages",
+        "The portal records the agent report and verified Snipe-IT writes",
+        "Snipe-IT is re-read after every write before a stage passes"
+      ],
+      "title": "One writer per fact"
+    }
+  ],
+  "diagram_type": "workflow",
+  "edges": [
+    {
+      "from": "device_prepared",
+      "label": "next",
+      "role": "main",
+      "to": "user_signed_in",
+      "variant": "emphasis"
+    },
+    {
+      "from": "user_signed_in",
+      "label": "next",
+      "role": "main",
+      "to": "agent_report",
+      "variant": "emphasis"
+    },
+    {
+      "from": "agent_report",
+      "label": "next",
+      "role": "main",
+      "to": "software_check",
+      "variant": "emphasis"
+    },
+    {
+      "from": "software_check",
+      "label": "next",
+      "role": "main",
+      "to": "recipient_check",
+      "variant": "emphasis"
+    },
+    {
+      "from": "recipient_check",
+      "label": "next",
+      "role": "main",
+      "to": "checkout",
+      "variant": "emphasis"
+    },
+    {
+      "from": "checkout",
+      "label": "next",
+      "role": "main",
+      "to": "report_printed",
+      "variant": "emphasis"
+    },
+    {
+      "from": "report_printed",
+      "label": "next",
+      "role": "main",
+      "to": "user_signed",
+      "variant": "emphasis"
+    },
+    {
+      "from": "user_signed",
+      "label": "next",
+      "role": "main",
+      "to": "document_scanned",
+      "variant": "emphasis"
+    },
+    {
+      "from": "document_scanned",
+      "label": "next",
+      "role": "main",
+      "to": "document_pushed",
+      "variant": "emphasis"
+    },
+    {
+      "from": "agent_report",
+      "label": "dependency",
+      "role": "branch",
+      "to": "recipient_check",
+      "variant": "dashed"
+    },
+    {
+      "from": "software_check",
+      "label": "dependency",
+      "role": "branch",
+      "to": "checkout",
+      "variant": "dashed"
+    },
+    {
+      "from": "agent_report",
+      "label": "no report",
+      "role": "error",
+      "to": "agent_report_missing",
+      "variant": "security"
+    },
+    {
+      "from": "agent_report",
+      "label": "serial differs",
+      "role": "error",
+      "to": "serial_mismatch",
+      "variant": "security"
+    },
+    {
+      "from": "software_check",
+      "label": "missing",
+      "role": "error",
+      "to": "software_missing",
+      "variant": "security"
+    },
+    {
+      "from": "recipient_check",
+      "fromSide": "bottom",
+      "label": "not found",
+      "role": "error",
+      "route": "drop",
+      "to": "recipient_not_found",
+      "toSide": "top",
+      "variant": "security"
+    },
+    {
+      "from": "checkout",
+      "label": "not verified",
+      "role": "error",
+      "to": "checkout_mismatch",
+      "variant": "security"
+    },
+    {
+      "from": "document_scanned",
+      "label": "rejected",
+      "role": "error",
+      "to": "wrong_file_type",
+      "variant": "security"
+    },
+    {
+      "from": "document_pushed",
+      "label": "not verified",
+      "role": "error",
+      "to": "push_unverified",
+      "variant": "security"
+    }
+  ],
+  "lanes": [
+    {
+      "id": "engineer",
+      "label": "Engineer"
+    },
+    {
+      "id": "failures_recipient",
+      "label": "Recipient exception",
+      "variant": "exception"
+    },
+    {
+      "id": "employee",
+      "label": "Employee PC + agent"
+    },
+    {
+      "id": "portal",
+      "label": "Portal"
+    },
+    {
+      "id": "snipeit",
+      "label": "Snipe-IT"
+    },
+    {
+      "id": "failures_agent",
+      "label": "Agent failures",
+      "variant": "exception"
+    },
+    {
+      "id": "failures_portal",
+      "label": "Portal failures",
+      "variant": "exception"
+    },
+    {
+      "id": "failures_snipeit",
+      "label": "Snipe-IT failures",
+      "variant": "exception"
+    }
+  ],
+  "mainPath": [
+    "device_prepared",
+    "user_signed_in",
+    "agent_report",
+    "software_check",
+    "recipient_check",
+    "checkout",
+    "report_printed",
+    "user_signed",
+    "document_scanned",
+    "document_pushed"
+  ],
+  "meta": {
+    "output": "docs/visual/handover/workflow.html",
+    "quality_profile": "showcase",
+    "subtitle": "Ten fixed stages, the actor at each step, and the failure side paths",
+    "title": "Device handover workflow"
+  },
+  "nodes": [
+    {
+      "col": 0,
+      "id": "device_prepared",
+      "label": "Device prepared",
+      "lane": "engineer",
+      "sublabel": "Device ready for handover",
+      "tag": "01",
+      "type": "backend"
+    },
+    {
+      "col": 1,
+      "id": "user_signed_in",
+      "label": "User signed in",
+      "lane": "employee",
+      "sublabel": "Employee signs in",
+      "tag": "02",
+      "type": "backend"
+    },
+    {
+      "col": 2,
+      "id": "agent_report",
+      "label": "Agent report",
+      "lane": "employee",
+      "sublabel": "Serial, CPU, RAM, disks",
+      "tag": "03",
+      "type": "backend"
+    },
+    {
+      "col": 3,
+      "id": "software_check",
+      "label": "Software check",
+      "lane": "portal",
+      "sublabel": "Software + Windows licence",
+      "tag": "04",
+      "type": "backend"
+    },
+    {
+      "col": 3,
+      "id": "recipient_check",
+      "label": "Recipient check",
+      "lane": "engineer",
+      "sublabel": "Snipe-IT user confirmation",
+      "tag": "05",
+      "type": "backend"
+    },
+    {
+      "col": 4,
+      "id": "checkout",
+      "label": "Checkout",
+      "lane": "snipeit",
+      "sublabel": "Checkout + re-read asset",
+      "tag": "06",
+      "type": "security"
+    },
+    {
+      "col": 4,
+      "id": "report_printed",
+      "label": "Report printed",
+      "lane": "engineer",
+      "sublabel": "Printable report",
+      "tag": "07",
+      "type": "backend"
+    },
+    {
+      "col": 5,
+      "id": "user_signed",
+      "label": "Sheet signed",
+      "lane": "employee",
+      "sublabel": "Signed paper sheet",
+      "tag": "08",
+      "type": "backend"
+    },
+    {
+      "col": 5,
+      "id": "document_scanned",
+      "label": "Document scanned",
+      "lane": "portal",
+      "sublabel": "PDF / PNG / JPEG upload",
+      "tag": "09",
+      "type": "backend"
+    },
+    {
+      "col": 5,
+      "id": "document_pushed",
+      "label": "Document pushed",
+      "lane": "snipeit",
+      "sublabel": "Upload + re-read files",
+      "tag": "10",
+      "type": "security"
+    },
+    {
+      "col": 2,
+      "id": "agent_report_missing",
+      "label": "Report missing",
+      "lane": "failures_agent",
+      "sublabel": "No report submitted",
+      "tag": "fail",
+      "type": "security"
+    },
+    {
+      "col": 3,
+      "id": "serial_mismatch",
+      "label": "Serial mismatch",
+      "lane": "failures_agent",
+      "sublabel": "Serial differs from case",
+      "tag": "fail",
+      "type": "security"
+    },
+    {
+      "col": 3,
+      "id": "software_missing",
+      "label": "Software missing",
+      "lane": "failures_portal",
+      "sublabel": "Program absent / not activated",
+      "tag": "fail",
+      "type": "security"
+    },
+    {
+      "col": 3,
+      "id": "recipient_not_found",
+      "label": "Recipient not found",
+      "lane": "failures_recipient",
+      "sublabel": "No Snipe-IT user match",
+      "tag": "blocked",
+      "type": "security"
+    },
+    {
+      "col": 5,
+      "id": "wrong_file_type",
+      "label": "Wrong file type",
+      "lane": "failures_portal",
+      "sublabel": "PDF, PNG or JPEG only",
+      "tag": "fail",
+      "type": "security"
+    },
+    {
+      "col": 4,
+      "id": "checkout_mismatch",
+      "label": "Checkout not verified",
+      "lane": "failures_snipeit",
+      "sublabel": "Asset assigned to someone else",
+      "tag": "fail",
+      "type": "security"
+    },
+    {
+      "col": 5,
+      "id": "push_unverified",
+      "label": "Push not verified",
+      "lane": "failures_snipeit",
+      "sublabel": "Scan absent from asset files",
+      "tag": "fail",
+      "type": "security"
+    }
+  ],
+  "phases": [
+    {
+      "fromCol": 0,
+      "id": "prepare",
+      "label": "Prepare",
+      "toCol": 1
+    },
+    {
+      "fromCol": 2,
+      "id": "collect",
+      "label": "Collect evidence",
+      "toCol": 3
+    },
+    {
+      "fromCol": 4,
+      "id": "commit",
+      "label": "Commit in Snipe-IT",
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "fromCol": 5,
+      "id": "evidence",
+      "label": "Signed evidence",
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "schema_version": 2
+}

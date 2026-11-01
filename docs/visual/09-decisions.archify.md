@@ -1,3 +1,5 @@
+@meta locale=en
+
 # 09 — Decisions
 
 Format per entry: ID, date, status (AGREED / PROPOSED / OPEN / IMPLEMENTED), context, decision, consequences. New decisions are appended; superseded ones are marked, never deleted.
@@ -78,10 +80,11 @@ Format per entry: ID, date, status (AGREED / PROPOSED / OPEN / IMPLEMENTED), con
 | D-65 {#d-65} | IMPLEMENTED — `app/domain/timeutil.py` interprets naive SQLite datetime readbacks as UTC and normalizes aware values to UTC; status and duration calculations use UTC. |
 | D-66 {#d-66} | PROPOSED — Inactive draft/in-progress handovers become stalled after `STALL_HOURS` (default 24; zero disables), computed in SQL for dashboard summaries/pages. The 24-hour policy remains open at Q-10. |
 | D-67 {#d-67} | IMPLEMENTED — Structured key/value logging, request correlation via `X-Request-ID`, generic 500 responses, startup configuration summary and sanitized Snipe-IT call timing; no tokens, paths, identities or request bodies are logged. Q-5 is resolved. |
+| D-68 {#d-68} | IMPLEMENTED (owner instruction, 2026-10-31) — Visual documentation is generated with Archify 3.2.0 pinned at commit `a4065941f12be7967436261d9934784e381d423c`. Archify is fetched into the git-ignored `.tools/archify` directory by `scripts/fetch_archify.*`, never vendored and never added to the portal's runtime dependencies. Delivered HTML embeds the viewer and its notices; the pinned version, Apache-2.0 license, NOTICE and JetBrains Mono OFL text are recorded in `docs/visual/THIRD_PARTY.md`. |
 
 ## Source {#source}
 
 @facts
 | Source Markdown | `docs/principles/09-decisions.md` |
-| SHA-256 | `f1548bf844889387633ed2ec8dcaa7688539a92ed8e71b9a598973f587a05db7` |
+| SHA-256 | `1440b1a2ebdbd52e315ace5f42df85c44315fb1d420b3ce694e8df33e70d339c` |
 | Repository link | [Open the Markdown source](https://github.com/adelromany/auto-check-asset-management/blob/main/docs/principles/09-decisions.md) |

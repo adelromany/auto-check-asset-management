@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "b0380ce1-cc2d-40a8-8a18-3724f0dc6381",
+  "status": "current",
+  "command": "deliver",
+  "type": "erd",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/handover/erd.json",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/handover/erd.html",
+  "specification": {
+    "sha256": "a454c23563b2f7857783b32b2dac1462826f943882b9e23861c16cde7006d99f",
+    "bytes": 7794
+  },
+  "artifact": {
+    "sha256": "f2bbd9b8e800625fcd310358d5f96f9d95ba774df2953103a3e1ec66f1ff5c66",
+    "bytes": 862905
+  }
+}

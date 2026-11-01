@@ -14,6 +14,16 @@ from .graph import (
     build_overview,
     build_violations,
 )
+from .handover import (
+    build_dependencies,
+    build_differences,
+    build_erd,
+    build_handover_index,
+    build_lifecycle,
+    build_sequence,
+    build_stage_lifecycle,
+    build_workflow,
+)
 from .principles import PAGES, build_index, principle_source
 
 ARTIFACTS: list[Artifact] = [
@@ -64,6 +74,63 @@ ARTIFACTS: list[Artifact] = [
         output_name="graph/index.html",
         diagram_type="static",
         build=build_graph_index,
+        static=True,
+    ),
+    Artifact(
+        key="handover-workflow",
+        source_name="handover/workflow.json",
+        output_name="handover/workflow.html",
+        diagram_type="workflow",
+        build=build_workflow,
+    ),
+    Artifact(
+        key="handover-dependencies",
+        source_name="handover/dependencies.json",
+        output_name="handover/dependencies.html",
+        diagram_type="workflow",
+        build=build_dependencies,
+    ),
+    Artifact(
+        key="handover-sequence",
+        source_name="handover/sequence.json",
+        output_name="handover/sequence.html",
+        diagram_type="sequence",
+        build=build_sequence,
+    ),
+    Artifact(
+        key="handover-lifecycle",
+        source_name="handover/lifecycle.json",
+        output_name="handover/lifecycle.html",
+        diagram_type="lifecycle",
+        build=build_lifecycle,
+    ),
+    Artifact(
+        key="handover-stage-lifecycle",
+        source_name="handover/stage-lifecycle.json",
+        output_name="handover/stage-lifecycle.html",
+        diagram_type="lifecycle",
+        build=build_stage_lifecycle,
+    ),
+    Artifact(
+        key="handover-erd",
+        source_name="handover/erd.json",
+        output_name="handover/erd.html",
+        diagram_type="erd",
+        build=build_erd,
+    ),
+    Artifact(
+        key="handover-differences",
+        source_name="handover/differences.archify.md",
+        output_name="handover/differences.html",
+        diagram_type="explainer",
+        build=build_differences,
+    ),
+    Artifact(
+        key="handover-index",
+        source_name="",
+        output_name="handover/index.html",
+        diagram_type="static",
+        build=build_handover_index,
         static=True,
     ),
     Artifact(

@@ -1,3 +1,5 @@
+@meta locale=en
+
 # 04 — Security Principles (RED LINE)
 
 This system runs inside a company and controls who is recorded as holding company equipment. Every line of code must meet this file. When unsure, choose the stricter option.

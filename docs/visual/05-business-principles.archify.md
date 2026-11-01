@@ -1,3 +1,5 @@
+@meta locale=en
+
 # 05 — Business Principles
 
 Summary (generated from the headings): This page has 4 sections. It keeps every rule in the source file and adds no new rule.

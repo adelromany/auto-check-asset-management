@@ -1,3 +1,5 @@
+@meta locale=en
+
 # 06 — Clean Architecture & Design Patterns
 
 Summary (generated from the headings): This page has 5 sections. It keeps every rule in the source file and adds no new rule.

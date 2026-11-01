@@ -1,3 +1,5 @@
+@meta locale=en
+
 # 12 — Performance Principles
 
 Context: a small IT team (about 6 engineers), hundreds to low thousands of handovers per year, LAN deployment. Performance work is about correctness at this scale and avoiding traps, not about heroics.

@@ -118,7 +118,9 @@ def build(keys: list[str] | None, *, quality: str = "showcase", render: bool = T
             )
             return 1
 
-    _write(MANIFEST_PATH, manifest_bytes(artifacts))
+    # The manifest always describes the whole committed set, even when the
+    # command builds a subset with --only.
+    _write(MANIFEST_PATH, manifest_bytes(ARTIFACTS))
     print(f"[manifest] {MANIFEST_PATH.relative_to(VISUAL_ROOT.parent.parent)}")
     return 0
 

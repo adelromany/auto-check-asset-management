@@ -1,3 +1,5 @@
+@meta locale=en
+
 # 02 — Logging Principles
 
 Status: both the **business audit trail** and the **structured technical logging/request-id path** are implemented. The limits on personal data and secrets remain mandatory.

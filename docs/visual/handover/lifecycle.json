@@ -1,0 +1,143 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "HandoverService.recompute_status is the only writer",
+        "Cancelled wins before every other rule",
+        "Completed needs all ten stages passed or skipped"
+      ],
+      "title": "One status writer"
+    },
+    {
+      "dot": "amber",
+      "items": [
+        "Any failed or blocked stage",
+        "No update for STALL_HOURS (configurable, zero disables it)"
+      ],
+      "title": "Stalled has two causes"
+    }
+  ],
+  "diagram_type": "lifecycle",
+  "mainPath": [
+    "draft",
+    "in_progress",
+    "stalled",
+    "completed"
+  ],
+  "meta": {
+    "output": "docs/visual/handover/lifecycle.html",
+    "quality_profile": "showcase",
+    "subtitle": "Case status is derived from the stage states; cancellation is explicit",
+    "title": "Handover case lifecycle"
+  },
+  "schema_version": 3,
+  "states": [
+    {
+      "id": "draft",
+      "label": "Draft",
+      "step": "01",
+      "sublabel": "no stage acted on",
+      "tag": "entry",
+      "type": "start"
+    },
+    {
+      "id": "in_progress",
+      "label": "In progress",
+      "step": "02",
+      "sublabel": "work has started",
+      "tag": "open",
+      "type": "active"
+    },
+    {
+      "id": "stalled",
+      "label": "Stalled",
+      "step": "03",
+      "sublabel": "a stage failed, blocked, or went stale",
+      "tag": "attention",
+      "type": "waiting"
+    },
+    {
+      "id": "completed",
+      "label": "Completed",
+      "step": "04",
+      "sublabel": "all ten stages passed or skipped",
+      "tag": "closed",
+      "type": "success"
+    },
+    {
+      "id": "cancelled",
+      "label": "Cancelled",
+      "sublabel": "explicit, never derived over",
+      "tag": "terminal",
+      "type": "failure"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "draft",
+      "id": "draft-progress",
+      "label": "first stage acted on",
+      "to": "in_progress"
+    },
+    {
+      "from": "draft",
+      "id": "draft-stalled",
+      "label": "first action fails",
+      "to": "stalled"
+    },
+    {
+      "from": "in_progress",
+      "id": "progress-stalled",
+      "label": "a stage failed or blocked",
+      "to": "stalled",
+      "variant": "security"
+    },
+    {
+      "from": "in_progress",
+      "id": "progress-stale",
+      "label": "no update for STALL_HOURS",
+      "to": "stalled",
+      "variant": "dashed"
+    },
+    {
+      "from": "stalled",
+      "id": "stalled-progress",
+      "label": "re-run succeeds, no failure remains",
+      "to": "in_progress"
+    },
+    {
+      "from": "in_progress",
+      "id": "progress-complete",
+      "label": "all stages passed or skipped",
+      "to": "completed"
+    },
+    {
+      "from": "stalled",
+      "id": "stalled-complete",
+      "label": "all stages passed or skipped",
+      "to": "completed"
+    },
+    {
+      "from": "draft",
+      "id": "draft-cancel",
+      "label": "engineer cancels",
+      "to": "cancelled",
+      "variant": "security"
+    },
+    {
+      "from": "in_progress",
+      "id": "progress-cancel",
+      "label": "engineer cancels",
+      "to": "cancelled",
+      "variant": "security"
+    },
+    {
+      "from": "stalled",
+      "id": "stalled-cancel",
+      "label": "engineer cancels",
+      "to": "cancelled",
+      "variant": "security"
+    }
+  ]
+}

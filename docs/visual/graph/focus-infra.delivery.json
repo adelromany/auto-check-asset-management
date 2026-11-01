@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "receiptId": "ec192891-7b6e-4dcf-b818-c14fe60688e8",
+  "receiptId": "6326f9f1-cf48-47f8-b58f-7c97b3d26ef8",
   "status": "current",
   "command": "deliver",
   "type": "architecture",
   "input": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/focus-infra.json",
   "output": "/home/ec2-user/auto-check-asset-management/docs/visual/graph/focus-infra.html",
   "specification": {
-    "sha256": "c3094e9584a654185392078dd5ae8e95cc3cce9ae1597f1c331170600f1f45bf",
-    "bytes": 6154
+    "sha256": "f29f874eeecc3c5dff1858ba090b09f7b5391432b432e7f64ed7f5a61dd73169",
+    "bytes": 6721
   },
   "artifact": {
-    "sha256": "34c0291afcb1268c5f5c3b20a4b984a4bfe074ed5fcc4efd68ee4ba73238e521",
-    "bytes": 848612
+    "sha256": "393eea35462eabbe9be4c507cf852899ae8d1324e4dea56005f44c271ac37e6b",
+    "bytes": 851328
   }
 }

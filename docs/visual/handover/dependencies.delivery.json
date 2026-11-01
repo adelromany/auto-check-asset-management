@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "49e56cb3-50ea-4f55-be76-1cbd057bc05e",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/handover/dependencies.json",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/handover/dependencies.html",
+  "specification": {
+    "sha256": "45f0324034ba4ff190b7656be8f8f6e5180ba6a9358b8bf9cfa3cb281d44a7b5",
+    "bytes": 5076
+  },
+  "artifact": {
+    "sha256": "446418781d46ad430c5d6ae7c5531528a5ae776ef8fed338419406d0d8e36691",
+    "bytes": 845379
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "2c664d30-e437-400d-8194-62d10fb406e4",
+  "status": "current",
+  "command": "deliver",
+  "type": "explainer",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/handover/differences.archify.md",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/handover/differences.html",
+  "specification": {
+    "sha256": "3449f0bbc4d65ae244e01f83c40b1b06e321289ffc4e43bec1fdbf37646b5d80",
+    "bytes": 3341
+  },
+  "artifact": {
+    "sha256": "90f745e546ec54bc48c649a6ad29b8254d90ea63538b35599fec73b31b9a74ff",
+    "bytes": 155001
+  },
+  "explainer": {
+    "preparedSha256": "78d22c3beec740af0dd29d0205863365160abd7f84aecfa475b4713e28c61a8a",
+    "dependencies": []
+  }
+}

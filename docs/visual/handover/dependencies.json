@@ -1,0 +1,233 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "The table is a DAG with no cycles",
+        "A passed or skipped dependency is satisfied",
+        "A pending, failed or blocked dependency blocks the stage"
+      ],
+      "title": "Dependencies are one-directional"
+    },
+    {
+      "dot": "rose",
+      "items": [
+        "checkout waits for both recipient_check and software_check",
+        "software_check and recipient_check both wait for agent_report"
+      ],
+      "title": "Two joins"
+    }
+  ],
+  "diagram_type": "workflow",
+  "edges": [
+    {
+      "bias": 0.5,
+      "from": "device_prepared",
+      "label": "requires",
+      "role": "branch",
+      "to": "user_signed_in",
+      "variant": "dashed"
+    },
+    {
+      "bias": 0.5,
+      "from": "device_prepared",
+      "label": "requires",
+      "role": "branch",
+      "to": "agent_report",
+      "variant": "dashed"
+    },
+    {
+      "bias": 0.5,
+      "from": "agent_report",
+      "label": "requires",
+      "role": "branch",
+      "to": "software_check",
+      "variant": "dashed"
+    },
+    {
+      "bias": 0.5,
+      "from": "agent_report",
+      "label": "requires",
+      "role": "branch",
+      "to": "recipient_check",
+      "variant": "dashed"
+    },
+    {
+      "bias": 0.25,
+      "from": "recipient_check",
+      "label": "requires",
+      "role": "branch",
+      "to": "checkout",
+      "variant": "dashed"
+    },
+    {
+      "bias": 0.25,
+      "from": "software_check",
+      "label": "requires",
+      "role": "branch",
+      "to": "checkout",
+      "variant": "dashed"
+    },
+    {
+      "bias": 0.5,
+      "from": "agent_report",
+      "label": "requires",
+      "role": "branch",
+      "to": "report_printed",
+      "variant": "dashed"
+    },
+    {
+      "bias": 0.75,
+      "from": "report_printed",
+      "label": "requires",
+      "role": "branch",
+      "to": "user_signed",
+      "variant": "dashed"
+    },
+    {
+      "bias": 0.5,
+      "from": "user_signed",
+      "label": "requires",
+      "role": "branch",
+      "to": "document_scanned",
+      "variant": "dashed"
+    },
+    {
+      "bias": 0.5,
+      "from": "document_scanned",
+      "label": "requires",
+      "role": "branch",
+      "to": "document_pushed",
+      "variant": "dashed"
+    }
+  ],
+  "lanes": [
+    {
+      "id": "engineer",
+      "label": "Engineer"
+    },
+    {
+      "id": "employee",
+      "label": "Employee PC"
+    },
+    {
+      "id": "agent",
+      "label": "Agent"
+    },
+    {
+      "id": "portal",
+      "label": "Portal"
+    },
+    {
+      "id": "snipeit",
+      "label": "Snipe-IT"
+    }
+  ],
+  "mainPath": [
+    "device_prepared",
+    "agent_report",
+    "report_printed",
+    "user_signed",
+    "document_scanned",
+    "document_pushed"
+  ],
+  "meta": {
+    "output": "docs/visual/handover/dependencies.html",
+    "quality_profile": "showcase",
+    "subtitle": "Every edge is a row of STAGE_DEPENDENCIES; a stage runs only when all of them are passed or skipped",
+    "title": "Handover stage dependencies"
+  },
+  "nodes": [
+    {
+      "col": 0,
+      "id": "device_prepared",
+      "label": "Device prepared",
+      "lane": "engineer",
+      "sublabel": "depends on 0 stage(s)",
+      "tag": "01",
+      "type": "backend"
+    },
+    {
+      "col": 1,
+      "id": "user_signed_in",
+      "label": "User signed in",
+      "lane": "employee",
+      "sublabel": "depends on 1 stage(s)",
+      "tag": "02",
+      "type": "backend"
+    },
+    {
+      "col": 1,
+      "id": "agent_report",
+      "label": "Agent report",
+      "lane": "agent",
+      "sublabel": "depends on 1 stage(s)",
+      "tag": "03",
+      "type": "backend"
+    },
+    {
+      "col": 2,
+      "id": "software_check",
+      "label": "Software check",
+      "lane": "portal",
+      "sublabel": "depends on 1 stage(s)",
+      "tag": "04",
+      "type": "backend"
+    },
+    {
+      "col": 2,
+      "id": "recipient_check",
+      "label": "Recipient check",
+      "lane": "engineer",
+      "sublabel": "depends on 1 stage(s)",
+      "tag": "05",
+      "type": "backend"
+    },
+    {
+      "col": 3,
+      "id": "checkout",
+      "label": "Checkout",
+      "lane": "snipeit",
+      "sublabel": "depends on 2 stage(s)",
+      "tag": "06",
+      "type": "security"
+    },
+    {
+      "col": 3,
+      "id": "report_printed",
+      "label": "Report printed",
+      "lane": "engineer",
+      "sublabel": "depends on 1 stage(s)",
+      "tag": "07",
+      "type": "backend"
+    },
+    {
+      "col": 4,
+      "id": "user_signed",
+      "label": "Sheet signed",
+      "lane": "employee",
+      "sublabel": "depends on 1 stage(s)",
+      "tag": "08",
+      "type": "backend"
+    },
+    {
+      "col": 5,
+      "id": "document_scanned",
+      "label": "Document scanned",
+      "lane": "portal",
+      "sublabel": "depends on 1 stage(s)",
+      "tag": "09",
+      "type": "backend"
+    },
+    {
+      "col": 5,
+      "id": "document_pushed",
+      "label": "Document pushed",
+      "lane": "snipeit",
+      "sublabel": "depends on 1 stage(s)",
+      "tag": "10",
+      "type": "security"
+    }
+  ],
+  "schema_version": 2
+}

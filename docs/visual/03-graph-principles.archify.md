@@ -1,3 +1,5 @@
+@meta locale=en
+
 # 03 — Graph Principles (rules + LIVE GRAPH)
 
 The project graph is a map of what depends on what, so any change can be assessed for impact before it is made. It is part of the code: it is updated in the SAME branch as the change that alters it, and a test enforces consistency.
@@ -45,5 +47,5 @@ The graph diagrams are standalone HTML files in `docs/visual/graph/`. The wrappe
 
 @facts
 | Source Markdown | `docs/principles/03-graph-principles.md` |
-| SHA-256 | `2ef0fb1b2fa26e343b48e6fa64d1be540465a6706b6222f285c2d85328e6cb7c` |
+| SHA-256 | `08442c4f41aff87ce3c6815bc55e6aa0c92f3ffe6f214ce0aa64964a7822a2b0` |
 | Repository link | [Open the Markdown source](https://github.com/adelromany/auto-check-asset-management/blob/main/docs/principles/03-graph-principles.md) |

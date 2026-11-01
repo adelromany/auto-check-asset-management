@@ -1,21 +1,21 @@
 {
   "schemaVersion": 1,
-  "receiptId": "fc603b70-502e-4c02-bbb1-22398aa0193d",
+  "receiptId": "c4215d7a-40ab-4533-91ca-dfed24e6b7dd",
   "status": "current",
   "command": "deliver",
   "type": "explainer",
   "input": "/home/ec2-user/auto-check-asset-management/docs/visual/03-graph-principles.archify.md",
   "output": "/home/ec2-user/auto-check-asset-management/docs/visual/03-graph-principles.html",
   "specification": {
-    "sha256": "c545beeabcde26cfe80607028e98d07852107c8efd4b0cd1f139ef84a563b04f",
-    "bytes": 3722
+    "sha256": "953eaecd297322b74704210eb5c756174bad78b5d43634ae76d2e9eb68fc76ca",
+    "bytes": 3739
   },
   "artifact": {
-    "sha256": "d0d92b1febcf4c4090c73ec40cada6e1dc57b88da0e474f071f9bffdea1adf61",
-    "bytes": 155651
+    "sha256": "681e0e124bc13de7e2f735c6adba5c77ca023d9f3cef79208b99488478dbe020",
+    "bytes": 155752
   },
   "explainer": {
-    "preparedSha256": "0796823d4c2f2a8e46ac42e08675069120822fead25a24b748206fdefe235e3e",
+    "preparedSha256": "99501a135af031a9caef862bd727573d5170c806b42a5ca5853182de487713d0",
     "dependencies": []
   }
 }

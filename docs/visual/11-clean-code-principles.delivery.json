@@ -1,21 +1,21 @@
 {
   "schemaVersion": 1,
-  "receiptId": "534e67c1-ef4f-438a-90a3-c88ebd4194c2",
+  "receiptId": "50c59b42-e1d4-4681-ab36-3b9d00a48943",
   "status": "current",
   "command": "deliver",
   "type": "explainer",
   "input": "/home/ec2-user/auto-check-asset-management/docs/visual/11-clean-code-principles.archify.md",
   "output": "/home/ec2-user/auto-check-asset-management/docs/visual/11-clean-code-principles.html",
   "specification": {
-    "sha256": "1cde227a20af924c905d8aa81e51504c6141571ea5387d1c90225f3daacc9053",
-    "bytes": 593
+    "sha256": "a7f7efb2f9ac551f0095cb8ab8a4790e3e180791103105993e6ccdfe018d5781",
+    "bytes": 610
   },
   "artifact": {
-    "sha256": "f5ae2ab6040d8768c55a392e75cafa1090e9933fa1661edabeac8859ddf8c115",
-    "bytes": 132903
+    "sha256": "7739ea4de8b5e3623086dabd7810a90a69fb4d465818f3f7559e0fc23e5cdec7",
+    "bytes": 133003
   },
   "explainer": {
-    "preparedSha256": "feed255bab7d8c01428d9424021a151cfd8bb680153bea5e262ed2e83c0d0bc0",
+    "preparedSha256": "3c4e4cc673760950470b431cb1730ef41ef0d322874d98ffcc6630d128d65d93",
     "dependencies": []
   }
 }

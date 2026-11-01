@@ -258,7 +258,10 @@ def build_explainer(page: PrinciplePage, rules: dict[str, Rule]) -> str:
         rules=rules,
         path=page.markdown_path,
     )
-    body: list[str] = [f"# {converter.title}", "", conclusion, ""]
+    # Archify's explainer viewer defaults to Chinese chrome.  The task requires
+    # English pages, and the committed artifacts must not depend on a CJK font
+    # being installed, so every explainer declares its locale explicitly.
+    body: list[str] = ["@meta locale=en", "", f"# {converter.title}", "", conclusion, ""]
     diagram = _diagram_block(page.diagram)
     if diagram:
         # Put the structural diagram before the rule panels; the section from

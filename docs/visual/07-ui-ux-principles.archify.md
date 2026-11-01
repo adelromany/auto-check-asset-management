@@ -1,3 +1,5 @@
+@meta locale=en
+
 # 07 — UI/UX Principles
 
 The UI is server-rendered Jinja + vanilla JS, styled by Tailwind v4 with the shadcn token architecture already in `styles/app.css`. It must stay one consistent system.

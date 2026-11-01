@@ -1,0 +1,223 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "Every browser request carries the engineer's Entra SSO session",
+        "The agent has no cookie: the one-time code is its only credential",
+        "The engineer's identity never travels in the agent command or payload"
+      ],
+      "title": "Two credentials"
+    },
+    {
+      "dot": "emerald",
+      "items": [
+        "The session is bound to the handover when the code is created",
+        "The atomic submit moves waiting to submitted exactly once",
+        "The report is redacted before it is stored as evidence"
+      ],
+      "title": "One report, one handover"
+    },
+    {
+      "dot": "rose",
+      "items": [
+        "Checkout is followed by a re-read of the asset",
+        "The uploaded scan is followed by a re-read of the file list",
+        "A write that cannot be verified fails the stage"
+      ],
+      "title": "Verified writes"
+    }
+  ],
+  "diagram_type": "sequence",
+  "messages": [
+    {
+      "from": "engineer",
+      "label": "Open the portal and sign in with Entra SSO",
+      "to": "browser",
+      "variant": "emphasis",
+      "y": 170
+    },
+    {
+      "from": "browser",
+      "label": "GET /login → /auth/callback (SSO)",
+      "to": "portal",
+      "variant": "emphasis",
+      "y": 210
+    },
+    {
+      "from": "portal",
+      "label": "Signed session cookie",
+      "to": "browser",
+      "variant": "return",
+      "y": 250
+    },
+    {
+      "from": "browser",
+      "label": "GET /api/session/new?handover_id=… (SSO)",
+      "to": "portal",
+      "variant": "emphasis",
+      "y": 290
+    },
+    {
+      "from": "portal",
+      "label": "Store code hash bound to the handover",
+      "to": "db",
+      "variant": "emphasis",
+      "y": 330
+    },
+    {
+      "from": "portal",
+      "label": "Code XXXX-XXXX-XXXX",
+      "to": "browser",
+      "variant": "return",
+      "y": 370
+    },
+    {
+      "from": "engineer",
+      "label": "Run the copied PowerShell command",
+      "to": "agent",
+      "variant": "emphasis",
+      "y": 410
+    },
+    {
+      "from": "agent",
+      "label": "GET /static/agent.ps1 (no SSO)",
+      "to": "portal",
+      "variant": "dashed",
+      "y": 450
+    },
+    {
+      "from": "agent",
+      "label": "POST /api/session/{code}/submit (code only)",
+      "to": "portal",
+      "variant": "security",
+      "y": 490
+    },
+    {
+      "from": "portal",
+      "label": "Atomic waiting → submitted",
+      "to": "db",
+      "variant": "emphasis",
+      "y": 530
+    },
+    {
+      "from": "portal",
+      "label": "200 ok / already_submitted",
+      "to": "agent",
+      "variant": "return",
+      "y": 570
+    },
+    {
+      "from": "browser",
+      "label": "Poll GET /api/session/{code}/data (SSO)",
+      "to": "portal",
+      "variant": "emphasis",
+      "y": 610
+    },
+    {
+      "from": "portal",
+      "label": "202 waiting, then 200 with the report",
+      "to": "browser",
+      "variant": "return",
+      "y": 650
+    },
+    {
+      "from": "portal",
+      "label": "Find the recipient in Snipe-IT (SSO)",
+      "to": "snipeit",
+      "variant": "emphasis",
+      "y": 690
+    },
+    {
+      "from": "portal",
+      "label": "Checkout the asset and re-read it (SSO)",
+      "to": "snipeit",
+      "variant": "emphasis",
+      "y": 730
+    },
+    {
+      "from": "portal",
+      "label": "Upload the signed sheet and re-read files (SSO)",
+      "to": "snipeit",
+      "variant": "emphasis",
+      "y": 770
+    },
+    {
+      "from": "portal",
+      "label": "Stage transitions and audit events",
+      "to": "db",
+      "variant": "emphasis",
+      "y": 810
+    },
+    {
+      "from": "browser",
+      "label": "Print, sign, scan, upload and sign out",
+      "to": "engineer",
+      "variant": "return",
+      "y": 850
+    }
+  ],
+  "meta": {
+    "column_fit": "spread",
+    "output": "docs/visual/handover/sequence.html",
+    "quality_profile": "showcase",
+    "subtitle": "The engineer's SSO session and the agent's one-time code are different credentials",
+    "title": "Onboarding sequence at the employee's PC"
+  },
+  "participants": [
+    {
+      "id": "engineer",
+      "label": "Engineer",
+      "sublabel": "at the employee's PC",
+      "type": "external"
+    },
+    {
+      "id": "browser",
+      "label": "Browser",
+      "sublabel": "employee's PC",
+      "type": "frontend"
+    },
+    {
+      "id": "portal",
+      "label": "Handover Portal",
+      "sublabel": "FastAPI",
+      "type": "backend"
+    },
+    {
+      "id": "agent",
+      "label": "PowerShell agent",
+      "sublabel": "no browser cookie",
+      "type": "external"
+    },
+    {
+      "id": "snipeit",
+      "label": "Snipe-IT",
+      "sublabel": "asset system",
+      "type": "cloud"
+    },
+    {
+      "id": "db",
+      "label": "Database",
+      "sublabel": "handover state",
+      "type": "database"
+    }
+  ],
+  "schema_version": 1,
+  "segments": [
+    {
+      "from": 150,
+      "label": "Create the one-time code (SSO)",
+      "to": 400
+    },
+    {
+      "from": 400,
+      "label": "Agent report (code only)",
+      "to": 600
+    },
+    {
+      "from": 600,
+      "label": "Confirm and record (SSO)",
+      "to": 880
+    }
+  ]
+}

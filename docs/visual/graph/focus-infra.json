@@ -162,26 +162,11 @@
       "type": "backend"
     },
     {
-      "id": "build-principles-visual",
-      "label": "build_principles_visual.py",
-      "pos": [
-        40,
-        730
-      ],
-      "size": [
-        320,
-        52
-      ],
-      "sublabel": "build_principles_visual.py",
-      "tag": "deterministic offline principle visual generator",
-      "type": "backend"
-    },
-    {
       "id": "graph-data",
       "label": "graph_data.py",
       "pos": [
         40,
-        796
+        730
       ],
       "size": [
         320,
@@ -192,26 +177,11 @@
       "type": "backend"
     },
     {
-      "id": "build-handover-workflow",
-      "label": "build_handover_workflow.py",
-      "pos": [
-        40,
-        862
-      ],
-      "size": [
-        320,
-        52
-      ],
-      "sublabel": "build_handover_workflow.py",
-      "tag": "generates code-derived handover workflow visual",
-      "type": "backend"
-    },
-    {
       "id": "visual-init",
       "label": "__init__.py",
       "pos": [
         40,
-        928
+        796
       ],
       "size": [
         320,
@@ -226,7 +196,7 @@
       "label": "archify.py",
       "pos": [
         40,
-        994
+        862
       ],
       "size": [
         320,
@@ -241,7 +211,7 @@
       "label": "artifacts.py",
       "pos": [
         40,
-        1060
+        928
       ],
       "size": [
         320,
@@ -256,7 +226,7 @@
       "label": "build_visuals.py",
       "pos": [
         40,
-        1126
+        994
       ],
       "size": [
         320,
@@ -267,11 +237,71 @@
       "type": "backend"
     },
     {
+      "id": "visual-graph",
+      "label": "graph.py",
+      "pos": [
+        40,
+        1060
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "visual/graph.py",
+      "tag": "architecture, focus and violations builders from the LIV",
+      "type": "backend"
+    },
+    {
+      "id": "visual-handover",
+      "label": "handover.py",
+      "pos": [
+        40,
+        1126
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "visual/handover.py",
+      "tag": "workflow, sequence, lifecycle, ERD and differences build",
+      "type": "backend"
+    },
+    {
+      "id": "visual-markdown",
+      "label": "markdown.py",
+      "pos": [
+        40,
+        1192
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "visual/markdown.py",
+      "tag": "principle Markdown parser and shared hash/link helpers",
+      "type": "backend"
+    },
+    {
+      "id": "visual-principles",
+      "label": "principles.py",
+      "pos": [
+        40,
+        1258
+      ],
+      "size": [
+        320,
+        52
+      ],
+      "sublabel": "visual/principles.py",
+      "tag": "twelve principle explainers and the static visual index",
+      "type": "backend"
+    },
+    {
       "id": "visual-registry",
       "label": "registry.py",
       "pos": [
         40,
-        1192
+        1324
       ],
       "size": [
         320,
@@ -287,11 +317,11 @@
   "meta": {
     "output": "docs/visual/graph/focus-infra.html",
     "quality_profile": "showcase",
-    "subtitle": "18 modules declared as infra in the LIVE GRAPH.",
+    "subtitle": "20 modules declared as infra in the LIVE GRAPH.",
     "title": "infrastructure and tools: module focus",
     "viewBox": [
       400,
-      1308
+      1440
     ]
   },
   "schema_version": 1

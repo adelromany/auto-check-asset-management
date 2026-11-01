@@ -1,3 +1,5 @@
+@meta locale=en
+
 # 11 — Clean Code Principles
 
 **Known exceptions at final sync:** `app/services/snipeit_ops.py` (640 lines) and `static/js/handover_detail.js` (461 lines). Both are cohesive but too large; splitting them is recorded in Q-6 and is not claimed as done.

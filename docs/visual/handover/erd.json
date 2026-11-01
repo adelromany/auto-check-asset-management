@@ -1,0 +1,345 @@
+{
+  "cards": [
+    {
+      "dot": "cyan",
+      "items": [
+        "uq_handovers_active_device_serial is a partial unique index on device_serial",
+        "The predicate excludes completed and cancelled cases",
+        "The same rule is declared for PostgreSQL and SQLite"
+      ],
+      "title": "One active case per serial"
+    },
+    {
+      "dot": "slate",
+      "items": [
+        "ix_handovers_created_at: created_at",
+        "ix_handovers_device_serial: device_serial",
+        "ix_handovers_engineer_email: engineer_email",
+        "ix_handovers_status: status",
+        "uq_handovers_active_device_serial: device_serial (unique)",
+        "ix_handover_stages_handover_id: handover_id",
+        "ix_agent_reports_handover_id: handover_id",
+        "ix_documents_handover_id: handover_id",
+        "ix_events_handover_id_at: handover_id, at",
+        "uq_handover_stages_handover_id_stage: one row per stage per case"
+      ],
+      "title": "Indexes and constraints"
+    },
+    {
+      "dot": "rose",
+      "items": [
+        "agent_sessions is not a table in the current code",
+        "The task prompt lists it as optional; the differences page records the gap"
+      ],
+      "title": "Not in this model"
+    }
+  ],
+  "diagram_type": "erd",
+  "entities": [
+    {
+      "attributes": [
+        {
+          "key": "pk",
+          "name": "id",
+          "type": "uuid"
+        },
+        {
+          "name": "ticket_ref",
+          "type": "varchar(100)"
+        },
+        {
+          "name": "status",
+          "type": "varchar(20)"
+        },
+        {
+          "name": "engineer_email",
+          "type": "varchar(320)"
+        },
+        {
+          "name": "engineer_name",
+          "type": "varchar(200)"
+        },
+        {
+          "name": "device_serial",
+          "type": "varchar(100)"
+        },
+        {
+          "name": "snipeit_asset_id",
+          "type": "integer"
+        },
+        {
+          "name": "snipeit_asset_tag",
+          "type": "varchar(100)"
+        },
+        {
+          "name": "recipient_reported_username",
+          "type": "varchar(200)"
+        },
+        {
+          "name": "recipient_snipeit_id",
+          "type": "integer"
+        },
+        {
+          "name": "recipient_snipeit_username",
+          "type": "varchar(200)"
+        },
+        {
+          "name": "recipient_confirmed_by",
+          "type": "varchar(320)"
+        },
+        {
+          "name": "recipient_confirmed_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "closed_at",
+          "type": "timestamptz"
+        }
+      ],
+      "col": 0,
+      "id": "handovers",
+      "label": "handovers",
+      "row": 0,
+      "tag": "case",
+      "width": 320
+    },
+    {
+      "attributes": [
+        {
+          "key": "pk",
+          "name": "id",
+          "type": "uuid"
+        },
+        {
+          "key": "fk",
+          "name": "handover_id",
+          "references": "handovers.id",
+          "type": "uuid"
+        },
+        {
+          "name": "stage",
+          "type": "varchar(40)"
+        },
+        {
+          "name": "status",
+          "type": "varchar(20)"
+        },
+        {
+          "name": "reason",
+          "type": "text"
+        },
+        {
+          "name": "detail",
+          "type": "json"
+        },
+        {
+          "name": "actor",
+          "type": "varchar(320)"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        }
+      ],
+      "col": 1,
+      "id": "handover_stages",
+      "label": "handover_stages",
+      "row": 0,
+      "tag": "stages",
+      "width": 300
+    },
+    {
+      "attributes": [
+        {
+          "key": "pk",
+          "name": "id",
+          "type": "uuid"
+        },
+        {
+          "key": "fk",
+          "name": "handover_id",
+          "references": "handovers.id",
+          "type": "uuid"
+        },
+        {
+          "name": "payload",
+          "type": "json"
+        },
+        {
+          "name": "received_at",
+          "type": "timestamptz"
+        }
+      ],
+      "col": 0,
+      "id": "agent_reports",
+      "label": "agent_reports",
+      "row": 1,
+      "tag": "evidence",
+      "width": 300
+    },
+    {
+      "attributes": [
+        {
+          "key": "pk",
+          "name": "id",
+          "type": "uuid"
+        },
+        {
+          "key": "fk",
+          "name": "handover_id",
+          "references": "handovers.id",
+          "type": "uuid"
+        },
+        {
+          "name": "kind",
+          "type": "varchar(30)"
+        },
+        {
+          "name": "stored_name",
+          "type": "varchar(255)"
+        },
+        {
+          "name": "original_name",
+          "type": "varchar(255)"
+        },
+        {
+          "name": "content_type",
+          "type": "varchar(100)"
+        },
+        {
+          "name": "size_bytes",
+          "type": "integer"
+        },
+        {
+          "name": "sha256",
+          "type": "varchar(64)"
+        },
+        {
+          "name": "uploaded_by",
+          "type": "varchar(320)"
+        },
+        {
+          "name": "uploaded_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "pushed_to_snipeit_at",
+          "type": "timestamptz"
+        }
+      ],
+      "col": 1,
+      "id": "documents",
+      "label": "documents",
+      "row": 1,
+      "tag": "evidence",
+      "width": 300
+    },
+    {
+      "attributes": [
+        {
+          "key": "pk",
+          "name": "id",
+          "type": "uuid"
+        },
+        {
+          "key": "fk",
+          "name": "handover_id",
+          "references": "handovers.id",
+          "type": "uuid"
+        },
+        {
+          "name": "at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "actor",
+          "type": "varchar(320)"
+        },
+        {
+          "name": "type",
+          "type": "varchar(60)"
+        },
+        {
+          "name": "detail",
+          "type": "json"
+        }
+      ],
+      "col": 0,
+      "id": "events",
+      "label": "events",
+      "row": 2,
+      "tag": "audit",
+      "width": 300
+    }
+  ],
+  "layout": {
+    "gapX": 72,
+    "gapY": 38,
+    "mode": "grid"
+  },
+  "meta": {
+    "output": "docs/visual/handover/erd.html",
+    "quality_profile": "showcase",
+    "subtitle": "Five tables from the SQLAlchemy models; child rows cascade with the case",
+    "title": "Handover database model"
+  },
+  "relationships": [
+    {
+      "from": "handovers",
+      "fromCardinality": "one",
+      "fromOptional": false,
+      "id": "handovers-handover_stages",
+      "identifying": false,
+      "label": "has",
+      "to": "handover_stages",
+      "toCardinality": "many",
+      "toOptional": false,
+      "variant": "dashed"
+    },
+    {
+      "from": "handovers",
+      "fromCardinality": "one",
+      "fromOptional": false,
+      "id": "handovers-agent_reports",
+      "identifying": false,
+      "label": "has",
+      "to": "agent_reports",
+      "toCardinality": "many",
+      "toOptional": false,
+      "variant": "dashed"
+    },
+    {
+      "from": "handovers",
+      "fromCardinality": "one",
+      "fromOptional": false,
+      "id": "handovers-documents",
+      "identifying": false,
+      "label": "has",
+      "to": "documents",
+      "toCardinality": "many",
+      "toOptional": false,
+      "variant": "dashed"
+    },
+    {
+      "from": "handovers",
+      "fromCardinality": "one",
+      "fromOptional": false,
+      "id": "handovers-events",
+      "identifying": false,
+      "label": "has",
+      "to": "events",
+      "toCardinality": "many",
+      "toOptional": false,
+      "variant": "dashed"
+    }
+  ],
+  "schema_version": 1
+}

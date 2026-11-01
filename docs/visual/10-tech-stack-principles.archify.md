@@ -1,3 +1,5 @@
+@meta locale=en
+
 # 10 — Tech Stack Principles
 
 Summary (generated from the headings): This page has 2 sections. It keeps every rule in the source file and adds no new rule.

@@ -1,3 +1,5 @@
+@meta locale=en
+
 # 01 — Test Principles
 
 Scope: every change in this repository. IDs (TST-xx) are cited in reviews and reports.

@@ -70,7 +70,7 @@
     },
     {
       "kind": "region",
-      "label": "infrastructure and tools (18)",
+      "label": "infrastructure and tools (20)",
       "pad": 12,
       "wraps": [
         "main",
@@ -83,13 +83,15 @@
         "logging-config",
         "dependencies",
         "auth",
-        "build-principles-visual",
         "graph-data",
-        "build-handover-workflow",
         "visual-init",
         "visual-archify",
         "visual-artifacts",
         "visual-build-visuals",
+        "visual-graph",
+        "visual-handover",
+        "visual-markdown",
+        "visual-principles",
         "visual-registry"
       ]
     }
@@ -98,7 +100,7 @@
     {
       "dot": "cyan",
       "items": [
-        "51 module rows between GRAPH:START and GRAPH:END.",
+        "53 module rows between GRAPH:START and GRAPH:END.",
         "The node and edge tables remain the source of truth."
       ],
       "title": "Source"
@@ -759,26 +761,11 @@
       "type": "backend"
     },
     {
-      "id": "build-principles-visual",
-      "label": "build_principles_visual",
-      "pos": [
-        1020,
-        660
-      ],
-      "size": [
-        172,
-        44
-      ],
-      "sublabel": "infra",
-      "tag": "deterministic offline principle visual gen",
-      "type": "backend"
-    },
-    {
       "id": "graph-data",
       "label": "graph_data",
       "pos": [
         1020,
-        718
+        660
       ],
       "size": [
         172,
@@ -789,26 +776,11 @@
       "type": "backend"
     },
     {
-      "id": "build-handover-workflow",
-      "label": "build_handover_workflow",
-      "pos": [
-        1020,
-        776
-      ],
-      "size": [
-        172,
-        44
-      ],
-      "sublabel": "infra",
-      "tag": "generates code-derived handover workflow v",
-      "type": "backend"
-    },
-    {
       "id": "visual-init",
       "label": "__init__",
       "pos": [
         1020,
-        834
+        718
       ],
       "size": [
         172,
@@ -823,7 +795,7 @@
       "label": "archify",
       "pos": [
         1020,
-        892
+        776
       ],
       "size": [
         172,
@@ -838,7 +810,7 @@
       "label": "artifacts",
       "pos": [
         1020,
-        950
+        834
       ],
       "size": [
         172,
@@ -853,7 +825,7 @@
       "label": "build_visuals",
       "pos": [
         1020,
-        1008
+        892
       ],
       "size": [
         172,
@@ -864,11 +836,71 @@
       "type": "backend"
     },
     {
+      "id": "visual-graph",
+      "label": "graph",
+      "pos": [
+        1020,
+        950
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "architecture, focus and violations builder",
+      "type": "backend"
+    },
+    {
+      "id": "visual-handover",
+      "label": "handover",
+      "pos": [
+        1020,
+        1008
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "workflow, sequence, lifecycle, ERD and dif",
+      "type": "backend"
+    },
+    {
+      "id": "visual-markdown",
+      "label": "markdown",
+      "pos": [
+        1020,
+        1066
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "principle Markdown parser and shared hash/",
+      "type": "backend"
+    },
+    {
+      "id": "visual-principles",
+      "label": "principles",
+      "pos": [
+        1020,
+        1124
+      ],
+      "size": [
+        172,
+        44
+      ],
+      "sublabel": "infra",
+      "tag": "twelve principle explainers and the static",
+      "type": "backend"
+    },
+    {
       "id": "visual-registry",
       "label": "registry",
       "pos": [
         1020,
-        1066
+        1182
       ],
       "size": [
         172,
@@ -888,7 +920,7 @@
     "title": "Every module in its band",
     "viewBox": [
       1228,
-      1204
+      1320
     ]
   },
   "schema_version": 1

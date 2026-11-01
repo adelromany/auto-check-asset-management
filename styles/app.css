@@ -18,6 +18,10 @@
 /* Content sources for the class scanner. */
 @source "../templates";
 @source "../static";
+/* Generated Archify pages and fetched tools are not part of the portal UI and
+   must not leak their utility classes into the application stylesheet. */
+@source not "../docs";
+@source not "../.tools";
 
 /* Dark mode is class-driven (`<html class="dark">`), not media-driven, so the
    user toggle can override the OS preference. */

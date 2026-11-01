@@ -1,0 +1,126 @@
+{
+  "cards": [
+    {
+      "dot": "emerald",
+      "items": [
+        "A skipped stage completes the case and satisfies dependents",
+        "It is never listed as a missing step",
+        "Only the software check can be overridden"
+      ],
+      "title": "Satisfied means passed or skipped"
+    },
+    {
+      "dot": "rose",
+      "items": [
+        "Blocked means the recipient cannot be determined",
+        "The engineer can search manually and continue",
+        "Failed means a check ran and returned a problem"
+      ],
+      "title": "Blocked is not failed"
+    }
+  ],
+  "diagram_type": "lifecycle",
+  "mainPath": [
+    "pending",
+    "passed"
+  ],
+  "meta": {
+    "output": "docs/visual/handover/stage-lifecycle.html",
+    "quality_profile": "showcase",
+    "subtitle": "Pending, passed, failed, blocked and skipped (the software override)",
+    "title": "Handover stage lifecycle"
+  },
+  "schema_version": 3,
+  "states": [
+    {
+      "id": "pending",
+      "label": "Pending",
+      "step": "01",
+      "sublabel": "no result yet",
+      "tag": "entry",
+      "type": "waiting"
+    },
+    {
+      "id": "passed",
+      "label": "Passed",
+      "step": "02",
+      "sublabel": "confirmed or verified",
+      "tag": "satisfied",
+      "type": "success"
+    },
+    {
+      "id": "failed",
+      "label": "Failed",
+      "step": "03",
+      "sublabel": "a check returned a problem",
+      "tag": "retryable",
+      "type": "failure"
+    },
+    {
+      "id": "blocked",
+      "label": "Blocked",
+      "step": "04",
+      "sublabel": "recipient identity unknown",
+      "tag": "needs input",
+      "type": "waiting"
+    },
+    {
+      "id": "skipped",
+      "label": "Skipped (overridden)",
+      "step": "05",
+      "sublabel": "software override with a reason",
+      "tag": "satisfied",
+      "type": "neutral"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "pending",
+      "id": "pending-passed",
+      "label": "manual confirm or verified check",
+      "to": "passed"
+    },
+    {
+      "from": "pending",
+      "id": "pending-failed",
+      "label": "check fails",
+      "to": "failed",
+      "variant": "security"
+    },
+    {
+      "from": "pending",
+      "id": "pending-blocked",
+      "label": "no domain user detected",
+      "to": "blocked",
+      "variant": "security"
+    },
+    {
+      "from": "failed",
+      "id": "failed-skipped",
+      "label": "engineer overrides software",
+      "to": "skipped",
+      "variant": "security"
+    },
+    {
+      "from": "failed",
+      "id": "failed-pending",
+      "label": "re-run after a fix",
+      "to": "pending",
+      "variant": "dashed"
+    },
+    {
+      "from": "blocked",
+      "id": "blocked-pending",
+      "label": "search manually or new report",
+      "to": "pending",
+      "variant": "dashed"
+    },
+    {
+      "from": "skipped",
+      "id": "skipped-pending",
+      "label": "re-evaluate software",
+      "to": "pending",
+      "variant": "dashed"
+    }
+  ]
+}

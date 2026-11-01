@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "c677eff3-ec20-4261-b569-1d5264161cd0",
+  "status": "current",
+  "command": "deliver",
+  "type": "sequence",
+  "input": "/home/ec2-user/auto-check-asset-management/docs/visual/handover/sequence.json",
+  "output": "/home/ec2-user/auto-check-asset-management/docs/visual/handover/sequence.html",
+  "specification": {
+    "sha256": "b4514c318c73500d124cfe9560bea02d7b1cdd0a9d8239b5eef0a9e086031254",
+    "bytes": 5179
+  },
+  "artifact": {
+    "sha256": "ae52531a8f95ce41a184587d3a3f7e0547f6c96cbe6dafc5d7c2d4e2038ec29d",
+    "bytes": 842939
+  }
+}

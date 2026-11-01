@@ -62,8 +62,22 @@ def test_static_page_matches_builder(artifact) -> None:
 def test_native_source_is_valid_json(artifact) -> None:
     payload = json.loads(artifact.source_text())
     assert payload["diagram_type"] == artifact.diagram_type
-    assert payload["schema_version"] == 1
-    assert payload["meta"]["output"] == artifact.output_name
+    # Graph artifacts use schema 1; workflow v2 and lifecycle v3 are the
+    # current Archify schemas and must not be forced back to v1.
+    assert payload["schema_version"] in {1, 2, 3}
+    # Archify resolves the durable meta.output from the working directory
+    # (the repository root), while output_name is relative to docs/visual.
+    assert payload["meta"]["output"] == f"docs/visual/{artifact.output_name}"
+
+
+@pytest.mark.parametrize(
+    "artifact",
+    [a for a in REGISTERED if a.diagram_type == "explainer"],
+    ids=[a.key for a in REGISTERED if a.diagram_type == "explainer"],
+)
+def test_explainer_declares_english_locale(artifact) -> None:
+    """Archify defaults to Chinese chrome; the task requires English pages."""
+    assert artifact.source_text().startswith("@meta locale=en\n")
 
 
 def test_manifest_records_every_artifact() -> None:

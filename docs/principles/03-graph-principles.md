@@ -67,13 +67,15 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/routers/snipeit.py | router | Snipe-IT device lookup and health |
 | module | app/routers/health.py | router | liveness endpoint |
 | module | app/routers/diag.py | router | clipboard diagnostics page (ENABLE_DIAG) |
-| module | tools/build_principles_visual.py | infra | deterministic offline principle visual generator |
 | module | tools/graph_data.py | infra | shared LIVE GRAPH parsing for generation and consistency tests |
-| module | tools/build_handover_workflow.py | infra | generates code-derived handover workflow visual |
 | module | tools/visual/__init__.py | infra | package marker for the Archify visual builder |
 | module | tools/visual/archify.py | infra | pinned Archify CLI wrapper for local build and check |
 | module | tools/visual/artifacts.py | infra | artifact descriptions, hashes and visual manifest |
 | module | tools/visual/build_visuals.py | infra | single build/check/list entry point for visual docs |
+| module | tools/visual/graph.py | infra | architecture, focus and violations builders from the LIVE GRAPH |
+| module | tools/visual/handover.py | infra | workflow, sequence, lifecycle, ERD and differences builders |
+| module | tools/visual/markdown.py | infra | principle Markdown parser and shared hash/link helpers |
+| module | tools/visual/principles.py | infra | twelve principle explainers and the static visual index |
 | module | tools/visual/registry.py | infra | ordered registry of committed visual artifacts |
 
 ### Nodes — routes
@@ -238,13 +240,31 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/routers/http_errors.py | imports | app/clients/snipeit.py |
 | app/routers/http_errors.py | imports | app/domain/errors.py |
 | app/routers/agent.py | imports | app/services/handovers.py |
-| tools/build_principles_visual.py | imports | tools/graph_data.py |
+| tools/visual/__init__.py | imports | tools/visual/artifacts.py |
+| tools/visual/build_visuals.py | imports | tools/visual/archify.py |
+| tools/visual/build_visuals.py | imports | tools/visual/artifacts.py |
+| tools/visual/build_visuals.py | imports | tools/visual/registry.py |
+| tools/visual/graph.py | imports | tools/graph_data.py |
+| tools/visual/graph.py | imports | tools/visual/artifacts.py |
+| tools/visual/graph.py | imports | tools/visual/markdown.py |
+| tools/visual/handover.py | imports | app/db/models/handover.py |
+| tools/visual/handover.py | imports | app/domain/stages.py |
+| tools/visual/handover.py | imports | tools/visual/artifacts.py |
+| tools/visual/handover.py | imports | tools/visual/markdown.py |
+| tools/visual/handover.py | imports | tools/visual/principles.py |
+| tools/visual/principles.py | imports | tools/visual/artifacts.py |
+| tools/visual/principles.py | imports | tools/visual/markdown.py |
+| tools/visual/registry.py | imports | tools/visual/artifacts.py |
+| tools/visual/registry.py | imports | tools/visual/graph.py |
+| tools/visual/registry.py | imports | tools/visual/handover.py |
+| tools/visual/registry.py | imports | tools/visual/principles.py |
 | alembic/env.py | imports | app/db/base.py |
 
 ### Impact table
 | if you change | re-check |
 |---|---|
 | app/config.py | every module reading settings; tests/conftest.py BASE_ENV; .env.example |
+| docs/principles/*.md or code read by a visual builder | `tools/visual/build_visuals.py build` then `check`; commit the regenerated source, HTML and delivery receipt |
 | app/middleware/request_id.py | app/main.py outer middleware order; app/logging_config.py; request-ID tests |
 | app/logging_config.py | app/main.py startup; app/clients/snipeit.py; logging tests |
 | app/domain/recipient_identity.py | app/services/handovers.py; app/services/snipeit_ops.py; app/routers/pages.py; static/agent.ps1 |
