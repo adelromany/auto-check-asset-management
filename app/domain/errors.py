@@ -35,6 +35,22 @@ class ManualStageRequired(HandoverError):
     """The stage is not one an engineer may confirm by hand."""
 
 
+class PrintConflict(HandoverError):
+    """A print action is not valid in the current state (409)."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
+class PrintUnavailable(HandoverError):
+    """The print pipeline cannot run on this host (503)."""
+
+
+class PrintDocumentMissing(HandoverError):
+    """No rendered PDF is stored for this handover (404)."""
+
+
 class InvalidStage(HandoverError):
     """The stage key is not one of the nine fixed stages."""
 

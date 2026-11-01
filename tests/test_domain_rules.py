@@ -3,6 +3,21 @@
 import pytest
 
 from app.domain.handover_rules import StageState, can_run, derive_status, missing_steps
+from app.domain.print_rules import (
+    AUTOMATIC_ONLY_REASON,
+    CHECKOUT_REQUIRED_REASON,
+    FAILED_FALLBACK_REASON,
+    MANUAL_REASON_MAX_LENGTH,
+    PRINTING_DISABLED_REASON,
+    RUNNING_REASON,
+    PrintMode,
+    PrintState,
+    manual_confirmation_allowed,
+    manual_reason_problem,
+    print_guard,
+    public_reason,
+    stage_result,
+)
 from app.domain.redaction import redact_agent_payload
 from app.domain.stages import (
     STAGE_DEPENDENCIES,
@@ -195,6 +210,80 @@ def test_stage_from_key_accepts_known_keys() -> None:
 def test_stage_from_key_rejects_unknown_keys() -> None:
     with pytest.raises(ValueError, match="Unknown stage"):
         stage_from_key("not_a_stage")
+
+
+# -- print rules (the portal prints the form) -------------------------------
+
+
+@pytest.mark.parametrize(
+    "state,status,reason",
+    [
+        (PrintState.ACCEPTED, StageStatus.PASSED, None),
+        (PrintState.PDF_READY, StageStatus.PENDING, PRINTING_DISABLED_REASON),
+        (PrintState.RUNNING, StageStatus.PENDING, RUNNING_REASON),
+        (PrintState.IDLE, StageStatus.PENDING, None),
+        (PrintState.FAILED, StageStatus.FAILED, "spooler rejected the job"),
+    ],
+)
+def test_print_stage_result_never_passes_on_a_failure(
+    state: PrintState, status: StageStatus, reason: str | None
+) -> None:
+    result = stage_result(state, reason="spooler rejected the job")
+
+    assert result.status is status
+    assert result.reason == reason
+
+
+def test_print_stage_result_uses_a_plain_fallback_reason() -> None:
+    assert stage_result(PrintState.FAILED).reason == FAILED_FALLBACK_REASON
+
+
+def test_only_a_server_without_a_printer_may_confirm_by_hand() -> None:
+    assert manual_confirmation_allowed(PrintMode.PDF_ONLY) == (True, "")
+    allowed, why = manual_confirmation_allowed(PrintMode.SPOOLER)
+    assert allowed is False
+    assert why == AUTOMATIC_ONLY_REASON
+
+
+@pytest.mark.parametrize(
+    "reason,problem",
+    [
+        ("", True),
+        ("   too short  ", True),
+        ("short", True),
+        ("x" * (MANUAL_REASON_MAX_LENGTH + 1), True),
+        ("This server has no printer.", False),
+    ],
+)
+def test_manual_reason_must_be_a_real_reason(reason: str, problem: bool) -> None:
+    assert (manual_reason_problem(reason) is not None) is problem
+
+
+def test_printing_waits_for_the_checkout() -> None:
+    assert print_guard(checkout_passed=True) == (True, "")
+    assert print_guard(checkout_passed=False) == (False, CHECKOUT_REQUIRED_REASON)
+
+
+def test_public_reason_strips_server_paths() -> None:
+    cleaned = public_reason(
+        r"failed to read C:\Program Files\LibreOffice\soffice.exe "
+        r"and \\fileserver\share\form.docx"
+    )
+
+    assert "C:\\" not in cleaned
+    assert "fileserver" not in cleaned
+    assert "failed to read" in cleaned
+
+
+def test_public_reason_truncates_long_output() -> None:
+    cleaned = public_reason("word " * 200, limit=40)
+
+    assert len(cleaned) <= 40
+    assert cleaned.endswith("…")
+
+
+def test_public_reason_never_returns_an_empty_string() -> None:
+    assert public_reason("C:\\temp\\x.docx") == FAILED_FALLBACK_REASON
 
 
 def test_redaction_removes_partial_key_without_mutating_input() -> None:

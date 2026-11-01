@@ -26,6 +26,9 @@ from app.domain.errors import (
     HandoverNotFound,
     InvalidStage,
     ManualStageRequired,
+    PrintConflict,
+    PrintDocumentMissing,
+    PrintUnavailable,
     RecipientConfirmationConflict,
     SoftwareCheckConflict,
     StageNotRunnable,
@@ -39,6 +42,7 @@ _CONFLICT_ERRORS = (
     HandoverCancelled,
     HandoverCompleted,
     ManualStageRequired,
+    PrintConflict,
     RecipientConfirmationConflict,
     SoftwareCheckConflict,
     StageNotRunnable,
@@ -46,7 +50,11 @@ _CONFLICT_ERRORS = (
 
 
 def handover_http_error(exc: HandoverError) -> HTTPException:
-    if isinstance(exc, (HandoverNotFound, DocumentNotFound, AgentReportNotFound)):
+    if isinstance(
+        exc,
+        (HandoverNotFound, DocumentNotFound, AgentReportNotFound,
+         PrintDocumentMissing),
+    ):
         return HTTPException(status_code=404, detail=str(exc))
     if isinstance(exc, InvalidStage):
         return HTTPException(status_code=422, detail=str(exc))
@@ -54,6 +62,8 @@ def handover_http_error(exc: HandoverError) -> HTTPException:
         return HTTPException(status_code=413, detail=str(exc))
     if isinstance(exc, UnsupportedDocumentType):
         return HTTPException(status_code=415, detail=str(exc))
+    if isinstance(exc, PrintUnavailable):
+        return HTTPException(status_code=503, detail=str(exc))
     if isinstance(exc, _CONFLICT_ERRORS):
         return HTTPException(status_code=409, detail=str(exc))
     return HTTPException(status_code=400, detail=str(exc))

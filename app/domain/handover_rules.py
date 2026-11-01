@@ -36,7 +36,7 @@ _STAGE_HINTS: dict[Stage, str] = {
     Stage.SOFTWARE_CHECK: "Verify required software and Windows activation.",
     Stage.RECIPIENT_CHECK: "Search Snipe-IT for the recipient and confirm the match.",
     Stage.CHECKOUT: "Checkout the device to the confirmed recipient in Snipe-IT.",
-    Stage.REPORT_PRINTED: "Print the agent report page.",
+    Stage.REPORT_PRINTED: "The portal prints the handover form (automatic).",
     Stage.USER_SIGNED: "Get the printed sheet signed on paper.",
     Stage.DOCUMENT_SCANNED: "Upload the scanned signed sheet.",
     Stage.DOCUMENT_PUSHED: "Push the scan to the device's Snipe-IT asset.",

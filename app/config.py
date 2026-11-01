@@ -107,3 +107,22 @@ PRINT_TIMEOUT_SECONDS = int(os.getenv("PRINT_TIMEOUT_SECONDS", "120"))
 # Optional dedicated log file (create_app wires it). When empty, printing
 # logs flow to the default logger output (stdout under uvicorn).
 PRINT_LOG_FILE = os.getenv("PRINT_LOG_FILE", "")
+
+# How the portal produces the handover form.
+#   spooler  - render the form and submit it to PRINT_PRINTER (Windows host).
+#   pdf_only - render and store the PDF but print nothing (servers with no
+#              printer, e.g. a Linux/EC2 test instance).
+# The default follows the host: only Windows can reach a print spooler.
+PRINT_MODE = os.getenv(
+    "PRINT_MODE", "spooler" if os.name == "nt" else "pdf_only"
+).strip().lower()
+
+# Print the handover form automatically after a successful checkout. The
+# engineer never marks "printed" by hand in spooler mode.
+AUTO_PRINT_AFTER_CHECKOUT = (
+    os.getenv("AUTO_PRINT_AFTER_CHECKOUT", "true").strip().lower() == "true"
+)
+
+# A print claim older than PRINT_TIMEOUT_SECONDS plus this margin is stale and
+# may be reclaimed by the next trigger (after a crash or a killed worker).
+PRINT_STALE_MARGIN_SECONDS = int(os.getenv("PRINT_STALE_MARGIN_SECONDS", "60"))

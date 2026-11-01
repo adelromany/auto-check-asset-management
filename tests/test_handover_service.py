@@ -149,7 +149,7 @@ async def test_confirm_rejects_an_already_passed_stage(service) -> None:
 @pytest.mark.parametrize(
     "stage",
     [Stage.AGENT_REPORT, Stage.RECIPIENT_CHECK, Stage.CHECKOUT,
-     Stage.DOCUMENT_SCANNED, Stage.DOCUMENT_PUSHED],
+     Stage.REPORT_PRINTED, Stage.DOCUMENT_SCANNED, Stage.DOCUMENT_PUSHED],
 )
 async def test_confirm_rejects_non_manual_stages(service, stage: Stage) -> None:
     handover = await _create(service)
@@ -165,15 +165,20 @@ async def test_confirm_rejects_unknown_stage_names(service) -> None:
         await service.confirm_manual_stage(handover.id, "not_a_stage", actor=ENGINEER)
 
 
-async def test_confirm_report_printed_waits_for_the_agent_report(service) -> None:
+async def test_confirm_report_printed_is_never_manual(service) -> None:
+    """The portal prints the form; an engineer can no longer claim it by hand.
+
+    This replaces the old ``test_confirm_report_printed_waits_for_the_agent_report``:
+    the task deliberately moves ``report_printed`` out of MANUAL_STAGES, so the
+    confirm endpoint refuses it instead of running the DAG check.
+    """
     handover = await _create(service)
     await service.confirm_manual_stage(handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER)
 
-    with pytest.raises(StageNotRunnable) as error:
+    with pytest.raises(ManualStageRequired):
         await service.confirm_manual_stage(
             handover.id, Stage.REPORT_PRINTED, actor=ENGINEER
         )
-    assert "agent_report" in error.value.reason
 
 
 async def test_cancel_marks_cancelled_and_closes(service) -> None:

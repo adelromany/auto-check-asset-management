@@ -112,6 +112,11 @@ class Handover(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    print_attempts: Mapped[list["PrintAttempt"]] = relationship(
+        back_populates="handover",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class HandoverStage(Base):
@@ -233,3 +238,52 @@ class Event(Base):
     )
 
     handover: Mapped[Handover] = relationship(back_populates="events")
+
+
+class PrintAttempt(Base):
+    """One attempt to print the handover form.
+
+    A partial unique index allows at most ONE ``running`` attempt per handover,
+    so two triggers at the same moment cannot both print. The PDF is stored by
+    file name only: never an absolute path (and never in an API response).
+    """
+
+    __tablename__ = "print_attempts"
+    __table_args__ = (
+        Index("ix_print_attempts_handover_id", "handover_id"),
+        Index(
+            "uq_print_attempts_running",
+            "handover_id",
+            unique=True,
+            postgresql_where=text("state = 'running'"),
+            sqlite_where=text("state = 'running'"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    handover_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("handovers.id", ondelete="CASCADE"), nullable=False
+    )
+    attempt_no: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    mode: Mapped[str] = mapped_column(String(20), nullable=False)
+    printer: Mapped[str | None] = mapped_column(String(200))
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default="running")
+    pdf_name: Mapped[str | None] = mapped_column(String(255))
+    pdf_sha256: Mapped[str | None] = mapped_column(String(64))
+    error_class: Mapped[str | None] = mapped_column(String(60))
+    reason: Mapped[str | None] = mapped_column(Text)
+    actor: Mapped[str] = mapped_column(String(320), nullable=False, default="")
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    detail: Mapped[dict[str, Any]] = mapped_column(
+        _json_type(), nullable=False, default=dict
+    )
+
+    handover: Mapped[Handover] = relationship(back_populates="print_attempts")

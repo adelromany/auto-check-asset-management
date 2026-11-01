@@ -50,13 +50,13 @@ STAGE_DEPENDENCIES: dict[Stage, tuple[Stage, ...]] = {
     Stage.DOCUMENT_PUSHED: (Stage.DOCUMENT_SCANNED,),
 }
 
-# Stages an engineer confirms by hand; the others are driven by the agent or
-# by verified Snipe-IT calls.
+# Stages an engineer confirms by hand; the others are driven by the agent,
+# by verified Snipe-IT calls, or by the print system. ``report_printed`` is
+# NOT manual: the portal prints the form and the system decides the stage.
 MANUAL_STAGES: frozenset[Stage] = frozenset(
     {
         Stage.DEVICE_PREPARED,
         Stage.USER_SIGNED_IN,
-        Stage.REPORT_PRINTED,
         Stage.USER_SIGNED,
     }
 )

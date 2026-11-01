@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -67,6 +68,7 @@ class DocsHarness:
     client: httpx.AsyncClient
     fake: SnipeItFake
     documents_dir: Path
+    factory: async_sessionmaker
 
 
 @pytest_asyncio.fixture()
@@ -126,6 +128,7 @@ async def docs(tmp_path, monkeypatch):
             client=client,
             fake=fake,
             documents_dir=documents_dir,
+            factory=factory,
         )
 
     await http_client.aclose()
@@ -175,9 +178,32 @@ async def _ready_for_scan(
     await _confirm(api, handover_id, "device_prepared")
     await _confirm(api, handover_id, "user_signed_in")
     await _agent_report(api, handover_id, serial, payload)
-    await _confirm(api, handover_id, "report_printed")
+    await _pass_report_printed(api, handover_id)
     await _confirm(api, handover_id, "user_signed")
     return handover_id
+
+
+async def _pass_report_printed(api: DocsHarness, handover_id: str) -> None:
+    """Put the case past stage seven the way the print service would.
+
+    ``report_printed`` is decided by the print system, not by a confirm click,
+    and these tests are about document upload/push, not about printing. There
+    is no printer and no LibreOffice in the test environment, so the stage is
+    set directly instead of driving the real pipeline.
+    """
+    from app.domain.stages import Stage
+    from app.repositories.handovers import HandoverRepository
+
+    async with api.factory() as session:
+        handover = await HandoverRepository(session).get(
+            uuid.UUID(handover_id), with_details=True
+        )
+        for row in handover.stages:
+            if row.stage == Stage.REPORT_PRINTED.value:
+                row.status = "passed"
+                row.reason = None
+                row.detail = {"print_state": "accepted", "print_mode": "spooler"}
+        await session.commit()
 
 
 async def _upload(

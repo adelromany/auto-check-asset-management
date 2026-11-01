@@ -239,3 +239,61 @@ class DocumentOut(BaseModel):
     uploaded_by: str
     uploaded_at: datetime
     pushed_to_snipeit_at: datetime | None = None
+
+
+# -- Phase 7: automatic printing of the handover form ----------------------
+
+
+class HandoverPrintRequest(BaseModel):
+    """``POST /api/handovers/{id}/print`` body."""
+
+    reprint: bool = False
+
+
+class ManualPrintConfirmation(BaseModel):
+    """``POST /api/handovers/{id}/print/confirm`` body (pdf_only mode only)."""
+
+    reason: str = Field(min_length=10, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _clean_reason(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not 10 <= len(cleaned) <= 500:
+            raise ValueError("reason must be 10–500 characters after trimming")
+        return cleaned
+
+
+class HandoverPrintState(BaseModel):
+    """The print state of one handover: idle, running, accepted, failed or PDF."""
+
+    handover_id: uuid.UUID
+    stage: str = "report_printed"
+    state: str
+    mode: str
+    printer: str | None = None
+    attempt: int = 0
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    reason: str | None = None
+    pdf_available: bool = False
+    manual: bool = False
+    manual_reason: str | None = None
+    job: dict[str, Any] | None = None
+
+    @classmethod
+    def from_view(cls, view: Any) -> "HandoverPrintState":
+        return cls(
+            handover_id=view.handover_id,
+            state=view.state.value,
+            mode=view.mode.value,
+            printer=view.printer,
+            attempt=view.attempt_no,
+            started_at=view.started_at,
+            finished_at=view.finished_at,
+            reason=view.reason,
+            pdf_available=view.pdf_available,
+            manual=view.manual,
+            manual_reason=view.manual_reason,
+            job=view.job,
+        )

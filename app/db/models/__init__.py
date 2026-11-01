@@ -6,6 +6,14 @@ from app.db.models.handover import (
     Event,
     Handover,
     HandoverStage,
+    PrintAttempt,
 )
 
-__all__ = ["AgentReport", "Document", "Event", "Handover", "HandoverStage"]
+__all__ = [
+    "AgentReport",
+    "Document",
+    "Event",
+    "Handover",
+    "HandoverStage",
+    "PrintAttempt",
+]
