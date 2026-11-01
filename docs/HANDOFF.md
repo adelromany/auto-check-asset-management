@@ -18,3 +18,5 @@ read `docs/visual/**/*.html` or `docs/visual/**/*.json`.
 ## Log
 
 (Append one line after every numbered step: `step N done: <hash> <what>; next: <N+1>; tests: <counts>`.)
+
+step 1 done: 844a6e7 handoff file; baseline full suite 439 passed / 69 skipped / 0 failed (archify fetch still pending). step 2 done: 96bdb2a merged origin/core_asset, union .gitignore, deleted app/config.py print() banner, CRLF for *.bat, router->router import removed, LIVE GRAPH updated. Full suite now 472 passed / 70 skipped / 6 failed, all in tests/test_visual_sources.py (source drift from the graph edit) and all regenerated in step 4. test_graph_consistency.py and test_gpo_scripts.py are green. Next: step 3 real printing.
