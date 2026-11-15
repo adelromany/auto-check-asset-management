@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 import app.db.models  # noqa: F401
 from app.db.base import Base
 from app.domain.errors import SoftwareCheckConflict
-from app.domain.handover_rules import StageState, can_run
+from app.domain.handover_rules import StageState, missing_steps
 from app.domain.stages import Stage, StageStatus
 from app.services.handovers import HandoverService
 from app.services.software_check import SoftwareCheckService
@@ -76,7 +76,7 @@ async def test_report_checks_software_and_rechecks_after_new_report(session):
     assert next(row for row in view.stages if row.stage == Stage.SOFTWARE_CHECK.value).status == StageStatus.PASSED.value
 
 
-async def test_mismatched_hardware_keeps_software_pending_and_override_rejected(session):
+async def test_mismatched_hardware_still_evaluates_software_and_override_is_rejected(session):
     core = HandoverService(session)
     handover = await _create(session)
 
@@ -85,14 +85,16 @@ async def test_mismatched_hardware_keeps_software_pending_and_override_rejected(
     )
     view = await core.get_detail(handover.id)
     software = next(row for row in view.stages if row.stage == Stage.SOFTWARE_CHECK.value)
-    assert software.status == StageStatus.PENDING.value
+    # Software is evaluated independently of the hardware result.
+    assert software.status == StageStatus.PASSED.value
+    assert software.detail["report_serial_differs"] is True
     with pytest.raises(SoftwareCheckConflict):
         await SoftwareCheckService(session).override(
             handover.id, reason="Not applicable", actor="engineer@example.test"
         )
 
 
-async def test_failed_software_requires_reason_then_can_be_skipped(session):
+async def test_failed_software_requires_reason_then_can_be_marked_not_done(session):
     core = HandoverService(session)
     handover = await _create(session)
     await core.record_agent_report(
@@ -108,12 +110,17 @@ async def test_failed_software_requires_reason_then_can_be_skipped(session):
         handover.id, reason="Owner-approved exception", actor="engineer@example.test"
     )
     software = next(row for row in view.stages if row.stage == Stage.SOFTWARE_CHECK.value)
-    assert software.status == StageStatus.SKIPPED.value
+    assert software.status == StageStatus.NOT_DONE.value
     assert software.detail["override_reason"] == "Owner-approved exception"
 
-    states = [StageState(stage, StageStatus.PASSED if stage in (Stage.AGENT_REPORT, Stage.SOFTWARE_CHECK, Stage.RECIPIENT_CHECK) else StageStatus.PENDING) for stage in (Stage(item.stage) for item in view.stages)]
-    allowed, _ = can_run(Stage.CHECKOUT, states)
-    assert allowed
+    # A not-done operation remains a visible gap; it does not complete the case.
+    gaps = {item["stage"] for item in missing_steps(
+        [
+            StageState(Stage(item.stage), StageStatus(item.status), item.reason)
+            for item in view.stages
+        ]
+    )}
+    assert Stage.SOFTWARE_CHECK.value in gaps
 
 
 async def test_override_survives_a_new_report(session):
@@ -132,5 +139,5 @@ async def test_override_survives_a_new_report(session):
     )
     view = await core.get_detail(handover.id)
     software = next(row for row in view.stages if row.stage == Stage.SOFTWARE_CHECK.value)
-    assert software.status == StageStatus.SKIPPED.value
+    assert software.status == StageStatus.NOT_DONE.value
     assert software.detail["override_reason"] == "Approved temporary exception"

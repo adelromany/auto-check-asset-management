@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest_asyncio
@@ -25,6 +25,7 @@ from app.services.sessions import SessionStore
 ENGINEER_A = ("Engineer A", "engineer.a@example.com")
 ENGINEER_B = ("Engineer B", "engineer.b@example.com")
 ALL_PASSED = tuple(STAGE_ORDER)
+NOW = datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 @dataclass
@@ -34,14 +35,14 @@ class DashboardHarness:
     factory: async_sessionmaker
 
 
-def _stages(*, passed=(), blocked=(), failed=()) -> list[HandoverStage]:
+def _stages(*, passed=(), not_done=(), failed=()) -> list[HandoverStage]:
     rows = []
     for stage in STAGE_ORDER:
         status = StageStatus.PENDING.value
         if stage in passed:
             status = StageStatus.PASSED.value
-        elif stage in blocked:
-            status = StageStatus.BLOCKED.value
+        elif stage in not_done:
+            status = StageStatus.NOT_DONE.value
         elif stage in failed:
             status = StageStatus.FAILED.value
         rows.append(HandoverStage(stage=stage.value, status=status))
@@ -58,6 +59,7 @@ def _handover(
     stages: list[HandoverStage] | None = None,
     reported: str = "alice",
     confirmed: str = "alice",
+    updated: datetime | None = None,
 ) -> Handover:
     return Handover(
         status=status,
@@ -67,6 +69,7 @@ def _handover(
         recipient_reported_username=reported,
         recipient_snipeit_username=confirmed,
         created_at=created,
+        updated_at=updated or NOW,
         closed_at=closed,
         stages=stages if stages is not None else _stages(),
     )
@@ -101,8 +104,9 @@ async def _seed(factory: async_sessionmaker) -> None:
                 _handover(
                     serial="SN-STALLED",
                     engineer=ENGINEER_B,
-                    status="stalled",
+                    status="in_progress",
                     created=datetime(2026, 10, 10, 9, 0),
+                    updated=NOW - timedelta(days=2),
                     stages=_stages(
                         passed=(
                             STAGE_ORDER[0],
@@ -110,7 +114,7 @@ async def _seed(factory: async_sessionmaker) -> None:
                             STAGE_ORDER[2],
                             Stage.SOFTWARE_CHECK,
                         ),
-                        blocked=(Stage.RECIPIENT_CHECK,),
+                        not_done=(Stage.RECIPIENT_CHECK,),
                     ),
                 ),
                 _handover(
@@ -214,6 +218,7 @@ async def test_summary_counts_every_status(dashboard: DashboardHarness) -> None:
         "in_progress": 1,
         "stalled": 1,
         "completed": 2,
+        "closed_with_gaps": 0,
         "cancelled": 1,
     }
 
@@ -227,16 +232,14 @@ async def test_summary_per_stage_matrix(dashboard: DashboardHarness) -> None:
     assert body["stages"]["device_prepared"] == {
         "passed": 4,
         "pending": 2,
-        "blocked": 0,
         "failed": 0,
-        "skipped": 0,
+        "not_done": 0,
     }
     assert body["stages"]["recipient_check"] == {
         "passed": 2,
         "pending": 3,
-        "blocked": 1,
         "failed": 0,
-        "skipped": 0,
+        "not_done": 1,
     }
 
 
@@ -277,8 +280,9 @@ async def test_summary_top_missing_steps_ignores_closed_cases(
     top = body["top_missing_steps"]
     assert len(top) == 5
     counts = {item["stage"]: item["count"] for item in top}
-    # Active cases only: two in-progress/stalled plus one draft.
-    assert counts["recipient_check"] == 3
+    # Active cases only. A not-done operation is an explicit decision, so it is
+    # not counted as a missing step; pending operations still are.
+    assert "recipient_check" not in counts
     assert counts["checkout"] == 3
     assert all(item["count"] >= 1 for item in top)
 
@@ -335,9 +339,9 @@ async def test_rows_include_progress_and_missing_steps(
     row = body["items"][0]
     assert row["handover"]["device_serial"] == "SN-STALLED"
     assert len(row["stages"]) == 10
-    assert [item["status"] for item in row["stages"]].count("blocked") == 1
+    assert [item["status"] for item in row["stages"]].count("not_done") == 1
     assert row["missing_steps"][0]["stage"] == "recipient_check"
-    assert row["missing_steps"][0]["status"] == "blocked"
+    assert row["missing_steps"][0]["status"] == "not_done"
 
 
 async def test_rows_filter_by_engineer_and_range(
@@ -390,7 +394,7 @@ async def test_handover_page_renders_the_case(
     body = response.text
     assert "SN-STALLED" in body
     assert "Recipient check" in body
-    assert "Blocked" in body
+    assert "Not done" in body
     assert "Events" in body
     assert "alice" in body
 

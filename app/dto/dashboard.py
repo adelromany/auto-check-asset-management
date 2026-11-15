@@ -14,9 +14,8 @@ class StageCountsOut(BaseModel):
 
     passed: int = 0
     pending: int = 0
-    blocked: int = 0
     failed: int = 0
-    skipped: int = 0
+    not_done: int = 0
 
 
 class EngineerCountOut(BaseModel):

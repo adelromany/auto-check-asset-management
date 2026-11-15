@@ -20,6 +20,7 @@ class HandoverCreate(BaseModel):
 
     device_serial: str = Field(min_length=1, max_length=100)
     ticket_ref: str | None = Field(default=None, max_length=100)
+    kind: str = Field(default="handover", pattern="^(handover|maintenance)$")
 
     @field_validator("device_serial")
     @classmethod
@@ -83,6 +84,7 @@ class HandoverSummary(BaseModel):
 
     id: uuid.UUID
     ticket_ref: str | None = None
+    kind: str = "handover"
     status: str
     engineer_email: str
     engineer_name: str
@@ -92,11 +94,14 @@ class HandoverSummary(BaseModel):
     recipient_reported_username: str | None = None
     recipient_snipeit_id: int | None = None
     recipient_snipeit_username: str | None = None
+    recipient_snipeit_name: str | None = None
+    recipient_snipeit_email: str | None = None
     recipient_confirmed_by: str | None = None
     recipient_confirmed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     closed_at: datetime | None = None
+    closed_gaps: list[dict[str, Any]] | None = None
 
 
 class HandoverDetail(HandoverSummary):
@@ -127,6 +132,29 @@ class HandoverList(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+# -- Independent operations (Part A) ----------------------------------------
+
+
+class NotDoneRequest(BaseModel):
+    """Mark one operation not done. The reason is mandatory (3–300)."""
+
+    reason: str = Field(min_length=3, max_length=300)
+
+    @field_validator("reason")
+    @classmethod
+    def _clean_reason(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not 3 <= len(cleaned) <= 300:
+            raise ValueError("reason must be 3–300 characters after trimming")
+        return cleaned
+
+
+class CloseCaseRequest(BaseModel):
+    """Close a case with gaps; ``confirmation`` must be the literal CLOSE."""
+
+    confirmation: str = Field(min_length=1, max_length=20)
 
 
 # -- Phase 5: Snipe-IT write operations -------------------------------------

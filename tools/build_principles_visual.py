@@ -283,15 +283,15 @@ def _stage_flow_svg() -> str:
             sx, _ = positions[dep]; tx, _ = positions[stage]
             start_x = sx + node_w / 2; end_x = tx + node_w / 2
             track_y = 178 - edge_index * 10
-            edges.append(f'<path class="edge" stroke-width="1.7" d="M {start_x} {node_y} V {track_y} H {end_x} V {node_y}" marker-end="url(#stage-arrow)" data-source="{stage.value}" data-target="{dep.value}"><title>1 dependency edge: {dep.value} → {stage.value}</title></path>')
+            edges.append(f'<path class="edge" stroke-width="1.7" d="M {start_x} {node_y} V {track_y} H {end_x} V {node_y}" marker-end="url(#stage-arrow)" data-source="{stage.value}" data-target="{dep.value}"><title>Recommended order: {dep.value} → {stage.value}</title></path>')
             edge_index += 1
     nodes = []
     for i, stage in enumerate(STAGE_ORDER, 1):
         x, y = positions[stage]; label = stage.value.replace("_", " ")
         count = len(STAGE_DEPENDENCIES[stage])
-        prerequisite_label = f"Requires {count} prior step{'s' if count != 1 else ''}" if count else "Starting step"
+        prerequisite_label = f"Recommended after {count}" if count else "Starting operation"
         nodes.append(f'<g class="stage-node" tabindex="0" role="button" data-stage="{stage.value}" aria-label="Focus stage {label}"><rect x="{x}" y="{y}" width="{node_w}" height="{node_h}" rx="8"/><text class="stage-number" x="{x+12}" y="{y+26}" font-size="15">{i:02}</text><text class="stage-label" x="{x+45}" y="{y+28}" font-size="15">{html.escape(label)}</text><text class="stage-sub" x="{x+12}" y="{y+62}" font-size="14">{prerequisite_label}</text></g>')
-    return f'<svg xmlns="http://www.w3.org/2000/svg" class="graph-svg stage-svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="Handover stages and prerequisite arrows">{markers}{"".join(edges)}{"".join(nodes)}</svg>'
+    return f'<svg xmlns="http://www.w3.org/2000/svg" class="graph-svg stage-svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="Handover operations and recommended-order arrows">{markers}{"".join(edges)}{"".join(nodes)}</svg>'
 
 
 def _rule_ids() -> set[str]:

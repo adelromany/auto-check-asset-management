@@ -36,11 +36,14 @@ def test_age_status_boundary_and_disable(updated_at, hours, expected):
 
 
 def test_terminal_cases_never_stall_by_age():
-    states = [StageState(stage, StageStatus.SKIPPED) for stage in STAGE_ORDER]
+    states = [StageState(stage, StageStatus.PASSED) for stage in STAGE_ORDER]
     old = datetime(2026, 1, 1, tzinfo=timezone.utc)
     now = datetime(2026, 10, 31, tzinfo=timezone.utc)
     assert derive_status(states, updated_at=old, now=now, stall_hours=1) is HandoverStatus.COMPLETED
     assert derive_status(states, cancelled=True, updated_at=old, now=now, stall_hours=1) is HandoverStatus.CANCELLED
+    assert derive_status(
+        states, closed_with_gaps=True, updated_at=old, now=now, stall_hours=1
+    ) is HandoverStatus.CLOSED_WITH_GAPS
 
 
 @pytest_asyncio.fixture()

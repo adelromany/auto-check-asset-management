@@ -19,8 +19,7 @@
 {%- macro stage_badge(status) -%}
 {%- if status == "passed" -%}<span class="badge badge-success">Passed</span>
 {%- elif status == "failed" -%}<span class="badge badge-destructive">Failed</span>
-{%- elif status == "blocked" -%}<span class="badge badge-warning">Blocked</span>
-{%- elif status == "skipped" -%}<span class="badge badge-outline">Skipped</span>
+{%- elif status == "not_done" -%}<span class="badge badge-warning">Not done</span>
 {%- else -%}<span class="badge badge-secondary">Pending</span>
 {%- endif -%}
 {%- endmacro -%}
@@ -30,6 +29,7 @@
 {%- if status == "completed" -%}Completed
 {%- elif status == "in_progress" -%}In progress
 {%- elif status == "stalled" -%}Stalled
+{%- elif status == "closed_with_gaps" -%}Closed with gaps
 {%- elif status == "draft" -%}Draft
 {%- elif status == "cancelled" -%}Cancelled
 {%- else -%}{{ status }}
@@ -41,6 +41,7 @@
 {%- if status == "completed" -%}<span class="badge badge-success">Completed</span>
 {%- elif status == "in_progress" -%}<span class="badge badge-default">In progress</span>
 {%- elif status == "stalled" -%}<span class="badge badge-warning">Stalled</span>
+{%- elif status == "closed_with_gaps" -%}<span class="badge badge-warning">Closed with gaps</span>
 {%- elif status == "cancelled" -%}<span class="badge badge-outline">Cancelled</span>
 {%- else -%}<span class="badge badge-secondary">Draft</span>
 {%- endif -%}

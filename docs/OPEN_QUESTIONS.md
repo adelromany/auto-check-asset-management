@@ -187,3 +187,61 @@ Conservative option taken: use the callback for the approved machine address
 and have the Entra administrator register it before enabling SSO.
 
 Owner: Entra/application owner.
+
+## Q-16 — What does "Resources" mean for maintenance? (OPEN)
+
+Context: the owner asked to seed maintenance destinations with `Resources`.
+The review assumed this means the external companies that repair devices and
+labelled the field "maintenance company". It is not clear whether that list is
+maintained in the portal or in Snipe-IT, or whether "Resources" means both
+companies and internal engineers.
+
+Conservative option taken: destinations are portal rows containing only the
+company name, selected on a maintenance case; see D-71.
+
+Owner: product owner.
+
+## Q-17 — Which maintenance operations and Snipe-IT labels are correct? (OPEN)
+
+Context: the maintenance case currently proposes `received`, `diagnosis`,
+`snipeit_status`, `sent_out` and `returned`, with free-text issue, reference,
+accessories, sent/return dates and outcome. The owner has not confirmed this
+list or the exact Snipe-IT status labels to write.
+
+Conservative option taken: implement the five operations as independent steps
+and require the Snipe-IT label to be configured; see D-70.
+
+Owner: product owner and Snipe-IT administrator.
+
+## Q-18 — Is "Closed with gaps" the right name, and who may reopen? (OPEN)
+
+Context: a case with unfinished operations can be closed after typing `CLOSE`;
+the gap list is stored and the case can be reopened. The owner has not confirmed
+the visible name or whether reopening should be restricted (for example to the
+case engineer or an administrator).
+
+Conservative option taken: any signed-in engineer who can see the case may
+reopen it; every reopen is an audit event.
+
+Owner: product owner.
+
+## Q-19 — Should failed operations appear in "Needs attention"? (OPEN)
+
+Context: the dashboard highlights unfinished work. The review assumed a
+`failed` operation should be counted as needing attention, while `not_done` is
+an explicit decision and is listed as a gap but not as missing work.
+
+Conservative option taken: failed counts, not_done does not count in the
+"what is missing" aggregate; both remain visible on the case.
+
+Owner: product owner.
+
+## Q-20 — How long before a maintenance case is overdue? (OPEN)
+
+Context: no owner value exists for maintenance turnaround. The review assumed
+14 days between `sent_out` and the expected return.
+
+Conservative option taken: 14 days, shown as a warning only; it never changes
+an operation status.
+
+Owner: product owner.

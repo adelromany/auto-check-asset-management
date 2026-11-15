@@ -37,8 +37,9 @@ from app.dto.dashboard import (
 from app.dto.handover import HandoverSummary, MissingStepOut
 from app.services.handovers import HandoverService, stage_states
 
-_ACTIVE_STATUSES = (
+_INACTIVE_STATUSES = (
     HandoverStatus.COMPLETED.value,
+    HandoverStatus.CLOSED_WITH_GAPS.value,
     HandoverStatus.CANCELLED.value,
 )
 
@@ -180,9 +181,9 @@ class DashboardService:
             .join(Handover, Handover.id == HandoverStage.handover_id)
             .where(
                 *filters,
-                Handover.status.not_in(_ACTIVE_STATUSES),
+                Handover.status.not_in(_INACTIVE_STATUSES),
                 HandoverStage.status.not_in(
-                    [StageStatus.PASSED.value, StageStatus.SKIPPED.value]
+                    [StageStatus.PASSED.value, StageStatus.NOT_DONE.value]
                 ),
             )
             .group_by(HandoverStage.stage)

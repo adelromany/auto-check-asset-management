@@ -2,8 +2,14 @@
 
 import pytest
 
-from app.domain.handover_rules import StageState, can_run, derive_status, missing_steps
-from app.domain.stages import HandoverStatus, Stage, StageStatus
+from app.domain.handover_rules import (
+    StageState,
+    advice,
+    derive_status,
+    missing_steps,
+    performed_before,
+)
+from app.domain.stages import HANDOVER_OPERATIONS, HandoverStatus, Stage, StageStatus
 from app.domain.software_rules import evaluate_hardware, evaluate_software
 
 
@@ -104,25 +110,24 @@ def test_evaluate_software_requires_activation_code_one() -> None:
     assert "Grace" in result.message
 
 
-def test_skipped_software_stage_satisfies_completion_and_dependencies() -> None:
-    states = [StageState(stage, StageStatus.PASSED) for stage in Stage]
+def test_not_done_software_never_completes_and_only_adds_advice() -> None:
     states = [
-        StageState(stage, StageStatus.SKIPPED)
+        StageState(stage, StageStatus.PASSED) for stage in HANDOVER_OPERATIONS
+    ]
+    states = [
+        StageState(stage, StageStatus.NOT_DONE)
         if stage is Stage.SOFTWARE_CHECK
         else state
-        for stage, state in zip(Stage, states)
+        for stage, state in zip(HANDOVER_OPERATIONS, states)
     ]
 
-    assert derive_status(states) is HandoverStatus.COMPLETED
-    assert all(item["stage"] != Stage.SOFTWARE_CHECK.value for item in missing_steps(states))
-    allowed, reason = can_run(
-        Stage.CHECKOUT,
-        [
-            StageState(stage, StageStatus.SKIPPED if stage in {
-                Stage.RECIPIENT_CHECK, Stage.SOFTWARE_CHECK
-            } else StageStatus.PENDING if stage is Stage.CHECKOUT
-            else StageStatus.PASSED)
-            for stage in Stage
-        ],
-    )
-    assert allowed, reason
+    # Only "passed" counts as done, so the case stays open.
+    assert derive_status(states) is HandoverStatus.IN_PROGRESS
+    missing = {item["stage"] for item in missing_steps(states)}
+    assert Stage.SOFTWARE_CHECK.value in missing
+
+    # The recommended order is reported, but it is not a gate.
+    assert performed_before(Stage.CHECKOUT, states) == [
+        Stage.SOFTWARE_CHECK.value
+    ]
+    assert "Usually done after Software" in advice(Stage.CHECKOUT, states)

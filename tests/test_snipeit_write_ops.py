@@ -246,7 +246,7 @@ async def test_software_override_api_validates_reason_and_state(ops: OpsHarness)
         json={"reason": "Temporary approved exception"},
     )
     assert accepted.status_code == 200, accepted.text
-    assert _stage(accepted.json(), "software_check")["status"] == "skipped"
+    assert _stage(accepted.json(), "software_check")["status"] == "not_done"
     repeated = await ops.client.post(
         f"/api/handovers/{handover_id}/software-check/override",
         json={"reason": "Another approved exception"},
@@ -304,7 +304,9 @@ async def test_confirm_recipient_passes_stage_four(ops: OpsHarness) -> None:
     assert body["recipient_confirmed_by"] == ENGINEER["email"]
     assert body["recipient_confirmed_at"] is not None
     assert _stage(body, "recipient_check")["status"] == "passed"
-    assert body["events"][-1]["type"] == "recipient_confirmed"
+    assert body["events"][-1]["type"] == "operation_recorded"
+    assert body["events"][-1]["detail"]["operation"] == "recipient_check"
+    assert body["events"][-1]["detail"]["outcome"] == "passed"
 
 
 async def test_confirm_recipient_is_idempotent_for_the_same_user(
@@ -325,7 +327,7 @@ async def test_confirm_recipient_is_idempotent_for_the_same_user(
     assert len(after["events"]) == len(before["events"])
 
 
-async def test_confirm_recipient_not_in_snipeit_blocks_stage_four(
+async def test_confirm_recipient_not_in_snipeit_fails_only_that_operation(
     ops: OpsHarness,
 ) -> None:
     handover_id = await _ready(ops, confirm_recipient=False)
@@ -338,14 +340,17 @@ async def test_confirm_recipient_not_in_snipeit_blocks_stage_four(
     assert response.status_code == 200, response.text
     body = response.json()
     stage = _stage(body, "recipient_check")
-    assert stage["status"] == "blocked"
+    assert stage["status"] == "failed"
     assert stage["reason"] == "Recipient not found in Snipe-IT"
-    assert body["status"] == "stalled"
+    # The case stays open; another operation can still be recorded.
+    assert body["status"] == "in_progress"
     assert body["recipient_snipeit_id"] is None
-    assert body["events"][-1]["type"] == "recipient_not_found"
+    assert body["events"][-1]["type"] == "operation_recorded"
+    assert body["events"][-1]["detail"]["operation"] == "recipient_check"
+    assert body["events"][-1]["detail"]["outcome"] == "failed"
 
 
-async def test_confirm_recipient_with_unknown_id_blocks_stage_four(
+async def test_confirm_recipient_with_unknown_id_fails_only_that_operation(
     ops: OpsHarness,
 ) -> None:
     handover_id = await _ready(ops, confirm_recipient=False)
@@ -356,10 +361,10 @@ async def test_confirm_recipient_with_unknown_id_blocks_stage_four(
     )
 
     assert response.status_code == 200
-    assert _stage(response.json(), "recipient_check")["status"] == "blocked"
+    assert _stage(response.json(), "recipient_check")["status"] == "failed"
 
 
-async def test_confirm_recipient_requires_the_agent_report(
+async def test_confirm_recipient_without_an_agent_report(
     ops: OpsHarness,
 ) -> None:
     handover_id = await _create(ops)
@@ -370,8 +375,9 @@ async def test_confirm_recipient_requires_the_agent_report(
         json={"snipeit_user_id": ALICE_ID},
     )
 
-    assert response.status_code == 409
-    assert "agent_report" in response.json()["detail"]
+    # The report is evidence and a hint, not a gate for recipient confirmation.
+    assert response.status_code == 200, response.text
+    assert _stage(response.json(), "recipient_check")["status"] == "passed"
 
 
 async def test_confirm_recipient_body_requires_exactly_one_choice(
@@ -492,7 +498,7 @@ async def test_checkout_refuses_when_the_asset_is_assigned_elsewhere(
     stage = _stage(body, "checkout")
     assert stage["status"] == "failed"
     assert "Bob" in stage["reason"]
-    assert body["status"] == "stalled"
+    assert body["status"] == "in_progress"
     assert _post_paths(ops) == []
 
 
@@ -658,8 +664,8 @@ async def test_checkin_requires_a_confirmed_recipient(
         json={"asset_ids": [11]},
     )
 
-    assert response.status_code == 409
-    assert "Recipient is not confirmed" in response.json()["detail"]
+    assert response.status_code == 422
+    assert "Pick a recipient first" in response.json()["detail"]
 
 
 # -- shared -----------------------------------------------------------------

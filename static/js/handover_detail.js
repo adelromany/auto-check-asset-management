@@ -283,7 +283,7 @@
 
   async function recipientNotFound(button) {
     var proceed = window.confirm(
-      "Mark the recipient as not in Snipe-IT? Stage 4 will be blocked until the recipient is confirmed."
+      "Mark the recipient as not in Snipe-IT? Checkout needs a confirmed recipient, or mark it not done."
     );
     if (!proceed) return;
     setBusy(button, true);

@@ -19,11 +19,13 @@ from app.domain.stages import HandoverStatus
 from app.dto.handover import (
     CheckinRequest,
     CheckinResult,
+    CloseCaseRequest,
     HandoverCreate,
     HandoverDetail,
     HandoverList,
     HandoverPreview,
     HandoverSummary,
+    NotDoneRequest,
     RecipientConfirm,
     RecipientSearchResult,
     SoftwareCheckOverride,
@@ -56,6 +58,7 @@ async def create_handover(
             engineer_email=_actor(user),
             engineer_name=user.get("name") or "",
             ticket_ref=payload.ticket_ref,
+            kind=payload.kind,
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
@@ -66,6 +69,8 @@ async def create_handover(
 async def list_handovers(
     status: HandoverStatus | None = Query(default=None),
     engineer: str | None = Query(default=None),
+    kind: str | None = Query(default=None, pattern="^(handover|maintenance)$"),
+    q: str | None = Query(default=None, max_length=100),
     created_from: datetime | None = Query(default=None),
     created_to: datetime | None = Query(default=None),
     page: int = Query(default=1, ge=1),
@@ -77,6 +82,8 @@ async def list_handovers(
     items, total = await service.list(
         status=status.value if status is not None else None,
         engineer=engineer,
+        kind=kind,
+        q=q,
         created_from=created_from,
         created_to=created_to,
         page=page,
@@ -88,6 +95,18 @@ async def list_handovers(
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("/active", response_model=HandoverSummary | None)
+async def active_case(
+    serial: str = Query(min_length=1, max_length=100),
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> HandoverSummary | None:
+    """The active case for a serial, or null. Additive lookup for `/new`."""
+    service = HandoverService(session)
+    handover = await service.find_active_by_serial(serial)
+    return HandoverSummary.model_validate(handover) if handover else None
 
 
 @router.get("/{handover_id}", response_model=HandoverDetail)
@@ -137,6 +156,72 @@ async def cancel_handover(
     return handover_detail(view)
 
 
+@router.post("/{handover_id}/operations/{operation}/not-done", response_model=HandoverDetail)
+async def mark_operation_not_done(
+    handover_id: uuid.UUID,
+    operation: str,
+    payload: NotDoneRequest,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> HandoverDetail:
+    service = HandoverService(session)
+    try:
+        view = await service.mark_not_done(
+            handover_id, operation, reason=payload.reason, actor=_actor(user)
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.post("/{handover_id}/operations/{operation}/retry", response_model=HandoverDetail)
+async def retry_operation(
+    handover_id: uuid.UUID,
+    operation: str,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> HandoverDetail:
+    service = HandoverService(session)
+    try:
+        view = await service.retry_operation(
+            handover_id, operation, actor=_actor(user)
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.post("/{handover_id}/close", response_model=HandoverDetail)
+async def close_case_with_gaps(
+    handover_id: uuid.UUID,
+    payload: CloseCaseRequest,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> HandoverDetail:
+    service = HandoverService(session)
+    try:
+        view = await service.close_with_gaps(
+            handover_id, confirmation=payload.confirmation, actor=_actor(user)
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.post("/{handover_id}/reopen", response_model=HandoverDetail)
+async def reopen_case(
+    handover_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> HandoverDetail:
+    service = HandoverService(session)
+    try:
+        view = await service.reopen(handover_id, actor=_actor(user))
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
+
+
 # -- Phase 5: Snipe-IT write operations -------------------------------------
 
 
@@ -163,7 +248,7 @@ async def search_recipient(
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
     except SnipeItError as exc:
-        raise snipeithandover_http_error(exc) from exc
+        raise snipeit_http_error(exc) from exc
 
 
 @router.post(
@@ -190,7 +275,7 @@ async def confirm_recipient(
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
     except SnipeItError as exc:
-        raise snipeithandover_http_error(exc) from exc
+        raise snipeit_http_error(exc) from exc
     return handover_detail(view)
 
 
@@ -207,7 +292,7 @@ async def preview_handover(
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
     except SnipeItError as exc:
-        raise snipeithandover_http_error(exc) from exc
+        raise snipeit_http_error(exc) from exc
 
 
 @router.post("/{handover_id}/checkin", response_model=CheckinResult)
@@ -229,7 +314,7 @@ async def checkin_assets(
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
     except SnipeItError as exc:
-        raise snipeithandover_http_error(exc) from exc
+        raise snipeit_http_error(exc) from exc
     return CheckinResult(handover_id=handover_id, results=outcomes)
 
 
@@ -248,7 +333,7 @@ async def checkout_handover(
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
     except SnipeItError as exc:
-        raise snipeithandover_http_error(exc) from exc
+        raise snipeit_http_error(exc) from exc
     return handover_detail(view)
 
 

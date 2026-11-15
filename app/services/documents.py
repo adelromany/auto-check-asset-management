@@ -29,11 +29,10 @@ from app.domain.errors import (
     AgentReportNotFound,
     DocumentNotFound,
     DocumentTooLarge,
-    StageNotRunnable,
+    InputMissing,
     UnsupportedDocumentType,
 )
-from app.domain.handover_rules import can_run
-from app.domain.stages import Stage, StageStatus
+from app.domain.stages import Operation, StageStatus
 from app.repositories.documents import DocumentRepository
 from app.repositories.events import EventRepository
 from app.repositories.handovers import HandoverRepository
@@ -42,7 +41,6 @@ from app.services.handovers import (
     HandoverService,
     ensure_open,
     stage_row,
-    stage_states,
 )
 from app.services.snipeit_ops import snipeit_error_detail, snipeit_error_reason
 
@@ -137,13 +135,7 @@ class DocumentService:
         handover = await self._core.get(handover_id, with_details=True)
         ensure_open(handover)
 
-        row = stage_row(handover, Stage.DOCUMENT_SCANNED)
-        if row.status != StageStatus.PASSED.value:
-            allowed, reason = can_run(
-                Stage.DOCUMENT_SCANNED, stage_states(handover)
-            )
-            if not allowed:
-                raise StageNotRunnable(reason)
+        row = stage_row(handover, Operation.DOCUMENT_SCANNED)
 
         content = await self._read_limited(upload)
         content_type = detect_content_type(content)
@@ -223,20 +215,17 @@ class DocumentService:
         client: SnipeItClient,
     ) -> HandoverDetailView:
         handover = await self._core.get(handover_id, with_details=True)
-        row = stage_row(handover, Stage.DOCUMENT_PUSHED)
+        row = stage_row(handover, Operation.DOCUMENT_PUSHED)
         if row.status == StageStatus.PASSED.value:
             return await self._core.view(handover)
 
         ensure_open(handover)
-        allowed, reason = can_run(
-            Stage.DOCUMENT_PUSHED, stage_states(handover)
-        )
-        if not allowed:
-            raise StageNotRunnable(reason)
 
         document = await self._documents.latest_for_handover(handover.id)
         if document is None:
-            raise DocumentNotFound("No document was uploaded for this handover.")
+            raise InputMissing(
+                "Attach the signed scan first, or mark Push as not done."
+            )
 
         try:
             asset = await client.get_asset_by_serial(
@@ -347,7 +336,7 @@ class DocumentService:
         already_present: bool,
         snipeit_status: int | None,
     ) -> HandoverDetailView:
-        row = stage_row(handover, Stage.DOCUMENT_PUSHED)
+        row = stage_row(handover, Operation.DOCUMENT_PUSHED)
         row.status = StageStatus.PASSED.value
         row.reason = None
         row.actor = actor
@@ -384,7 +373,7 @@ class DocumentService:
         actor: str,
         detail: dict[str, Any] | None = None,
     ) -> HandoverDetailView:
-        row = stage_row(handover, Stage.DOCUMENT_PUSHED)
+        row = stage_row(handover, Operation.DOCUMENT_PUSHED)
         row.status = StageStatus.FAILED.value
         row.reason = reason
         row.actor = actor

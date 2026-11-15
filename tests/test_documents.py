@@ -353,15 +353,17 @@ async def test_upload_sanitizes_a_traversal_filename(
     assert not (docs.documents_dir.parent / "evil.pdf").exists()
 
 
-async def test_upload_requires_the_signed_stage(
+async def test_upload_does_not_wait_for_the_signed_stage(
     docs: DocsHarness,
 ) -> None:
     handover_id = await _create(docs)
 
     response = await _upload(docs, handover_id)
 
-    assert response.status_code == 409
-    assert "user_signed" in response.json()["detail"]
+    # Operations are independent: the scan can be uploaded first and the
+    # paper signature recorded later.
+    assert response.status_code == 200, response.text
+    assert response.json()["original_name"] == "sheet.pdf"
 
 
 # -- download ---------------------------------------------------------------
@@ -561,5 +563,5 @@ async def test_push_requires_an_uploaded_document(
         f"/api/handovers/{handover_id}/document/push"
     )
 
-    assert response.status_code == 409
-    assert "document_scanned" in response.json()["detail"]
+    assert response.status_code == 422
+    assert "Attach the signed scan first" in response.json()["detail"]

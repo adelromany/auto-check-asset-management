@@ -18,10 +18,12 @@ from app import config
 
 SUBMIT_RULE = "session_submit"
 SEARCH_RULE = "recipient_search"
+ACTIVE_RULE = "active_case_lookup"
 
 _RULES = (
     (re.compile(r"^/api/session/[^/]+/submit$"), SUBMIT_RULE),
     (re.compile(r"^/api/handovers/[^/]+/recipient/search$"), SEARCH_RULE),
+    (re.compile(r"^/api/handovers/active$"), ACTIVE_RULE),
 )
 
 
@@ -64,6 +66,9 @@ class RateLimitMiddleware:
             ),
             SEARCH_RULE: SlidingWindowLimiter(
                 config.RATE_LIMIT_RECIPIENT_SEARCH_PER_WINDOW, window
+            ),
+            ACTIVE_RULE: SlidingWindowLimiter(
+                config.RATE_LIMIT_ACTIVE_PER_WINDOW, window
             ),
         }
 

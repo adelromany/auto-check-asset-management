@@ -1,73 +1,56 @@
-"""The ten fixed handover stages: keys, order, dependencies and statuses.
+"""Operation keys, statuses and derived case statuses.
 
-This module is the single source of truth for stage keys (CLN-05/CLN-06).
+This module is the single source of truth for operation keys (CLN-05/CLN-06).
+The catalog itself lives in :mod:`app.domain.catalog`; the names here stay for
+backward-compatible imports (``Stage`` is the old name of an operation).
 """
 
 from __future__ import annotations
 
 from enum import StrEnum
 
-
-class Stage(StrEnum):
-    """One verifiable step of a handover, in the order it happens."""
-
-    DEVICE_PREPARED = "device_prepared"
-    USER_SIGNED_IN = "user_signed_in"
-    AGENT_REPORT = "agent_report"
-    SOFTWARE_CHECK = "software_check"
-    RECIPIENT_CHECK = "recipient_check"
-    CHECKOUT = "checkout"
-    REPORT_PRINTED = "report_printed"
-    USER_SIGNED = "user_signed"
-    DOCUMENT_SCANNED = "document_scanned"
-    DOCUMENT_PUSHED = "document_pushed"
-
-
-STAGE_ORDER: tuple[Stage, ...] = (
-    Stage.DEVICE_PREPARED,
-    Stage.USER_SIGNED_IN,
-    Stage.AGENT_REPORT,
-    Stage.SOFTWARE_CHECK,
-    Stage.RECIPIENT_CHECK,
-    Stage.CHECKOUT,
-    Stage.REPORT_PRINTED,
-    Stage.USER_SIGNED,
-    Stage.DOCUMENT_SCANNED,
-    Stage.DOCUMENT_PUSHED,
+from .catalog import (  # re-exported for callers that used this module only
+    HANDOVER_OPERATIONS,
+    MAINTENANCE_OPERATIONS,
+    MANUAL_OPERATIONS,
+    NOT_DONE_PRESET_REASONS,
+    OPERATION_TITLES,
+    OPERATIONS_BY_KIND,
+    RECOMMENDED_AFTER,
+    CaseKind,
+    Operation,
+    operation_from_key,
+    operation_title,
+    operations_for,
+    lanes_for,
 )
 
-# BIZ: dependencies are fixed and one-directional (a DAG, no cycles).
-STAGE_DEPENDENCIES: dict[Stage, tuple[Stage, ...]] = {
-    Stage.DEVICE_PREPARED: (),
-    Stage.USER_SIGNED_IN: (Stage.DEVICE_PREPARED,),
-    Stage.AGENT_REPORT: (Stage.DEVICE_PREPARED,),
-    Stage.RECIPIENT_CHECK: (Stage.AGENT_REPORT,),
-    Stage.CHECKOUT: (Stage.RECIPIENT_CHECK, Stage.SOFTWARE_CHECK),
-    Stage.SOFTWARE_CHECK: (Stage.AGENT_REPORT,),
-    Stage.REPORT_PRINTED: (Stage.AGENT_REPORT,),
-    Stage.USER_SIGNED: (Stage.REPORT_PRINTED,),
-    Stage.DOCUMENT_SCANNED: (Stage.USER_SIGNED,),
-    Stage.DOCUMENT_PUSHED: (Stage.DOCUMENT_SCANNED,),
-}
+# The old name of "operation"; kept so existing imports keep working.
+Stage = Operation
 
-# Stages an engineer confirms by hand; the others are driven by the agent or
-# by verified Snipe-IT calls.
-MANUAL_STAGES: frozenset[Stage] = frozenset(
-    {
-        Stage.DEVICE_PREPARED,
-        Stage.USER_SIGNED_IN,
-        Stage.REPORT_PRINTED,
-        Stage.USER_SIGNED,
-    }
-)
+STAGE_ORDER: tuple[Operation, ...] = HANDOVER_OPERATIONS
+
+# DEPRECATED alias. Ordering is advice only (BIZ-19); code must call
+# ``advice()`` in handover_rules instead of treating this as a gate.
+STAGE_DEPENDENCIES: dict[Operation, tuple[Operation, ...]] = RECOMMENDED_AFTER
 
 
 class StageStatus(StrEnum):
+    """The four outcome states one operation can have.
+
+    ``passed`` is the only state that counts as done. ``not_done`` is an
+    explicit engineer decision with a reason; ``failed`` was attempted and can
+    be retried. Neither blocks any other operation.
+    """
+
     PENDING = "pending"
     PASSED = "passed"
     FAILED = "failed"
-    BLOCKED = "blocked"
-    SKIPPED = "skipped"  # reserved; not used in v1
+    NOT_DONE = "not_done"
+
+
+# Clearer name for new code; same enum.
+OperationStatus = StageStatus
 
 
 class HandoverStatus(StrEnum):
@@ -75,12 +58,22 @@ class HandoverStatus(StrEnum):
     IN_PROGRESS = "in_progress"
     STALLED = "stalled"
     COMPLETED = "completed"
+    CLOSED_WITH_GAPS = "closed_with_gaps"
     CANCELLED = "cancelled"
 
 
-def stage_from_key(key: str) -> Stage:
-    """Parse an API/database stage key, raising ``ValueError`` when unknown."""
+INACTIVE_CASE_STATUSES: tuple[str, ...] = (
+    HandoverStatus.COMPLETED.value,
+    HandoverStatus.CLOSED_WITH_GAPS.value,
+    HandoverStatus.CANCELLED.value,
+)
+
+SATISFIED_STATUSES: frozenset[StageStatus] = frozenset({StageStatus.PASSED})
+
+
+def stage_from_key(key: str) -> Operation:
+    """Parse an API/database operation key, raising ``ValueError`` if unknown."""
     try:
-        return Stage(key)
+        return operation_from_key(key)
     except ValueError as exc:
         raise ValueError(f"Unknown stage: {key}") from exc

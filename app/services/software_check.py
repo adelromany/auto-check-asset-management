@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import config
 from app.domain.errors import SoftwareCheckConflict
-from app.domain.software_rules import evaluate_hardware, evaluate_software
+from app.domain.software_rules import evaluate_software
 from app.domain.stages import Stage, StageStatus
 from app.repositories.events import EventRepository
 from app.repositories.handovers import HandoverRepository
@@ -49,7 +49,7 @@ class SoftwareCheckService:
         cleaned_reason = reason.strip()
         if not 10 <= len(cleaned_reason) <= 500:
             raise ValueError("reason must be 10–500 characters after trimming")
-        row.status = StageStatus.SKIPPED.value
+        row.status = StageStatus.NOT_DONE.value
         row.reason = cleaned_reason
         row.detail = {
             **(row.detail or {}),
@@ -73,22 +73,10 @@ class SoftwareCheckService:
         handover = await self._core.get(handover_id, with_details=True)
         ensure_open(handover)
         row = stage_row(handover, Stage.SOFTWARE_CHECK)
-        if row.status == StageStatus.SKIPPED.value:
-            raise SoftwareCheckConflict(
-                "software_check was skipped by an override and cannot be re-evaluated."
-            )
-
         report = await self._handovers.latest_agent_report(handover.id)
         if report is None:
             raise SoftwareCheckConflict(
                 "software_check cannot be re-evaluated because no agent report exists."
-            )
-
-        hardware = evaluate_hardware(report.payload, handover.device_serial)
-        if hardware.status is not StageStatus.PASSED:
-            raise SoftwareCheckConflict(
-                "software_check cannot be re-evaluated because agent_report is "
-                f"{StageStatus.FAILED.value}."
             )
 
         result = evaluate_software(report.payload, config.REQUIRED_SOFTWARE_IDS)

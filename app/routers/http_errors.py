@@ -17,6 +17,8 @@ from app.clients.snipeit import (
 )
 from app.domain.errors import (
     AgentReportNotFound,
+    CaseStateConflict,
+    ClosingConfirmationRequired,
     DocumentNotFound,
     DocumentTooLarge,
     HandoverAlreadyExists,
@@ -24,8 +26,12 @@ from app.domain.errors import (
     HandoverCompleted,
     HandoverError,
     HandoverNotFound,
+    InputMissing,
     InvalidStage,
+    MaintenanceFieldInvalid,
     ManualStageRequired,
+    NotDoneReasonRequired,
+    OperationNotInKind,
     RecipientConfirmationConflict,
     SoftwareCheckConflict,
     StageNotRunnable,
@@ -38,17 +44,26 @@ _CONFLICT_ERRORS = (
     HandoverAlreadyExists,
     HandoverCancelled,
     HandoverCompleted,
+    CaseStateConflict,
     ManualStageRequired,
     RecipientConfirmationConflict,
     SoftwareCheckConflict,
     StageNotRunnable,
+)
+_UNPROCESSABLE_ERRORS = (
+    InvalidStage,
+    InputMissing,
+    NotDoneReasonRequired,
+    OperationNotInKind,
+    ClosingConfirmationRequired,
+    MaintenanceFieldInvalid,
 )
 
 
 def handover_http_error(exc: HandoverError) -> HTTPException:
     if isinstance(exc, (HandoverNotFound, DocumentNotFound, AgentReportNotFound)):
         return HTTPException(status_code=404, detail=str(exc))
-    if isinstance(exc, InvalidStage):
+    if isinstance(exc, _UNPROCESSABLE_ERRORS):
         return HTTPException(status_code=422, detail=str(exc))
     if isinstance(exc, DocumentTooLarge):
         return HTTPException(status_code=413, detail=str(exc))

@@ -46,15 +46,20 @@ class Handover(Base):
         Index("ix_handovers_created_at", "created_at"),
         Index("ix_handovers_engineer_email", "engineer_email"),
         Index("ix_handovers_device_serial", "device_serial"),
-        # One ACTIVE handover per device serial. "Active" means not completed
-        # and not cancelled; both partial-index predicates are declared so the
-        # rule holds on PostgreSQL and SQLite alike.
+        Index("ix_handovers_kind", "kind"),
+        # One ACTIVE case per device serial, across kinds. "Active" means not
+        # completed, not closed with gaps and not cancelled; both partial-index
+        # predicates are declared so the rule holds on PostgreSQL and SQLite.
         Index(
             "uq_handovers_active_device_serial",
             "device_serial",
             unique=True,
-            postgresql_where=text("status NOT IN ('completed', 'cancelled')"),
-            sqlite_where=text("status NOT IN ('completed', 'cancelled')"),
+            postgresql_where=text(
+                "status NOT IN ('completed', 'closed_with_gaps', 'cancelled')"
+            ),
+            sqlite_where=text(
+                "status NOT IN ('completed', 'closed_with_gaps', 'cancelled')"
+            ),
         ),
     )
 
@@ -62,6 +67,9 @@ class Handover(Base):
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     ticket_ref: Mapped[str | None] = mapped_column(String(100))
+    kind: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="handover", server_default="handover"
+    )
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="draft", server_default="draft"
     )
@@ -73,6 +81,8 @@ class Handover(Base):
     recipient_reported_username: Mapped[str | None] = mapped_column(String(200))
     recipient_snipeit_id: Mapped[int | None] = mapped_column(Integer)
     recipient_snipeit_username: Mapped[str | None] = mapped_column(String(200))
+    recipient_snipeit_name: Mapped[str | None] = mapped_column(String(200))
+    recipient_snipeit_email: Mapped[str | None] = mapped_column(String(320))
     recipient_confirmed_by: Mapped[str | None] = mapped_column(String(320))
     recipient_confirmed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)
@@ -91,6 +101,7 @@ class Handover(Base):
         server_default=text("CURRENT_TIMESTAMP"),
     )
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    closed_gaps: Mapped[list[dict[str, Any]] | None] = mapped_column(_json_type())
 
     stages: Mapped[list["HandoverStage"]] = relationship(
         back_populates="handover",
@@ -112,10 +123,16 @@ class Handover(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    maintenance: Mapped["MaintenanceInfo | None"] = relationship(
+        back_populates="handover",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
 
 
 class HandoverStage(Base):
-    """One verifiable step of a handover; exactly nine per handover."""
+    """One verifiable operation of a case; ten for handover, five for maintenance."""
 
     __tablename__ = "handover_stages"
     __table_args__ = (

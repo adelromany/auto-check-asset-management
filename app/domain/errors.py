@@ -25,7 +25,60 @@ class HandoverCompleted(HandoverError):
 
 
 class StageNotRunnable(HandoverError):
-    """A stage's dependencies have not passed yet."""
+    """Legacy name kept for callers; new code raises :class:`InputMissing`."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
+class InputMissing(HandoverError):
+    """An operation cannot run yet because its own input is missing (422).
+
+    This is not an ordering rule: it only names data this operation needs,
+    and every other operation stays available.
+    """
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
+class NotDoneReasonRequired(HandoverError):
+    """Marking an operation not done requires a 3–300 character reason."""
+
+    def __init__(self, reason: str = "A reason is required to mark an operation not done."):
+        self.reason = reason
+        super().__init__(reason)
+
+
+class OperationNotInKind(HandoverError):
+    """The operation key does not belong to this case kind."""
+
+    def __init__(self, operation: str, kind: str):
+        self.operation = operation
+        self.kind = kind
+        super().__init__(f"Operation '{operation}' is not part of a {kind} case.")
+
+
+class CaseStateConflict(HandoverError):
+    """The requested transition is not valid for the case's current status."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
+class ClosingConfirmationRequired(HandoverError):
+    """Closing with gaps needs the explicit confirmation text."""
+
+    def __init__(self, reason: str = "Type CLOSE to confirm closing a case with gaps."):
+        self.reason = reason
+        super().__init__(reason)
+
+
+class MaintenanceFieldInvalid(HandoverError):
+    """A maintenance field is missing or has an unsupported value."""
 
     def __init__(self, reason: str):
         self.reason = reason

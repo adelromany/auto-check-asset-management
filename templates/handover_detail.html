@@ -119,7 +119,7 @@
                 </p>
               </div>
               <div class="flex flex-wrap gap-2">
-                {% set retry = stage.status in ("failed", "blocked") %}
+                {% set retry = stage.status in ("failed", "not_done") %}
                 {% if stage.status != "passed" %}
                   {% if stage.stage in ("device_prepared", "user_signed_in", "report_printed", "user_signed") %}
                   {% set confirm_text = {

@@ -23,10 +23,13 @@ from app.clients.snipeit import (
     SnipeItUnavailable,
 )
 from app.db.models.handover import Handover
-from app.domain.errors import RecipientConfirmationConflict, StageNotRunnable
-from app.domain.handover_rules import can_run
+from app.domain.errors import (
+    CaseStateConflict,
+    InputMissing,
+    RecipientConfirmationConflict,
+)
 from app.domain.recipient_identity import DetectedUser, detect_recipient
-from app.domain.stages import Stage, StageStatus
+from app.domain.stages import Operation, StageStatus
 from app.dto.handover import (
     CheckinOutcome,
     HandoverPreview,
@@ -40,7 +43,6 @@ from app.services.handovers import (
     HandoverService,
     ensure_open,
     stage_row,
-    stage_states,
 )
 
 RECIPIENT_NOT_FOUND_REASON = "Recipient not found in Snipe-IT"
@@ -151,18 +153,16 @@ class SnipeItHandoverService:
             if report is not None
             else None
         )
-        row = stage_row(handover, Stage.RECIPIENT_CHECK)
+        row = stage_row(handover, Operation.RECIPIENT_CHECK)
         if row.status == StageStatus.PASSED.value:
             if (
                 snipeit_user_id is not None
                 and handover.recipient_snipeit_id == snipeit_user_id
             ):
                 return await self._core.view(handover)
-            raise StageNotRunnable("Recipient already confirmed.")
-
-        allowed, reason = can_run(Stage.RECIPIENT_CHECK, stage_states(handover))
-        if not allowed:
-            raise StageNotRunnable(reason)
+            raise CaseStateConflict(
+                "Recipient already confirmed; reopen the operation first."
+            )
 
         if not_found:
             return await self._block_recipient(handover, actor=actor)
@@ -184,65 +184,56 @@ class SnipeItHandoverService:
 
         handover.recipient_snipeit_id = user.id
         handover.recipient_snipeit_username = user.username or user.name
+        handover.recipient_snipeit_name = user.name
+        handover.recipient_snipeit_email = user.email
         handover.recipient_confirmed_by = actor
         handover.recipient_confirmed_at = _utcnow()
+        await self._session.flush()
 
-        row.status = StageStatus.PASSED.value
-        row.reason = None
-        row.actor = actor
-        row.updated_at = _utcnow()
-        row.detail = {
-            "snipeit_user_id": user.id,
-            "username": user.username,
-            "name": user.name,
-        }
-
-        await self._events.add(
-            handover_id=handover.id,
-            actor=actor,
-            type="recipient_confirmed",
+        return await self._core.record_operation(
+            handover.id,
+            Operation.RECIPIENT_CHECK,
+            status=StageStatus.PASSED,
+            reason=None,
             detail={
                 "snipeit_user_id": user.id,
                 "username": user.username,
-                "reported_username": handover.recipient_reported_username,
+                "name": user.name,
             },
+            actor=actor,
+            input_checks=False,
         )
-        await self._core.recompute_status(handover)
-        return await self._core.view(handover)
 
     async def _block_recipient(
         self, handover: Handover, *, actor: str
     ) -> HandoverDetailView:
         handover.recipient_snipeit_id = None
         handover.recipient_snipeit_username = None
+        handover.recipient_snipeit_name = None
+        handover.recipient_snipeit_email = None
         handover.recipient_confirmed_by = actor
         handover.recipient_confirmed_at = _utcnow()
+        await self._session.flush()
 
-        row = stage_row(handover, Stage.RECIPIENT_CHECK)
-        row.status = StageStatus.BLOCKED.value
-        row.reason = RECIPIENT_NOT_FOUND_REASON
-        row.actor = actor
-        row.updated_at = _utcnow()
-        row.detail = {
-            "not_found": True,
-            "reported_username": handover.recipient_reported_username,
-        }
-
-        await self._events.add(
-            handover_id=handover.id,
+        return await self._core.record_operation(
+            handover.id,
+            Operation.RECIPIENT_CHECK,
+            status=StageStatus.FAILED,
+            reason=RECIPIENT_NOT_FOUND_REASON,
+            detail={
+                "not_found": True,
+                "reported_username": handover.recipient_reported_username,
+            },
             actor=actor,
-            type="recipient_not_found",
-            detail={"reason": RECIPIENT_NOT_FOUND_REASON},
+            input_checks=False,
         )
-        await self._core.recompute_status(handover)
-        return await self._core.view(handover)
 
     # -- dry run ----------------------------------------------------------
     async def preview(
         self, handover_id: uuid.UUID, *, client: SnipeItClient
     ) -> HandoverPreview:
         handover = await self._core.get(handover_id, with_details=True)
-        checkout_row = stage_row(handover, Stage.CHECKOUT)
+        checkout_row = stage_row(handover, Operation.CHECKOUT)
         already_passed = checkout_row.status == StageStatus.PASSED.value
         recipient_id = handover.recipient_snipeit_id
 
@@ -356,8 +347,8 @@ class SnipeItHandoverService:
         ensure_open(handover)
         recipient_id = handover.recipient_snipeit_id
         if recipient_id is None:
-            raise StageNotRunnable(
-                "Recipient is not confirmed; there is nothing to check in."
+            raise InputMissing(
+                "Pick a recipient first; there is nothing to check in."
             )
 
         outcomes: list[CheckinOutcome] = []
@@ -523,18 +514,17 @@ class SnipeItHandoverService:
         client: SnipeItClient,
     ) -> HandoverDetailView:
         handover = await self._core.get(handover_id, with_details=True)
-        row = stage_row(handover, Stage.CHECKOUT)
+        row = stage_row(handover, Operation.CHECKOUT)
         if row.status == StageStatus.PASSED.value:
             return await self._core.view(handover)
 
         ensure_open(handover)
-        allowed, reason = can_run(Stage.CHECKOUT, stage_states(handover))
-        if not allowed:
-            raise StageNotRunnable(reason)
 
         recipient_id = handover.recipient_snipeit_id
         if recipient_id is None:
-            raise StageNotRunnable("Recipient is not confirmed.")
+            raise InputMissing(
+                "Pick a recipient first, or mark Checkout as not done."
+            )
 
         try:
             asset = await client.get_asset_by_serial(
@@ -647,7 +637,7 @@ class SnipeItHandoverService:
         already_assigned: bool,
         snipeit_status: int | None,
     ) -> HandoverDetailView:
-        row = stage_row(handover, Stage.CHECKOUT)
+        row = stage_row(handover, Operation.CHECKOUT)
         row.status = StageStatus.PASSED.value
         row.reason = None
         row.actor = actor
@@ -682,7 +672,7 @@ class SnipeItHandoverService:
         actor: str,
         detail: dict[str, Any] | None = None,
     ) -> HandoverDetailView:
-        row = stage_row(handover, Stage.CHECKOUT)
+        row = stage_row(handover, Operation.CHECKOUT)
         row.status = StageStatus.FAILED.value
         row.reason = reason
         row.actor = actor

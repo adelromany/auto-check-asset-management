@@ -39,8 +39,10 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/db/base.py | db | declarative base and stable constraint naming |
 | module | app/db/engine.py | db | lazy async engine and session factory (no connection at import) |
 | module | app/db/models/handover.py | db | ORM models: Handover, HandoverStage, AgentReport, Document, Event |
-  | module | app/domain/stages.py | domain | ten fixed stages: keys, order, dependencies and statuses |
-| module | app/domain/handover_rules.py | domain | pure derive_status, missing_steps and can_run rules |
+| module | app/db/models/maintenance.py | db | ORM models: MaintenanceInfo, MaintenanceDestination |
+| module | app/domain/catalog.py | domain | case kinds, operation catalog, lanes and recommended order |
+  | module | app/domain/stages.py | domain | operation keys, four outcome statuses and six case statuses |
+| module | app/domain/handover_rules.py | domain | pure derive_status, missing_steps, advice and gap rules |
   | module | app/domain/software_rules.py | domain | pure hardware, required software and activation evaluators |
 | module | app/domain/errors.py | domain | typed handover workflow exceptions |
 | module | app/domain/redaction.py | domain | strip windows_activation.partial_key before storage |
@@ -49,10 +51,11 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/clients/snipeit.py | client | Snipe-IT HTTP client, credential provider and typed results |
 | module | app/dto/handover.py | dto | handover request/response models |
 | module | app/dto/dashboard.py | dto | dashboard summary and paged-row response models |
+| module | app/repositories/filters.py | repository | shared case status, search and active-case SQL filters |
 | module | app/repositories/handovers.py | repository | handover, stage and agent-report data access |
 | module | app/repositories/documents.py | repository | stored evidence document data access |
 | module | app/repositories/events.py | repository | insert-only business event trail |
-| module | app/services/handovers.py | service | create, get, list, confirm, cancel, recompute, agent report |
+| module | app/services/handovers.py | service | create, get, list, record operations, retry, close/reopen, agent report |
 | module | app/services/software_check.py | service | override and re-evaluation of software checks |
 | module | app/services/snipeit_ops.py | service | recipient search/confirm, preview, checkin and verified checkout |
 | module | app/services/documents.py | service | printable report, safe scan storage, download and verified push |

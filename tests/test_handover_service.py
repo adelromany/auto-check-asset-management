@@ -13,15 +13,22 @@ import app.db.models  # noqa: F401  (registers every table on Base.metadata)
 from app.db.base import Base
 from app.db.models.handover import AgentReport
 from app.domain.errors import (
+    CaseStateConflict,
     HandoverAlreadyExists,
     HandoverCancelled,
     HandoverCompleted,
     HandoverNotFound,
+    InputMissing,
     InvalidStage,
     ManualStageRequired,
-    StageNotRunnable,
+    NotDoneReasonRequired,
 )
-from app.domain.stages import STAGE_ORDER, HandoverStatus, Stage, StageStatus
+from app.domain.stages import (
+    STAGE_ORDER,
+    HandoverStatus,
+    Stage,
+    StageStatus,
+)
 from app.services.handovers import (
     SERIAL_MISMATCH_REASON,
     SERIAL_MISSING_REASON,
@@ -118,32 +125,36 @@ async def test_confirm_manual_stage_passes_and_writes_an_event(service) -> None:
     assert row.actor == ENGINEER
     assert [event.type for event in view.events] == [
         "handover_created",
-        "stage_confirmed",
+        "operation_recorded",
     ]
-    assert view.events[-1].detail == {"stage": "device_prepared"}
+    assert view.events[-1].detail["operation"] == "device_prepared"
+    assert view.events[-1].detail["outcome"] == "passed"
 
 
-async def test_confirm_rejects_a_pending_dependency(service) -> None:
+async def test_an_operation_does_not_wait_for_its_recommended_predecessor(service) -> None:
     handover = await _create(service)
 
-    with pytest.raises(StageNotRunnable) as error:
-        await service.confirm_manual_stage(
-            handover.id, Stage.USER_SIGNED_IN, actor=ENGINEER
-        )
+    # ``user_signed_in`` recommends ``device_prepared`` but never waits for it.
+    view = await service.confirm_manual_stage(
+        handover.id, Stage.USER_SIGNED_IN, actor=ENGINEER
+    )
 
-    assert "device_prepared" in error.value.reason
-    assert "pending" in error.value.reason
+    row = next(item for item in view.stages if item.stage == "user_signed_in")
+    assert row.status == StageStatus.PASSED.value
+    assert row.detail["performed_before"] == ["device_prepared"]
+    assert row.detail["advice"] == ["Usually done after Device prepared"]
 
 
-async def test_confirm_rejects_an_already_passed_stage(service) -> None:
+async def test_confirming_a_passed_operation_is_idempotent(service) -> None:
     handover = await _create(service)
     await service.confirm_manual_stage(handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER)
 
-    with pytest.raises(StageNotRunnable) as error:
-        await service.confirm_manual_stage(
-            handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER
-        )
-    assert "already passed" in error.value.reason
+    view = await service.confirm_manual_stage(
+        handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER
+    )
+
+    assert view.events[-1].detail["operation"] == "device_prepared"
+    assert [event.type for event in view.events].count("operation_recorded") == 1
 
 
 @pytest.mark.parametrize(
@@ -165,15 +176,19 @@ async def test_confirm_rejects_unknown_stage_names(service) -> None:
         await service.confirm_manual_stage(handover.id, "not_a_stage", actor=ENGINEER)
 
 
-async def test_confirm_report_printed_waits_for_the_agent_report(service) -> None:
+async def test_confirm_report_printed_requires_the_agent_report_input(service) -> None:
     handover = await _create(service)
-    await service.confirm_manual_stage(handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER)
 
-    with pytest.raises(StageNotRunnable) as error:
+    with pytest.raises(InputMissing) as error:
         await service.confirm_manual_stage(
             handover.id, Stage.REPORT_PRINTED, actor=ENGINEER
         )
-    assert "agent_report" in error.value.reason
+    assert "agent report" in str(error.value)
+    # Everything else stays available; only this operation lacks its input.
+    view = await service.confirm_manual_stage(
+        handover.id, Stage.USER_SIGNED, actor=ENGINEER
+    )
+    assert any(item.stage == "user_signed" and item.status == "passed" for item in view.stages)
 
 
 async def test_cancel_marks_cancelled_and_closes(service) -> None:
@@ -272,8 +287,13 @@ async def test_agent_report_with_matching_serial_passes_stage_three(
     assert "partial_key" not in report.payload["windows_activation"]
     assert "ABCDE" not in str(report.payload)
 
-    assert view.events[-1].type == "agent_report_received"
-    assert view.events[-1].detail["matched"] is True
+    assert view.events[-1].detail["operation"] in ("agent_report", "software_check")
+    recorded = {
+        event.detail.get("operation")
+        for event in view.events
+        if event.type == "operation_recorded"
+    }
+    assert {"agent_report", "software_check"} <= recorded
 
 
 async def test_agent_report_with_other_serial_fails_stage_three(service) -> None:
@@ -297,11 +317,18 @@ async def test_agent_report_with_other_serial_fails_stage_three(service) -> None
     stage = next(item for item in view.stages if item.stage == "agent_report")
     assert stage.status == StageStatus.FAILED.value
     assert stage.reason == SERIAL_MISMATCH_REASON
-    assert view.handover.status == HandoverStatus.STALLED.value
+    # A failed operation no longer stalls the case; it needs attention.
+    assert view.handover.status == HandoverStatus.IN_PROGRESS.value
     missing = {item["stage"]: item for item in view.missing_steps}
     assert missing["agent_report"]["status"] == "failed"
     assert SERIAL_MISMATCH_REASON in missing["agent_report"]["hint"]
-    assert view.events[-1].detail["matched"] is False
+    recorded = {
+        event.detail.get("operation"): event.detail
+        for event in view.events
+        if event.type == "operation_recorded"
+    }
+    assert recorded["agent_report"]["outcome"] == "failed"
+    assert "software_check" in recorded
 
 
 async def test_agent_report_without_serial_fails_with_a_clear_reason(service) -> None:
@@ -371,3 +398,119 @@ async def test_list_paginates_and_filters(service) -> None:
     future = datetime.now(timezone.utc) + timedelta(days=1)
     _, future_total = await service.list(created_from=future)
     assert future_total == 0
+
+# -- Part A: independent operations -----------------------------------------
+
+async def test_mark_not_done_requires_a_reason(service) -> None:
+    handover = await _create(service)
+    with pytest.raises(NotDoneReasonRequired):
+        await service.mark_not_done(
+            handover.id, Stage.DEVICE_PREPARED, reason="  x ", actor=ENGINEER
+        )
+
+
+async def test_mark_not_done_records_an_outcome_and_an_event(service) -> None:
+    handover = await _create(service)
+    view = await service.mark_not_done(
+        handover.id, Stage.RECIPIENT_CHECK, reason="Device not available", actor=ENGINEER
+    )
+    row = next(item for item in view.stages if item.stage == "recipient_check")
+    assert row.status == StageStatus.NOT_DONE.value
+    assert row.reason == "Device not available"
+    assert view.events[-1].type == "operation_recorded"
+    detail = view.events[-1].detail
+    assert detail["operation"] == "recipient_check"
+    assert detail["outcome"] == "not_done"
+    assert detail["reason"] == "Device not available"
+    # The recommended predecessor is still pending, so it is recorded as advice.
+    assert detail["performed_before"] == ["agent_report"]
+    assert view.handover.status == HandoverStatus.IN_PROGRESS.value
+
+
+async def test_failed_then_retried_becomes_passed(service) -> None:
+    handover = await _create(service)
+    await service.record_operation(
+        handover.id, Stage.DEVICE_PREPARED,
+        status=StageStatus.FAILED, reason="Cracked lid", detail={}, actor=ENGINEER,
+    )
+    await service.retry_operation(handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER)
+    pending = await service.get_detail(handover.id)
+    row = next(item for item in pending.stages if item.stage == "device_prepared")
+    assert row.status == StageStatus.PENDING.value
+
+    view = await service.confirm_manual_stage(
+        handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER
+    )
+    row = next(item for item in view.stages if item.stage == "device_prepared")
+    assert row.status == StageStatus.PASSED.value
+
+
+async def test_one_failure_never_blocks_another_operation(service) -> None:
+    handover = await _create(service)
+    await service.record_operation(
+        handover.id, Stage.AGENT_REPORT,
+        status=StageStatus.FAILED, reason="bad report", detail={}, actor=ENGINEER,
+    )
+    view = await service.confirm_manual_stage(
+        handover.id, Stage.USER_SIGNED_IN, actor=ENGINEER
+    )
+    assert any(
+        item.stage == "user_signed_in" and item.status == "passed"
+        for item in view.stages
+    )
+
+
+async def test_close_with_gaps_stores_the_gap_list_and_reopen_clears_it(service) -> None:
+    handover = await _create(service)
+    await service.confirm_manual_stage(handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER)
+    await service.mark_not_done(
+        handover.id, Stage.RECIPIENT_CHECK, reason="Device not available", actor=ENGINEER
+    )
+
+    closed = await service.close_with_gaps(
+        handover.id, confirmation="CLOSE", actor=ENGINEER
+    )
+    assert closed.handover.status == HandoverStatus.CLOSED_WITH_GAPS.value
+    assert closed.handover.closed_at is not None
+    gap_ops = {gap["operation"] for gap in closed.handover.closed_gaps}
+    assert "recipient_check" in gap_ops
+    assert "device_prepared" not in gap_ops
+    assert closed.events[-1].type == "case_closed_with_gaps"
+    assert closed.events[-1].detail["gaps"] == closed.handover.closed_gaps
+
+    reopened = await service.reopen(handover.id, actor=ENGINEER)
+    assert reopened.handover.status == HandoverStatus.IN_PROGRESS.value
+    assert reopened.handover.closed_gaps is None
+    assert reopened.handover.closed_at is None
+    assert reopened.events[-1].type == "case_reopened"
+
+
+async def test_close_requires_confirmation_text(service) -> None:
+    from app.domain.errors import ClosingConfirmationRequired
+
+    handover = await _create(service)
+    with pytest.raises(ClosingConfirmationRequired):
+        await service.close_with_gaps(handover.id, confirmation="yes", actor=ENGINEER)
+
+
+async def test_completed_case_cannot_be_closed_with_gaps(service) -> None:
+    handover = await _create(service)
+    loaded = await service.get(handover.id)
+    for row in loaded.stages:
+        row.status = StageStatus.PASSED.value
+    await service.recompute_status(loaded)
+    with pytest.raises(HandoverCompleted):
+        await service.close_with_gaps(handover.id, confirmation="CLOSE", actor=ENGINEER)
+
+
+async def test_closed_with_gaps_frees_the_serial(service) -> None:
+    first = await _create(service, serial="SN-GAPS")
+    await service.close_with_gaps(first.id, confirmation="CLOSE", actor=ENGINEER)
+    second = await _create(service, serial="SN-GAPS")
+    assert second.id != first.id
+
+
+async def test_reopen_rejects_a_case_that_is_not_closed_with_gaps(service) -> None:
+    handover = await _create(service)
+    with pytest.raises(CaseStateConflict):
+        await service.reopen(handover.id, actor=ENGINEER)

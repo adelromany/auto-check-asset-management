@@ -156,7 +156,7 @@ async def test_invalid_stage_name_returns_422(api: ApiHarness) -> None:
     assert "Unknown stage" in response.json()["detail"]
 
 
-async def test_confirming_with_an_unmet_dependency_returns_409(
+async def test_operations_are_independent_and_only_record_advice(
     api: ApiHarness,
 ) -> None:
     created = await _create(api)
@@ -165,10 +165,16 @@ async def test_confirming_with_an_unmet_dependency_returns_409(
         f"/api/handovers/{created['id']}/stages/user_signed_in/confirm"
     )
 
-    assert response.status_code == 409
-    detail = response.json()["detail"]
-    assert "device_prepared" in detail
-    assert "pending" in detail
+    assert response.status_code == 200
+    body = response.json()
+    stage = next(
+        item for item in body["stages"] if item["stage"] == "user_signed_in"
+    )
+    assert stage["status"] == "passed"
+    assert stage["detail"]["performed_before"] == ["device_prepared"]
+    assert stage["detail"]["advice"] == [
+        "Usually done after Device prepared"
+    ]
 
 
 async def test_confirming_a_manual_stage_updates_status_and_timeline(
@@ -190,8 +196,10 @@ async def test_confirming_a_manual_stage_updates_status_and_timeline(
     assert stage["actor"] == ENGINEER["email"]
     assert [event["type"] for event in body["events"]] == [
         "handover_created",
-        "stage_confirmed",
+        "operation_recorded",
     ]
+    assert body["events"][-1]["detail"]["operation"] == "device_prepared"
+    assert body["events"][-1]["detail"]["outcome"] == "passed"
 
 
 async def test_report_printed_can_be_confirmed_after_agent_report(
@@ -253,7 +261,7 @@ async def test_duplicate_active_serial_returns_409(api: ApiHarness) -> None:
     )
 
     assert response.status_code == 409
-    assert "active handover already exists" in response.json()["detail"]
+    assert "already has an active handover case" in response.json()["detail"]
 
 
 async def test_cancel_is_idempotent_and_blocks_further_work(
@@ -274,6 +282,77 @@ async def test_cancel_is_idempotent_and_blocks_further_work(
         f"/api/handovers/{created['id']}/stages/device_prepared/confirm"
     )
     assert confirm.status_code == 409
+
+
+async def test_not_done_requires_a_reason_and_stays_a_visible_gap(
+    api: ApiHarness,
+) -> None:
+    created = await _create(api, serial="SN-NOT-DONE")
+
+    too_short = await api.client.post(
+        f"/api/handovers/{created['id']}/operations/recipient_check/not-done",
+        json={"reason": "x"},
+    )
+    assert too_short.status_code == 422
+
+    response = await api.client.post(
+        f"/api/handovers/{created['id']}/operations/recipient_check/not-done",
+        json={"reason": "Device not available"},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    row = next(
+        item for item in body["stages"] if item["stage"] == "recipient_check"
+    )
+    assert row["status"] == "not_done"
+    assert row["reason"] == "Device not available"
+    gap = next(
+        item for item in body["missing_steps"]
+        if item["stage"] == "recipient_check"
+    )
+    assert gap["status"] == "not_done"
+    assert gap["hint"].startswith("Not done:")
+    assert body["status"] == "in_progress"
+
+
+async def test_close_with_gaps_requires_confirmation_and_reopen_clears_it(
+    api: ApiHarness,
+) -> None:
+    created = await _create(api, serial="SN-CLOSE-GAPS")
+    await api.client.post(
+        f"/api/handovers/{created['id']}/stages/device_prepared/confirm"
+    )
+
+    wrong = await api.client.post(
+        f"/api/handovers/{created['id']}/close", json={"confirmation": "ok"}
+    )
+    assert wrong.status_code == 422
+
+    closed = await api.client.post(
+        f"/api/handovers/{created['id']}/close", json={"confirmation": "CLOSE"}
+    )
+    assert closed.status_code == 200, closed.text
+    body = closed.json()
+    assert body["status"] == "closed_with_gaps"
+    assert body["closed_at"] is not None
+    assert [gap["operation"] for gap in body["closed_gaps"]][0] == (
+        "user_signed_in"
+    )
+
+    blocked = await api.client.post(
+        f"/api/handovers/{created['id']}/stages/user_signed_in/confirm"
+    )
+    assert blocked.status_code == 409
+
+    reopened = await api.client.post(
+        f"/api/handovers/{created['id']}/reopen"
+    )
+    assert reopened.status_code == 200, reopened.text
+    assert reopened.json()["status"] == "in_progress"
+    assert reopened.json()["closed_gaps"] is None
+
+    again = await api.client.post(f"/api/handovers/{created['id']}/reopen")
+    assert again.status_code == 409
 
 
 async def test_list_paginates_filters_and_caps_page_size(api: ApiHarness) -> None:
@@ -347,8 +426,15 @@ async def test_agent_flow_with_matching_serial_passes_stage_three(
     assert stage["status"] == "passed"
     assert body["recipient_reported_username"] == "alice"
     assert body["status"] == "in_progress"
-    assert body["events"][-1]["type"] == "agent_report_received"
-    assert body["events"][-1]["detail"]["matched"] is True
+    recorded = [
+        event for event in body["events"]
+        if event["type"] == "operation_recorded"
+    ]
+    assert [event["detail"]["operation"] for event in recorded] == [
+        "agent_report",
+        "software_check",
+    ]
+    assert all(event["detail"]["outcome"] == "passed" for event in recorded)
 
     monkeypatch.setattr(config, "SSO_ENABLED", False)
     case_page = await api.client.get(f"/handovers/{created['id']}")
@@ -377,8 +463,20 @@ async def test_agent_flow_with_mismatched_serial_fails_stage_three(
     stage = next(item for item in body["stages"] if item["stage"] == "agent_report")
     assert stage["status"] == "failed"
     assert "does not match" in stage["reason"]
-    assert body["status"] == "stalled"
-    assert body["events"][-1]["detail"]["matched"] is False
+    # A failed operation no longer stalls the case; the case stays open.
+    assert body["status"] == "in_progress"
+    software = next(
+        item for item in body["stages"] if item["stage"] == "software_check"
+    )
+    assert software["detail"]["report_serial_differs"] is True
+    recorded = {
+        event["detail"]["operation"]: event["detail"]["outcome"]
+        for event in body["events"]
+        if event["type"] == "operation_recorded"
+    }
+    assert recorded["agent_report"] == "failed"
+    # Software is evaluated anyway; an empty report fails its own check.
+    assert recorded["software_check"] == "failed"
 
 
 async def test_agent_flow_without_a_handover_is_unchanged(api: ApiHarness) -> None:

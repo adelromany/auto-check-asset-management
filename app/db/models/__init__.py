@@ -1,4 +1,4 @@
-"""ORM models for the handover workflow."""
+"""ORM models for the handover and maintenance workflows."""
 
 from app.db.models.handover import (
     AgentReport,
@@ -7,5 +7,19 @@ from app.db.models.handover import (
     Handover,
     HandoverStage,
 )
+from app.db.models.maintenance import (
+    DiagnosisCategory,
+    MaintenanceDestination,
+    MaintenanceInfo,
+)
 
-__all__ = ["AgentReport", "Document", "Event", "Handover", "HandoverStage"]
+__all__ = [
+    "AgentReport",
+    "DiagnosisCategory",
+    "Document",
+    "Event",
+    "Handover",
+    "HandoverStage",
+    "MaintenanceDestination",
+    "MaintenanceInfo",
+]

@@ -9,12 +9,13 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models.handover import AgentReport, Handover, HandoverStage
 from app.domain.stages import HandoverStatus, Stage
+from app.repositories.filters import build_case_filters
 
 
 class HandoverRepository:
@@ -58,17 +59,22 @@ class HandoverRepository:
                 selectinload(Handover.events),
                 selectinload(Handover.agent_reports),
                 selectinload(Handover.documents),
+                selectinload(Handover.maintenance),
             )
         result = await self._session.execute(statement)
         return result.scalar_one_or_none()
 
     async def find_active_by_serial(self, serial: str) -> Handover | None:
-        """An active handover is any status except completed or cancelled."""
+        """An active case is any status except completed, closed_gaps, cancelled."""
         result = await self._session.execute(
             select(Handover).where(
                 Handover.device_serial == serial,
                 Handover.status.not_in(
-                    [HandoverStatus.COMPLETED.value, HandoverStatus.CANCELLED.value]
+                    [
+                        HandoverStatus.COMPLETED.value,
+                        HandoverStatus.CLOSED_WITH_GAPS.value,
+                        HandoverStatus.CANCELLED.value,
+                    ]
                 ),
             )
         )
@@ -79,29 +85,23 @@ class HandoverRepository:
         *,
         status: str | None = None,
         engineer: str | None = None,
+        kind: str | None = None,
+        q: str | None = None,
         created_from: datetime | None = None,
         created_to: datetime | None = None,
         page: int = 1,
         page_size: int = 25,
         stall_cutoff: datetime | None = None,
     ) -> tuple[list[Handover], int]:
-        filters = []
-        stale = and_(
-            Handover.status.in_(["draft", "in_progress"]),
-            Handover.updated_at < stall_cutoff,
-        ) if stall_cutoff is not None else None
-        if status == HandoverStatus.STALLED.value and stale is not None:
-            filters.append(or_(Handover.status == status, stale))
-        elif status in (HandoverStatus.DRAFT.value, HandoverStatus.IN_PROGRESS.value) and stale is not None:
-            filters.append(and_(Handover.status == status, Handover.updated_at >= stall_cutoff))
-        elif status is not None:
-            filters.append(Handover.status == status)
-        if engineer is not None:
-            filters.append(Handover.engineer_email == engineer)
-        if created_from is not None:
-            filters.append(Handover.created_at >= created_from)
-        if created_to is not None:
-            filters.append(Handover.created_at <= created_to)
+        filters = build_case_filters(
+            status=status,
+            engineer=engineer,
+            kind=kind,
+            q=q,
+            created_from=created_from,
+            created_to=created_to,
+            stall_cutoff=stall_cutoff,
+        )
 
         total = await self._session.scalar(
             select(func.count()).select_from(Handover).where(*filters)
@@ -115,6 +115,43 @@ class HandoverRepository:
             .limit(page_size)
         )
         return list(result.scalars().all()), int(total or 0)
+
+    async def compare_and_set_stage(
+        self,
+        stage_id: uuid.UUID,
+        *,
+        status: str,
+        reason: str | None,
+        detail: dict[str, Any],
+        actor: str,
+        now: datetime,
+    ) -> int:
+        """Write one outcome only when it changes the row; returns rowcount.
+
+        Two requests for the same operation therefore produce one write and
+        one event, while requests for different operations never touch the
+        same row.
+        """
+        statement = (
+            update(HandoverStage)
+            .where(HandoverStage.id == stage_id)
+            .where(
+                or_(
+                    HandoverStage.status != status,
+                    func.coalesce(HandoverStage.reason, "") != (reason or ""),
+                )
+            )
+            .values(
+                status=status,
+                reason=reason,
+                detail=detail,
+                actor=actor,
+                updated_at=now,
+            )
+            .execution_options(synchronize_session="fetch")
+        )
+        result = await self._session.execute(statement)
+        return int(result.rowcount or 0)
 
     async def get_stage(
         self, handover_id: uuid.UUID, stage: Stage
