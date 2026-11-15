@@ -80,7 +80,7 @@
                 {% if stage.stage in ("device_prepared", "user_signed_in") %}
                 <p class="mt-1 text-xs text-muted-foreground">Manual confirmation. The system does not collect evidence or values for this step.</p>
                 {% elif stage.stage == "report_printed" %}
-                <p class="mt-1 text-xs text-muted-foreground">Manual confirmation after printing and reviewing the report.</p>
+                <p class="mt-1 text-xs text-muted-foreground">Print and review the report, then confirm this step.</p>
                 {% elif stage.stage == "user_signed" %}
                 <p class="mt-1 text-xs text-muted-foreground">Manual confirmation after the paper copy is signed.</p>
                 {% endif %}

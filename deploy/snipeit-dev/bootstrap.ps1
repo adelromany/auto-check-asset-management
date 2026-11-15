@@ -4,11 +4,16 @@ $RepoRoot = (Resolve-Path (Join-Path $DevDir "..\..")).Path
 $DevEnv = Join-Path $DevDir ".env"
 $PortalEnv = Join-Path $RepoRoot ".env"
 
-function New-RandomHex([int]$Count) {
+function New-RandomBytes([int]$Count) {
   $Bytes = [byte[]]::new($Count)
   $Rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
   try { $Rng.GetBytes($Bytes) } finally { $Rng.Dispose() }
-  return [Convert]::ToHexString($Bytes).ToLowerInvariant()
+  return $Bytes
+}
+
+function New-RandomHex([int]$Count) {
+  $Bytes = New-RandomBytes $Count
+  return [System.BitConverter]::ToString($Bytes).Replace("-","").ToLowerInvariant()
 }
 
 function Set-EnvLine([string[]]$Lines, [string]$Key, [string]$Value) {
@@ -26,7 +31,7 @@ function Set-EnvLine([string[]]$Lines, [string]$Key, [string]$Value) {
 if (-not (Test-Path -LiteralPath $DevEnv)) {
   Copy-Item -LiteralPath (Join-Path $DevDir ".env.example") -Destination $DevEnv
   $Lines = Get-Content -LiteralPath $DevEnv
-  $Lines = Set-EnvLine $Lines "SNIPEIT_APP_KEY" ("base64:" + [Convert]::ToBase64String([Convert]::FromHexString((New-RandomHex 32))))
+  $Lines = Set-EnvLine $Lines "SNIPEIT_APP_KEY" ("base64:" + [Convert]::ToBase64String((New-RandomBytes 32)))
   $Lines = Set-EnvLine $Lines "SNIPEIT_DB_PASSWORD" (New-RandomHex 32)
   $Lines = Set-EnvLine $Lines "SNIPEIT_DB_ROOT_PASSWORD" (New-RandomHex 32)
   Set-Content -LiteralPath $DevEnv -Value $Lines -Encoding utf8
@@ -63,17 +68,16 @@ try {
   & docker compose exec -T snipeit sh -c "test -s /var/lib/snipeit/keys/oauth-private.key && test -s /var/lib/snipeit/keys/oauth-public.key" 2>$null | Out-Null
   $KeysExist = $LASTEXITCODE -eq 0
   if (-not $KeysExist) {
-    & docker compose exec -T snipeit php artisan passport:keys --force | Out-Null
+    & docker compose exec -T snipeit php artisan passport:keys --force --no-interaction | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "passport:keys failed with exit code $LASTEXITCODE" }
-    & docker compose exec -T snipeit php artisan passport:install --force | Out-Null
+    & docker compose exec -T snipeit php artisan passport:install --force --no-interaction | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "passport:install failed with exit code $LASTEXITCODE" }
   }
   & docker compose exec -T snipeit sh -c "chmod 644 /var/lib/snipeit/keys/oauth-*" | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "OAuth key permissions command failed with exit code $LASTEXITCODE" }
 
-  $Settings = 'if (!DB::table("settings")->exists()) { DB::table("settings")->insert(["site_name" => "Snipe-IT", "per_page" => 20]); }'
-  & docker compose exec -T snipeit php artisan tinker --execute=$Settings | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "settings bootstrap failed with exit code $LASTEXITCODE" }
+  $Settings = 'if (!DB::table("settings")->exists()) { DB::table("settings")->insert(["site_name" => "Snipe-IT", "per_page" => 20, "auto_increment_assets" => 1, "default_currency" => "USD", "brand" => 1]); }'
+  $null = $Settings | & docker compose exec -T snipeit php artisan tinker 2>$null
 
   $AdminExists = & docker compose exec -T snipeit php artisan tinker --execute='dump(DB::table("users")->where("username", "admin")->exists());'
   if ($LASTEXITCODE -ne 0) { throw "admin check failed with exit code $LASTEXITCODE" }
@@ -82,10 +86,23 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "snipeit:create-admin failed with exit code $LASTEXITCODE" }
   }
 
-  $Seed = '$user = App\Models\User::firstOrCreate(["username" => "TEST-recipient"], ["first_name" => "TEST", "last_name" => "Recipient", "email" => "test.recipient@example.test", "password" => bcrypt(\Illuminate\Support\Str::random(48)), "activated" => 1]); $category = App\Models\Category::firstOrCreate(["name" => "TEST-Computer"], ["category_type" => "asset"]); $manufacturer = App\Models\Manufacturer::firstOrCreate(["name" => "TEST-Manufacturer"]); $model = App\Models\AssetModel::firstOrCreate(["name" => "TEST-Portal Model"], ["category_id" => $category->id, "manufacturer_id" => $manufacturer->id, "model_number" => "TEST-0001", "require_serial" => 1]); $status = App\Models\Statuslabel::firstOrCreate(["name" => "Ready to Deploy"], ["deployable" => 1]); App\Models\Asset::updateOrCreate(["serial" => "TEST-SN-0001"], ["asset_tag" => "TEST-A-0001", "name" => "TEST-Portal Asset", "model_id" => $model->id, "status_id" => $status->id]);'
+  $Seed = @'
+$user = App\Models\User::firstOrCreate(["username" => "TEST-recipient"], ["first_name" => "TEST", "last_name" => "Recipient", "email" => "test.recipient@example.test", "password" => bcrypt(\Illuminate\Support\Str::random(48)), "activated" => 1]);
+$category = App\Models\Category::firstOrCreate(["name" => "TEST-Computer"], ["category_type" => "asset"]);
+$manufacturer = App\Models\Manufacturer::firstOrCreate(["name" => "TEST-Manufacturer"]);
+$model = App\Models\AssetModel::firstOrCreate(["name" => "TEST-Portal Model"], ["category_id" => $category->id, "manufacturer_id" => $manufacturer->id, "model_number" => "TEST-0001", "require_serial" => 1]);
+$status = App\Models\Statuslabel::firstOrCreate(["name" => "Ready to Deploy"], ["deployable" => 1]);
+App\Models\Asset::updateOrCreate(["serial" => "TEST-SN-0001"], ["asset_tag" => "TEST-A-0001", "name" => "TEST-Portal Asset", "model_id" => $model->id, "status_id" => $status->id]);
+'@
   $SeedExitCode = 1
   for ($Attempt = 1; $Attempt -le 3; $Attempt++) {
-    $null = & docker compose exec -T snipeit php artisan tinker "--execute=$Seed" 2>&1
+    $PrevEAP = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+      $null = $Seed | & docker compose exec -T snipeit php artisan tinker 2>&1
+    } finally {
+      $ErrorActionPreference = $PrevEAP
+    }
     $SeedExitCode = $LASTEXITCODE
     if ($SeedExitCode -eq 0) { break }
     if ($Attempt -lt 3) { Start-Sleep -Seconds 3 }

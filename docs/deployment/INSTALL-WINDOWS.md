@@ -172,6 +172,20 @@ Set `SNIPEIT_URL` to the approved Snipe-IT base URL and `SNIPEIT_TOKEN` to a ded
 
 5. Create one handover using only `TEST-SN-0001`, then cancel it from the detail page. You should see its status change to Cancelled. **NOT VERIFIED** in this run.
 
+6. To start the portal automatically whenever you sign in to Windows, create a shortcut in your user Startup folder.
+
+   ```powershell
+   $RepoRoot = (Resolve-Path .).Path
+   $StartupFolder = [Environment]::GetFolderPath("Startup")
+   $Shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $StartupFolder "Handover Portal.lnk"))
+   $Shortcut.TargetPath = (Get-Command powershell.exe).Source
+   $Shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$RepoRoot\scripts\start.ps1`""
+   $Shortcut.WorkingDirectory = $RepoRoot
+   $Shortcut.Save()
+   ```
+
+   The portal will be available at `http://localhost:8080` after sign-in. To disable automatic startup, delete `Handover Portal.lnk` from the Startup folder. This starts the local portal only; it does not start Docker or Snipe-IT.
+
 ## Part 5: Use it from another device
 
 1. Set `APP_HOST` in the root `.env` to the portal's reachable DNS name or IP and port, for example `192.168.1.50:8080`. The agent command uses this setting. Do not use `localhost` when the employee's PC is different from the portal PC.

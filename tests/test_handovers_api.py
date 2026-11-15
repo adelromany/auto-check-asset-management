@@ -124,6 +124,9 @@ async def test_case_page_links_device_check_and_explains_manual_confirmations(
     assert case_page.status_code == 200
     assert f'href="/?handover_id={handover_id}"' in case_page.text
     assert "Manual confirmation. The system does not collect evidence or values" in case_page.text
+    assert 'data-action="confirm-stage"' in case_page.text
+    assert 'data-stage="report_printed"' in case_page.text
+    assert "Print and review the report, then confirm this step." in case_page.text
 
     device_check = await api.client.get(f"/?handover_id={handover_id}")
     assert device_check.status_code == 200
@@ -189,6 +192,46 @@ async def test_confirming_a_manual_stage_updates_status_and_timeline(
         "handover_created",
         "stage_confirmed",
     ]
+
+
+async def test_report_printed_can_be_confirmed_after_agent_report(
+    api: ApiHarness,
+) -> None:
+    created = await _create(api, serial="SN-PRINT-REPORT")
+    session_response = await api.client.get(
+        f"/api/session/new?handover_id={created['id']}"
+    )
+    code = session_response.json()["code"]
+    submit = await api.client.post(
+        f"/api/session/{code}/submit",
+        json={
+            "serial": "SN-PRINT-REPORT",
+            "cpu": "Intel Core i7",
+            "ram_gb": 16,
+            "disks": [{"name": "NVMe", "size_gb": 512, "type": "SSD"}],
+        },
+    )
+    assert submit.status_code == 200
+
+    printed = await api.client.post(
+        f"/api/handovers/{created['id']}/stages/report_printed/confirm"
+    )
+    assert printed.status_code == 200
+    printed_stage = next(
+        item for item in printed.json()["stages"]
+        if item["stage"] == "report_printed"
+    )
+    assert printed_stage["status"] == "passed"
+
+    signed = await api.client.post(
+        f"/api/handovers/{created['id']}/stages/user_signed/confirm"
+    )
+    assert signed.status_code == 200
+    signed_stage = next(
+        item for item in signed.json()["stages"]
+        if item["stage"] == "user_signed"
+    )
+    assert signed_stage["status"] == "passed"
 
 
 async def test_confirming_a_non_manual_stage_returns_409(api: ApiHarness) -> None:
