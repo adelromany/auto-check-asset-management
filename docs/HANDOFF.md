@@ -42,3 +42,10 @@ step done: 1 inspection + HANDOFF created; next: A1/A2 domain rule + statuses; t
   → **358 passed, 7 skipped**.
 - Also fixed an undefined `snipeithandover_http_error` reference in the
   handover router (now `snipeit_http_error`).
+
+## Part B — separate screens (branch `feature/screens-split`)
+- `/` is Dashboard (read-only overview, search, KPI tiles, charts), `/new` is Registration, `/cases` is Cases list, `/cases/{id}` is Case board, `/cases/{id}/history` is History, `/device-check` is Device check.
+- `GET /?handover_id=` redirects (307) to `/device-check?handover_id=`.
+- `GET /` with SSO off answers 200, characterization tests green.
+- Branding: `b_labs.jpeg` logo in `partials/logo.html`, `Handover Portal` title in `app/config.py` and `app/main.py`, favicon updated, monitor SVG and old title removed, `tests/test_branding.py` passes.
+- step done: b2e01b4 feat(branding): use b_labs logo, Handover Portal name, and split dashboard and device-check routes; next: Part C complete redesign; tests: 369 passed, 7 skipped
