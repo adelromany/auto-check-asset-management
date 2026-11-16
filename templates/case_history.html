@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  {% include "partials/page_head.html" %}
+</head>
+<body class="min-h-screen bg-background text-foreground">
+{% from "partials/labels.html" import handover_badge, kind_label %}
+<div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
+  {% include "partials/topbar.html" %}
+
+  <main class="flex-1 px-4 py-6">
+    <a href="/cases/{{ handover.id }}"
+       class="text-xs text-muted-foreground underline-offset-4 hover:underline">← Back to case</a>
+
+    <div class="mt-2 mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <h1 class="font-mono text-xl font-semibold tracking-tight" dir="ltr">{{ handover.device_serial }}</h1>
+          {{ handover_badge(handover.status) }}
+        </div>
+        <p class="mt-1 text-sm text-muted-foreground">
+          {{ kind_label(handover.kind) }} · every recorded event, newest first.
+        </p>
+      </div>
+      <span class="text-xs text-muted-foreground">{{ events | length }} event{{ "" if events | length == 1 else "s" }}</span>
+    </div>
+
+    <section class="card" aria-labelledby="history-heading">
+      <div class="card-header border-b bg-muted/40 py-3">
+        <h2 id="history-heading" class="card-title text-sm">Audit trail</h2>
+      </div>
+      <div class="card-content">
+        <ol class="timeline">
+          {% for event in events %}
+          <li class="timeline-item">
+            <p class="text-xs text-muted-foreground">{{ event.at }} · {{ event.actor }}</p>
+            <p class="text-sm font-medium">{{ event.type }}</p>
+            {% if event.detail %}
+            <pre class="mt-1 overflow-x-auto text-xs text-muted-foreground">{{ event.detail | tojson(indent=2) }}</pre>
+            {% endif %}
+          </li>
+          {% else %}
+          <li class="text-sm text-muted-foreground">No events recorded.</li>
+          {% endfor %}
+        </ol>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t px-4 py-4">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <span>H-Caliper</span>
+      <span>The audit trail is append-only.</span>
+    </div>
+  </footer>
+</div>
+
+<script src="/static/js/theme.js?v=1"></script>
+<script src="/static/js/shell.js?v=1"></script>
+</body>
+</html>

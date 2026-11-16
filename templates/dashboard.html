@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  {% include "partials/page_head.html" %}
+</head>
+<body class="min-h-screen bg-background text-foreground">
+{% from "partials/labels.html" import handover_badge, kind_label, missing_text %}
+<div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
+  {% include "partials/topbar.html" %}
+
+  <main class="flex-1 px-4 py-6">
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight">Dashboard</h1>
+        <p class="mt-1 text-sm text-muted-foreground">What is open, what is stuck and what just finished.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a class="btn btn-outline btn-sm" href="/cases">All cases</a>
+        <a class="btn btn-default btn-sm" href="/new">New case</a>
+      </div>
+    </div>
+
+    <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Key figures">
+      <div class="kpi">
+        <p class="kpi-label">Needs attention</p>
+        <p id="kpi-attention" class="kpi-value">{{ summary.by_status.get("stalled", 0) }}</p>
+        <p class="text-xs text-muted-foreground">No activity for {{ stall_hours }} hours</p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-label">In progress</p>
+        <p id="kpi-in-progress" class="kpi-value">{{ summary.by_status.get("in_progress", 0) }}</p>
+        <p class="text-xs text-muted-foreground">Started, not finished</p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-label">Completed</p>
+        <p id="kpi-completed" class="kpi-value">{{ summary.completed }}</p>
+        <p class="text-xs text-muted-foreground">Every operation passed</p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-label">Closed with gaps</p>
+        <p id="kpi-gaps" class="kpi-value">{{ summary.by_status.get("closed_with_gaps", 0) }}</p>
+        <p class="text-xs text-muted-foreground">Finished with recorded gaps</p>
+      </div>
+    </section>
+
+    <div class="mt-6 grid items-start gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <section class="card overflow-hidden" aria-labelledby="recent-heading">
+        <div class="card-header border-b bg-muted/40 py-3">
+          <div class="flex items-center justify-between gap-2">
+            <h2 id="recent-heading" class="card-title text-sm">Recent cases</h2>
+            <a class="text-xs text-muted-foreground underline-offset-4 hover:underline" href="/cases">Open the list</a>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="table table-compact">
+            <thead class="table-header">
+              <tr>
+                <th class="table-head">Status</th>
+                <th class="table-head">Case</th>
+                <th class="table-head">Recipient</th>
+                <th class="table-head">Next</th>
+              </tr>
+            </thead>
+            <tbody class="table-body">
+              {% for row in recent %}
+              <tr class="table-row">
+                <td class="table-cell">{{ handover_badge(row.handover.status) }}</td>
+                <td class="table-cell">
+                  <a class="font-mono text-xs underline-offset-4 hover:underline"
+                     href="/cases/{{ row.handover.id }}" dir="ltr">{{ row.handover.device_serial }}</a>
+                  <span class="ml-1 text-xs text-muted-foreground">{{ kind_label(row.handover.kind) }}</span>
+                </td>
+                <td class="table-cell">
+                  {{ row.handover.recipient_snipeit_username or row.handover.recipient_reported_username or "—" }}
+                </td>
+                <td class="table-cell text-xs">{{ missing_text(row.missing_steps, row.handover.status) }}</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="table-cell py-10 text-center text-sm text-muted-foreground">
+                  No cases yet. <a class="underline underline-offset-4" href="/new">Register the first one</a>.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="flex flex-col gap-4">
+        <section class="card" aria-labelledby="attention-heading">
+          <div class="card-header">
+            <h2 id="attention-heading" class="card-title text-sm">Needs attention</h2>
+            <p class="card-description">Stalled cases, oldest activity first.</p>
+          </div>
+          <div class="card-content flex flex-col gap-2">
+            {% for row in attention %}
+            <a class="flex items-center justify-between gap-2 rounded-md border p-2 text-sm hover:bg-muted/50"
+               href="/cases/{{ row.handover.id }}">
+              <span class="truncate font-mono text-xs" dir="ltr">{{ row.handover.device_serial }}</span>
+              <span class="truncate text-xs text-muted-foreground">
+                {{ row.handover.recipient_snipeit_username or row.handover.recipient_reported_username or "No recipient" }}
+              </span>
+            </a>
+            {% else %}
+            <p class="text-sm text-muted-foreground">Nothing is stalled. Good.</p>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="status-heading">
+          <div class="card-header">
+            <h2 id="status-heading" class="card-title text-sm">All cases by status</h2>
+            <p class="card-description">{{ summary.total }} case{{ "" if summary.total == 1 else "s" }} in total.</p>
+          </div>
+          <div class="card-content">
+            <dl class="flex flex-col gap-1 text-sm">
+              {% for row in status_rows %}
+              <div class="flex items-center justify-between gap-2">
+                <dt class="text-muted-foreground">{{ handover_badge(row.status) }}</dt>
+                <dd class="tabular-nums">{{ row.count }}</dd>
+              </div>
+              {% endfor %}
+            </dl>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t px-4 py-4">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <span>H-Caliper</span>
+      <span>Figures are computed from the case database.</span>
+    </div>
+  </footer>
+</div>
+
+<script src="/static/js/theme.js?v=1"></script>
+<script src="/static/js/shell.js?v=1"></script>
+</body>
+</html>

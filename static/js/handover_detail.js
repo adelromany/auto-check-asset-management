@@ -471,6 +471,64 @@
     }
   }
 
+  // -- independent operations / closing ---------------------------------
+  async function markNotDone(button) {
+    var stage = button.getAttribute("data-stage");
+    var title = button.getAttribute("data-operation-title") || stage;
+    var reason = window.prompt(
+      "Why was " + title + " not done? (3–300 characters; this stays visible as a gap.)",
+      ""
+    );
+    if (reason === null) return;
+    reason = reason.trim();
+    if (reason.length < 3 || reason.length > 300) {
+      showToast("Enter a reason between 3 and 300 characters.", "error");
+      return;
+    }
+    setBusy(button, true);
+    try {
+      await request(base + "/operations/" + encodeURIComponent(stage) + "/not-done", {
+        method: "POST",
+        json: { reason: reason },
+      });
+      flashAndReload(title + " recorded as not done.", "success");
+    } catch (error) {
+      showToast(error.message, "error");
+      setBusy(button, false);
+    }
+  }
+
+  async function closeCase(button) {
+    var confirmation = window.prompt(
+      "This closes the case and records the missing operations as gaps. Type CLOSE to confirm.",
+      ""
+    );
+    if (confirmation === null) return;
+    setBusy(button, true);
+    try {
+      await request(base + "/close", {
+        method: "POST",
+        json: { confirmation: confirmation },
+      });
+      flashAndReload("Case closed with gaps.", "success");
+    } catch (error) {
+      showToast(error.message, "error");
+      setBusy(button, false);
+    }
+  }
+
+  async function reopenCase(button) {
+    if (!window.confirm("Reopen this case so its missing operations can be finished?")) return;
+    setBusy(button, true);
+    try {
+      await request(base + "/reopen", { method: "POST" });
+      flashAndReload("Case reopened.", "success");
+    } catch (error) {
+      showToast(error.message, "error");
+      setBusy(button, false);
+    }
+  }
+
   // -- cancel -----------------------------------------------------------
   async function cancel(button) {
     var proceed = window.confirm(
@@ -505,6 +563,9 @@
     else if (action === "checkout") checkout(button);
     else if (action === "checkin") checkin(button);
     else if (action === "push-document") pushDocument(button);
+    else if (action === "not-done") markNotDone(button);
+    else if (action === "close-case") closeCase(button);
+    else if (action === "reopen-case") reopenCase(button);
     else if (action === "cancel") cancel(button);
   });
 

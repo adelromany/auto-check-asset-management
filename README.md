@@ -54,7 +54,7 @@ app/
     documents.py           # printable report, safe scan storage, download, verified push
     dashboard.py           # database-side aggregates and page-sized rows
   routers/
-    pages.py               # /, /handovers, /handovers/{id}, /api/me
+    pages.py               # dashboard, registration, cases, history, device check, /api/me
     agent.py               # /api/session/new, /data, /submit
     handovers.py           # /api/handovers create/list/detail/stages/recipient/preview/checkin/checkout
     documents.py           # report page, document upload/download/push
@@ -66,9 +66,12 @@ app/
 alembic/                   # async migrations (alembic upgrade head)
 alembic.ini
 templates/
-  index.html               # legacy agent landing page
-  handovers.html           # dashboard page
-  handover_detail.html     # case page
+  index.html               # device check (/ and /device-check)
+  dashboard.html           # overview: figures, recent and stalled cases
+  new_case.html            # registration form
+  cases.html               # case list with search and filters
+  handover_detail.html     # case board
+  case_history.html        # append-only audit trail
   handover_report.html     # printable report
   diag_clipboard.html      # clipboard diagnostics
   partials/                # logo, page head, topbar, labels
@@ -79,7 +82,7 @@ static/
   js/theme.js              # light / dark / system toggle
   js/theme-init.js         # pre-paint theme bootstrap (CSP-safe)
   js/shell.js              # topbar, clock, CSRF token bridge
-  js/handovers.js          # dashboard filters, KPIs, table states
+  js/new_case.js           # registration POST and active-serial check
   js/handover_detail.js    # case-page actions
   js/software_check.js    # software override interaction
   js/diag_clipboard.js     # diagnostics page logic

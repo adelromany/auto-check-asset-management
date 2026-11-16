@@ -344,6 +344,29 @@ async def test_rows_include_progress_and_missing_steps(
     assert row["missing_steps"][0]["status"] == "not_done"
 
 
+async def test_rows_filter_by_kind_and_search(
+    dashboard: DashboardHarness,
+) -> None:
+    by_kind = await dashboard.client.get(
+        "/api/dashboard/handovers", params={"kind": "maintenance"}
+    )
+    assert by_kind.status_code == 200, by_kind.text
+    assert by_kind.json()["total"] == 0
+
+    searched = await dashboard.client.get(
+        "/api/dashboard/handovers", params={"q": "SN-STALLED"}
+    )
+    assert searched.status_code == 200, searched.text
+    body = searched.json()
+    assert body["total"] == 1
+    assert body["items"][0]["handover"]["device_serial"] == "SN-STALLED"
+
+    invalid = await dashboard.client.get(
+        "/api/dashboard/handovers", params={"kind": "other"}
+    )
+    assert invalid.status_code == 422
+
+
 async def test_rows_filter_by_engineer_and_range(
     dashboard: DashboardHarness,
 ) -> None:
@@ -369,26 +392,74 @@ async def test_rows_filter_by_engineer_and_range(
 # -- pages ------------------------------------------------------------------
 
 
-async def test_handovers_page_renders_seeded_data(
+async def test_dashboard_page_renders_seeded_data(
     dashboard: DashboardHarness,
 ) -> None:
-    response = await dashboard.client.get("/handovers")
+    response = await dashboard.client.get("/dashboard")
 
     assert response.status_code == 200, response.text
     body = response.text
-    assert "Handovers" in body
+    assert "Dashboard" in body
+    assert "Needs attention" in body
     assert "SN-COMP-1" in body
     assert "SN-STALLED" in body
-    assert "Completed" in body
+    assert 'href="/new"' in body
+    assert 'href="/cases"' in body
+
+
+async def test_cases_page_renders_and_filters(
+    dashboard: DashboardHarness,
+) -> None:
+    response = await dashboard.client.get("/cases")
+
+    assert response.status_code == 200, response.text
+    body = response.text
+    assert "Cases" in body
+    assert "SN-COMP-1" in body
+    assert "SN-STALLED" in body
     assert "Recipient check" in body
+    assert "6 cases" in body
+
+    searched = await dashboard.client.get("/cases?q=STALLED")
+    assert searched.status_code == 200
+    assert "SN-STALLED" in searched.text
+    assert "SN-COMP-1" not in searched.text
+    assert "matching your filters" in searched.text
+
+    completed = await dashboard.client.get("/cases?status=completed")
+    assert completed.status_code == 200
+    assert "SN-COMP-1" in completed.text
+    assert "SN-COMP-2" in completed.text
+    assert "SN-DRAFT" not in completed.text
+
+    empty = await dashboard.client.get("/cases?q=does-not-exist")
+    assert empty.status_code == 200
+    assert "No case matches these filters" in empty.text
+
+    invalid = await dashboard.client.get("/cases?status=nonsense&kind=other")
+    assert invalid.status_code == 200
+    assert "All statuses" in invalid.text
 
 
-async def test_handover_page_renders_the_case(
+async def test_new_case_page_renders_the_registration_form(
+    dashboard: DashboardHarness,
+) -> None:
+    response = await dashboard.client.get("/new")
+
+    assert response.status_code == 200, response.text
+    body = response.text
+    assert 'id="new-case-form"' in body
+    assert 'name="device_serial"' in body
+    assert 'name="ticket_ref"' in body
+    assert "Register case" in body
+
+
+async def test_case_page_renders_the_case(
     dashboard: DashboardHarness,
 ) -> None:
     handover_id = await _id_for(dashboard, "SN-STALLED")
 
-    response = await dashboard.client.get(f"/handovers/{handover_id}")
+    response = await dashboard.client.get(f"/cases/{handover_id}")
 
     assert response.status_code == 200, response.text
     body = response.text
@@ -397,6 +468,56 @@ async def test_handover_page_renders_the_case(
     assert "Not done" in body
     assert "Events" in body
     assert "alice" in body
+    assert f'href="/cases/{handover_id}/history"' in body
+    assert 'data-action="close-case"' in body
+
+    draft_id = await _id_for(dashboard, "SN-DRAFT")
+    draft = await dashboard.client.get(f"/cases/{draft_id}")
+    assert draft.status_code == 200
+    assert f'href="/device-check?handover_id={draft_id}"' in draft.text
+    assert 'data-action="not-done"' in draft.text
+
+
+async def test_case_history_page_renders_the_audit_trail(
+    dashboard: DashboardHarness,
+) -> None:
+    handover_id = await _id_for(dashboard, "SN-STALLED")
+
+    response = await dashboard.client.get(f"/cases/{handover_id}/history")
+
+    assert response.status_code == 200, response.text
+    body = response.text
+    assert "Audit trail" in body
+    assert "SN-STALLED" in body
+    assert f'href="/cases/{handover_id}"' in body
+
+
+async def test_legacy_case_urls_redirect_permanently(
+    dashboard: DashboardHarness,
+) -> None:
+    handover_id = await _id_for(dashboard, "SN-STALLED")
+
+    listing = await dashboard.client.get("/handovers?status=stalled")
+    assert listing.status_code == 308
+    assert listing.headers["location"] == "/cases?status=stalled"
+
+    detail = await dashboard.client.get(f"/handovers/{handover_id}")
+    assert detail.status_code == 308
+    assert detail.headers["location"] == f"/cases/{handover_id}"
+
+
+async def test_device_check_page_is_available_under_both_urls(
+    dashboard: DashboardHarness,
+) -> None:
+    handover_id = await _id_for(dashboard, "SN-STALLED")
+
+    named = await dashboard.client.get(f"/device-check?handover_id={handover_id}")
+    assert named.status_code == 200
+    assert f'data-handover-id="{handover_id}"' in named.text
+
+    legacy = await dashboard.client.get(f"/?handover_id={handover_id}")
+    assert legacy.status_code == 200
+    assert f'data-handover-id="{handover_id}"' in legacy.text
 
 
 async def test_pages_escape_recipient_names(
@@ -414,7 +535,7 @@ async def test_pages_escape_recipient_names(
     )
     handover_id = await _id_for(dashboard, "SN-XSS")
 
-    response = await dashboard.client.get(f"/handovers/{handover_id}")
+    response = await dashboard.client.get(f"/cases/{handover_id}")
 
     assert response.status_code == 200
     assert payload not in response.text
@@ -426,18 +547,32 @@ async def test_pages_require_login(
 ) -> None:
     monkeypatch.setattr(config, "SSO_ENABLED", True)
 
-    listing = await dashboard.client.get("/handovers")
-    detail = await dashboard.client.get(f"/handovers/{uuid.uuid4()}")
+    listing = await dashboard.client.get("/cases")
+    detail = await dashboard.client.get(f"/cases/{uuid.uuid4()}")
+    dashboard_page = await dashboard.client.get("/dashboard")
+    new_case = await dashboard.client.get("/new")
 
     assert listing.status_code == 307
     assert listing.headers["location"] == "/login"
     assert detail.status_code == 307
     assert detail.headers["location"] == "/login"
+    assert dashboard_page.status_code == 307
+    assert dashboard_page.headers["location"] == "/login"
+    assert new_case.status_code == 307
+    assert new_case.headers["location"] == "/login"
 
 
-async def test_unknown_handover_page_is_404(
+async def test_unknown_case_page_is_404(
     dashboard: DashboardHarness,
 ) -> None:
-    response = await dashboard.client.get(f"/handovers/{uuid.uuid4()}")
+    response = await dashboard.client.get(f"/cases/{uuid.uuid4()}")
+
+    assert response.status_code == 404
+
+
+async def test_unknown_case_history_page_is_404(
+    dashboard: DashboardHarness,
+) -> None:
+    response = await dashboard.client.get(f"/cases/{uuid.uuid4()}/history")
 
     assert response.status_code == 404

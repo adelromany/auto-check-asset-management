@@ -120,15 +120,15 @@ async def test_case_page_links_device_check_and_explains_manual_confirmations(
     handover_id = created["id"]
     monkeypatch.setattr(config, "SSO_ENABLED", False)
 
-    case_page = await api.client.get(f"/handovers/{handover_id}")
+    case_page = await api.client.get(f"/cases/{handover_id}")
     assert case_page.status_code == 200
-    assert f'href="/?handover_id={handover_id}"' in case_page.text
+    assert f'href="/device-check?handover_id={handover_id}"' in case_page.text
     assert "Manual confirmation. The system does not collect evidence or values" in case_page.text
     assert 'data-action="confirm-stage"' in case_page.text
     assert 'data-stage="report_printed"' in case_page.text
-    assert "Print and review the report, then confirm this step." in case_page.text
+    assert "Print and review the report, then confirm this operation." in case_page.text
 
-    device_check = await api.client.get(f"/?handover_id={handover_id}")
+    device_check = await api.client.get(f"/device-check?handover_id={handover_id}")
     assert device_check.status_code == 200
     assert f'data-handover-id="{handover_id}"' in device_check.text
     assert "The agent report will be attached to this case" in device_check.text
@@ -437,7 +437,7 @@ async def test_agent_flow_with_matching_serial_passes_stage_three(
     assert all(event["detail"]["outcome"] == "passed" for event in recorded)
 
     monkeypatch.setattr(config, "SSO_ENABLED", False)
-    case_page = await api.client.get(f"/handovers/{created['id']}")
+    case_page = await api.client.get(f"/cases/{created['id']}")
     assert "Values received from this device" in case_page.text
     assert "Intel Core i7" in case_page.text
     assert "forticlient — Installed" in case_page.text

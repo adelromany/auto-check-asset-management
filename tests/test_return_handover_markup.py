@@ -9,10 +9,11 @@ def test_return_to_handover_is_one_button_inside_alert_action_area() -> None:
     end = template.index("{% else %}", start)
     markup = template[start:end]
 
+    # The wording follows review B: the page is a device check for a case.
     assert 'Device check for this handover' in markup
     assert 'class="col-start-2 mt-4"' in markup
     assert 'class="btn btn-outline btn-sm"' in markup
-    assert markup.index('<a class="btn btn-outline btn-sm"') < markup.index("Return to handover") < markup.index("</a>")
+    assert markup.index('<a class="btn btn-outline btn-sm"') < markup.index("Return to case") < markup.index("</a>")
     assert 'aria-hidden="true"' in markup
     assert "width:" not in markup and "margin-left" not in markup
     assert "mt-4" in template and "col-start-2" in template
@@ -27,4 +28,4 @@ def test_unlinked_handover_action_uses_the_same_grid_safe_wrapper() -> None:
     section = template.split("{% else %}", 1)[1].split("{% endif %}", 1)[0]
     assert 'class="col-start-2 mt-4"' in section
     assert 'class="btn btn-outline btn-sm"' in section
-    assert section.index('<a class="btn btn-outline btn-sm"') < section.index("Open handover cases") < section.index("</a>")
+    assert section.index('<a class="btn btn-outline btn-sm"') < section.index("Open cases") < section.index("</a>")

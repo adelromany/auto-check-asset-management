@@ -36,6 +36,8 @@ async def handovers_summary(
 async def handover_rows(
     status: str | None = Query(default=None),
     engineer: str | None = Query(default=None),
+    kind: str | None = Query(default=None, pattern="^(handover|maintenance)$"),
+    q: str | None = Query(default=None, max_length=100),
     created_from: str | None = Query(default=None, alias="from"),
     created_to: str | None = Query(default=None, alias="to"),
     page: int = Query(default=1, ge=1),
@@ -47,6 +49,8 @@ async def handover_rows(
     return await service.rows(
         status=status,
         engineer=engineer,
+        kind=kind,
+        q=q,
         created_from=_parse_bound(created_from, end_of_day=False),
         created_to=_parse_bound(created_to, end_of_day=True),
         page=page,

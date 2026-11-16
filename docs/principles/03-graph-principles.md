@@ -61,7 +61,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/services/documents.py | service | printable report, safe scan storage, download and verified push |
 | module | app/services/dashboard.py | service | database-side dashboard aggregates and page-sized handover rows |
 | module | app/services/sessions.py | service | in-memory short-code session store |
-| module | app/routers/pages.py | router | index, handover dashboard and case pages, /api/me |
+| module | app/routers/pages.py | router | dashboard, registration, case list/board/history, device check, legacy redirects, /api/me |
 | module | app/routers/agent.py | router | session code create/poll/submit |
 | module | app/routers/handovers.py | router | /api/handovers create, list, detail, confirm, cancel, recipient, preview, checkin, checkout |
 | module | app/routers/documents.py | router | report page, document upload/download and push |
@@ -78,6 +78,12 @@ The project graph is a map of what depends on what, so any change can be assesse
 | kind | method path | exposed by |
 |---|---|---|
 | route | GET / | app/routers/pages.py |
+| route | GET /device-check | app/routers/pages.py |
+| route | GET /dashboard | app/routers/pages.py |
+| route | GET /new | app/routers/pages.py |
+| route | GET /cases | app/routers/pages.py |
+| route | GET /cases/{id} | app/routers/pages.py |
+| route | GET /cases/{id}/history | app/routers/pages.py |
 | route | GET /handovers | app/routers/pages.py |
 | route | GET /handovers/{id} | app/routers/pages.py |
 | route | GET /api/me | app/routers/pages.py |
@@ -86,9 +92,14 @@ The project graph is a map of what depends on what, so any change can be assesse
 | route | POST /api/session/{code}/submit | app/routers/agent.py |
 | route | POST /api/handovers | app/routers/handovers.py |
 | route | GET /api/handovers | app/routers/handovers.py |
+| route | GET /api/handovers/active | app/routers/handovers.py |
 | route | GET /api/handovers/{id} | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/stages/{stage}/confirm | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/cancel | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/operations/{operation}/not-done | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/operations/{operation}/retry | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/close | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/reopen | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/recipient/search | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/software-check/override | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/software-check/reevaluate | app/routers/handovers.py |
@@ -138,23 +149,26 @@ The project graph is a map of what depends on what, so any change can be assesse
 ### Nodes — assets (templates / static JS)
 | kind | path | used by | purpose |
 |---|---|---|---|
-| asset | templates/index.html | GET / | landing page and "Start handover" entry link |
+| asset | templates/index.html | GET /, GET /device-check | device-check page and agent report prompt |
+| asset | templates/dashboard.html | GET /dashboard | server-rendered overview: figures, recent and stalled cases |
+| asset | templates/new_case.html | GET /new | server-rendered registration form |
+| asset | templates/cases.html | GET /cases | server-rendered case list with search/status/kind filters |
+| asset | templates/handover_detail.html | GET /cases/{id} | server-rendered case board, operations and latest events |
+| asset | templates/case_history.html | GET /cases/{id}/history | server-rendered append-only audit trail |
 | asset | templates/diag_clipboard.html | GET /diag/clipboard | clipboard diagnostics page |
 | asset | templates/handover_report.html | GET /api/handovers/{id}/report | printable report |
 | asset | static/css/report.css | handover_report.html | printable report styles, external for CSP |
-| asset | templates/handovers.html | GET /handovers | server-rendered dashboard shell |
-| asset | templates/handover_detail.html | GET /handovers/{id} | server-rendered case page |
-| asset | templates/partials/page_head.html | handovers.html, handover_detail.html | shared head, CSS and theme bootstrap |
-| asset | templates/partials/topbar.html | handovers.html, handover_detail.html | shared navigation and SSO identity |
-| asset | templates/partials/labels.html | handovers.html, handover_detail.html | escaping macros for status/stage labels |
-| asset | static/js/shell.js | handovers.html, handover_detail.html | shared topbar/theme/toast helpers |
-| asset | static/js/handovers.js | handovers.html | filters, KPI refresh and table states via textContent |
-| asset | static/js/handover_detail.js | handover_detail.html | stage actions, recipient, preview, upload and push |
+| asset | templates/partials/page_head.html | dashboard.html, new_case.html, cases.html, handover_detail.html, case_history.html | shared head, CSS and theme bootstrap |
+| asset | templates/partials/topbar.html | dashboard.html, new_case.html, cases.html, handover_detail.html, case_history.html, index.html | shared navigation, omnibox and SSO identity |
+| asset | templates/partials/labels.html | dashboard.html, cases.html, handover_detail.html, case_history.html | escaping macros for status/operation labels |
+| asset | static/js/shell.js | dashboard.html, new_case.html, cases.html, handover_detail.html, case_history.html | shared topbar/theme/toast helpers |
+| asset | static/js/new_case.js | new_case.html | registration POST, CSRF and active-serial check via textContent |
+| asset | static/js/handover_detail.js | handover_detail.html | operation actions, recipient, preview, upload, push, not-done, close/reopen |
 | asset | static/js/diag_clipboard.js | diag_clipboard.html | clipboard diagnostics, external for CSP |
 | asset | static/js/theme-init.js | page_head.html, index.html, diag_clipboard.html | pre-paint theme, external for CSP |
-| asset | static/js/theme.js | index.html, handovers.html, handover_detail.html, diag_clipboard.html | theme toggle |
+| asset | static/js/theme.js | every server-rendered page, diag_clipboard.html | theme toggle |
 | asset | static/js/clipboard.js | index.html | shared copyText utility |
-| asset | static/app.js | index.html | legacy landing-page UI |
+| asset | static/app.js | index.html | device-check UI |
 
 ### Edges (selected, source of truth for impact)
 | from | edge | to |
@@ -228,9 +242,13 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/routers/pages.py | uses | app/domain/handover_rules.py |
 | app/routers/pages.py | imports | app/services/dashboard.py |
 | app/routers/pages.py | imports | app/services/handovers.py |
-| app/routers/pages.py | renders | templates/handovers.html |
+| app/routers/pages.py | renders | templates/dashboard.html |
+| app/routers/pages.py | renders | templates/new_case.html |
+| app/routers/pages.py | renders | templates/cases.html |
 | app/routers/pages.py | renders | templates/handover_detail.html |
-| templates/handovers.html | uses | static/js/handovers.js |
+| app/routers/pages.py | renders | templates/case_history.html |
+| app/routers/pages.py | renders | templates/index.html |
+| templates/new_case.html | uses | static/js/new_case.js |
 | templates/handover_detail.html | uses | static/js/handover_detail.js |
 | app/routers/http_errors.py | imports | app/services/handovers.py |
 | app/routers/http_errors.py | imports | app/clients/snipeit.py |
@@ -266,10 +284,10 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/dependencies.py get_snipeit_client | app/routers/handovers.py; tests/test_snipeit_write_ops.py |
 | app/clients/snipeit.py | app/routers/snipeit.py; app/services/snipeit_ops.py; tests/test_snipeit_client.py; tests/fakes/snipeit_fake.py |
 | app/repositories/events.py | every service that writes an event; LOG-07 test |
-| app/services/dashboard.py | app/routers/dashboard.py; app/routers/pages.py; templates/handovers.html; static/js/handovers.js; tests/test_dashboard.py |
-| app/dto/dashboard.py | app/services/dashboard.py; app/routers/dashboard.py; static/js/handovers.js |
-| app/routers/dashboard.py | static/js/handovers.js; tests/test_dashboard.py; every dashboard date-filter test |
-| templates/partials/labels.html | templates/handovers.html; templates/handover_detail.html; escaping test |
-| static/js/shell.js | templates/partials/topbar.html; both handover pages; toast rendering |
-| static/js/handover_detail.js | templates/handover_detail.html; every stage/recipient/document action test |
+| app/services/dashboard.py | app/routers/dashboard.py; app/routers/pages.py; templates/dashboard.html; templates/cases.html; tests/test_dashboard.py |
+| app/dto/dashboard.py | app/services/dashboard.py; app/routers/dashboard.py; templates/dashboard.html; templates/cases.html |
+| app/routers/dashboard.py | templates/cases.html; tests/test_dashboard.py; every dashboard date-filter test |
+| templates/partials/labels.html | templates/dashboard.html; templates/cases.html; templates/handover_detail.html; templates/case_history.html; escaping test |
+| static/js/shell.js | templates/partials/topbar.html; every server-rendered page; toast rendering |
+| static/js/handover_detail.js | templates/handover_detail.html; every operation/recipient/document action test |
 <!-- GRAPH:END -->

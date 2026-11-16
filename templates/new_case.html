@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  {% include "partials/page_head.html" %}
+</head>
+<body class="min-h-screen bg-background text-foreground">
+<div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
+  {% include "partials/topbar.html" %}
+
+  <main class="flex-1 px-4 py-6">
+    <a href="/cases" class="text-xs text-muted-foreground underline-offset-4 hover:underline">← All cases</a>
+
+    <div class="mt-2 grid items-start gap-6 lg:grid-cols-[1fr_1fr]">
+      <section aria-labelledby="new-case-heading">
+        <h1 id="new-case-heading" class="text-xl font-semibold tracking-tight">New case</h1>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Register the device once. Every operation is independent, so you can do them in any order.
+        </p>
+
+        <form id="new-case-form" class="card mt-4 p-4">
+          <div class="flex flex-col gap-3">
+            <div>
+              <label for="new-serial" class="mb-1 block text-xs font-medium text-muted-foreground">Device serial</label>
+              <input id="new-serial" name="device_serial" class="input font-mono" required maxlength="100"
+                     autocomplete="off" autocapitalize="characters" spellcheck="false"
+                     placeholder="e.g. PF3ABCDE" dir="ltr" />
+              <p class="mt-1 text-xs text-muted-foreground">Exactly as printed on the device.</p>
+            </div>
+            <div>
+              <label for="new-ticket" class="mb-1 block text-xs font-medium text-muted-foreground">Ticket (optional)</label>
+              <input id="new-ticket" name="ticket_ref" class="input" maxlength="100"
+                     autocomplete="off" placeholder="LAB-123" />
+            </div>
+
+            <div id="active-case" class="hidden alert alert-warning" role="status">
+              <p class="alert-title">This serial already has an open case</p>
+              <p id="active-case-text" class="alert-description"></p>
+              <div class="col-start-2 mt-2">
+                <a id="active-case-link" class="btn btn-outline btn-sm" href="/cases">Open the case</a>
+              </div>
+            </div>
+
+            <div id="new-case-error" class="hidden alert alert-destructive" role="alert">
+              <p class="alert-title">Could not register the case</p>
+              <p id="new-case-error-text" class="alert-description"></p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="submit" class="btn btn-default btn-lg">Register case</button>
+              <a class="btn btn-ghost btn-sm" href="/cases">Cancel</a>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <aside class="flex flex-col gap-4">
+        <section class="card" aria-labelledby="next-heading">
+          <div class="card-header">
+            <h2 id="next-heading" class="card-title text-sm">What happens next</h2>
+          </div>
+          <div class="card-content">
+            <ol class="flex list-decimal flex-col gap-2 pl-5 text-sm text-muted-foreground">
+              <li>The case opens with every operation pending.</li>
+              <li>You record each operation from the case board, in any order.</li>
+              <li>Finish every operation, or close the case with recorded gaps.</li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="check-heading">
+          <div class="card-header">
+            <h2 id="check-heading" class="card-title text-sm">Checking a device?</h2>
+            <p class="card-description">The device check sends this browser and device data to the server.</p>
+          </div>
+          <div class="card-content">
+            <a class="btn btn-outline btn-sm" href="/device-check">Open device check</a>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="border-t px-4 py-4">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <span>H-Caliper</span>
+      <span>One active case per serial; a finished case can be registered again.</span>
+    </div>
+  </footer>
+</div>
+
+<div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+
+<script src="/static/js/theme.js?v=1"></script>
+<script src="/static/js/shell.js?v=1"></script>
+<script src="/static/js/new_case.js?v=1"></script>
+</body>
+</html>

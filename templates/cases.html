@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  {% include "partials/page_head.html" %}
+</head>
+<body class="min-h-screen bg-background text-foreground">
+{% from "partials/labels.html" import handover_badge, kind_label, progress, missing_text %}
+<div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
+  {% include "partials/topbar.html" %}
+
+  <main class="flex-1 px-4 py-6">
+    <div class="mb-4 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight">Cases</h1>
+        <p class="mt-1 text-sm text-muted-foreground">
+          {{ total }} case{{ "" if total == 1 else "s" }}{% if filtered %} matching your filters{% endif %}.
+        </p>
+      </div>
+      <a class="btn btn-default btn-sm" href="/new">New case</a>
+    </div>
+
+    <form class="card p-4" method="get" action="/cases" role="search" aria-label="Filter cases">
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="lg:col-span-2">
+          <label for="filter-q" class="mb-1 block text-xs font-medium text-muted-foreground">Search</label>
+          <input id="filter-q" name="q" type="search" class="input" maxlength="100"
+                 value="{{ query }}" autocomplete="off"
+                 placeholder="Serial, ticket, recipient or engineer" />
+        </div>
+        <div>
+          <label for="filter-status" class="mb-1 block text-xs font-medium text-muted-foreground">Status</label>
+          <select id="filter-status" name="status" class="input">
+            <option value="">All statuses</option>
+            {% for value, label in [
+              ("draft", "Draft"), ("in_progress", "In progress"), ("stalled", "Stalled"),
+              ("completed", "Completed"), ("closed_with_gaps", "Closed with gaps"),
+              ("cancelled", "Cancelled")
+            ] %}
+            <option value="{{ value }}" {% if active_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="filter-kind" class="mb-1 block text-xs font-medium text-muted-foreground">Kind</label>
+          <select id="filter-kind" name="kind" class="input">
+            <option value="">All kinds</option>
+            <option value="handover" {% if active_kind == "handover" %}selected{% endif %}>Handover</option>
+            <option value="maintenance" {% if active_kind == "maintenance" %}selected{% endif %}>Maintenance</option>
+          </select>
+        </div>
+      </div>
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <button type="submit" class="btn btn-default btn-sm">Apply</button>
+        <a class="btn btn-outline btn-sm" href="/cases">Reset</a>
+      </div>
+    </form>
+
+    <section class="card mt-4 overflow-hidden" aria-label="Case list">
+      <div class="overflow-x-auto">
+        <table class="table table-compact">
+          <thead class="table-header">
+            <tr>
+              <th class="table-head">Status</th>
+              <th class="table-head">Case</th>
+              <th class="table-head">Recipient</th>
+              <th class="table-head">Progress</th>
+              <th class="table-head">Next</th>
+            </tr>
+          </thead>
+          <tbody class="table-body">
+            {% for row in rows %}
+            <tr class="table-row">
+              <td class="table-cell">{{ handover_badge(row.handover.status) }}</td>
+              <td class="table-cell">
+                <a class="font-mono text-xs underline-offset-4 hover:underline"
+                   href="/cases/{{ row.handover.id }}" dir="ltr">{{ row.handover.device_serial }}</a>
+                <span class="ml-1 text-xs text-muted-foreground">{{ kind_label(row.handover.kind) }}</span>
+                {% if row.handover.ticket_ref %}
+                <span class="block text-xs text-muted-foreground">Ticket {{ row.handover.ticket_ref }}</span>
+                {% endif %}
+              </td>
+              <td class="table-cell">
+                {{ row.handover.recipient_snipeit_username or row.handover.recipient_reported_username or "—" }}
+              </td>
+              <td class="table-cell">{{ progress(row.stages) }}</td>
+              <td class="table-cell text-xs">{{ missing_text(row.missing_steps, row.handover.status) }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="table-cell py-10 text-center text-sm text-muted-foreground">
+                {% if filtered %}
+                No case matches these filters. <a class="underline underline-offset-4" href="/cases">Clear them</a>.
+                {% else %}
+                No cases yet. <a class="underline underline-offset-4" href="/new">Register the first one</a>.
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t px-4 py-4">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <span>H-Caliper</span>
+      <span>Status is derived from the operations; stalled means no activity for {{ stall_hours }} hours.</span>
+    </div>
+  </footer>
+</div>
+
+<script src="/static/js/theme.js?v=1"></script>
+<script src="/static/js/shell.js?v=1"></script>
+</body>
+</html>

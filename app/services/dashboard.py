@@ -201,6 +201,8 @@ class DashboardService:
         *,
         status: str | None = None,
         engineer: str | None = None,
+        kind: str | None = None,
+        q: str | None = None,
         created_from: datetime | None = None,
         created_to: datetime | None = None,
         page: int = 1,
@@ -210,6 +212,8 @@ class DashboardService:
         handovers, total = await service.list(
             status=status,
             engineer=engineer,
+            kind=kind,
+            q=q,
             created_from=created_from,
             created_to=created_to,
             page=page,

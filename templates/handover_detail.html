@@ -4,19 +4,21 @@
   {% include "partials/page_head.html" %}
 </head>
 <body class="min-h-screen bg-background text-foreground">
-{% from "partials/labels.html" import stage_label, stage_badge, handover_badge %}
+{% from "partials/labels.html" import stage_label, stage_badge, handover_badge, kind_label %}
 <div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
   {% include "partials/topbar.html" %}
+  {% set case_open = handover.status not in ("cancelled", "completed", "closed_with_gaps") %}
 
   <main class="flex-1 px-4 py-6" data-handover-id="{{ handover.id }}"
         data-recipient-confirmed="{{ 'true' if handover.recipient_snipeit_id else 'false' }}">
-    <a href="/handovers" class="text-xs text-muted-foreground underline-offset-4 hover:underline">← All handovers</a>
+    <a href="/cases" class="text-xs text-muted-foreground underline-offset-4 hover:underline">← All cases</a>
 
     <div class="mt-2 mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
         <div class="flex flex-wrap items-center gap-2">
           <h1 class="font-mono text-xl font-semibold tracking-tight" dir="ltr">{{ handover.device_serial }}</h1>
           {{ handover_badge(display_status) }}
+          <span class="badge badge-outline">{{ kind_label(handover.kind) }}</span>
         </div>
         <p class="mt-1 text-sm text-muted-foreground">
           {% if handover.ticket_ref %}Ticket {{ handover.ticket_ref }} · {% endif %}
@@ -24,45 +26,59 @@
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
+        <a class="btn btn-ghost btn-sm" href="/cases/{{ handover.id }}/history">History</a>
         <a class="btn btn-outline btn-sm" href="/api/handovers/{{ handover.id }}/report"
            target="_blank" rel="noopener">Print report</a>
+        {% if handover.status == "closed_with_gaps" %}
+        <button type="button" class="btn btn-default btn-sm" data-action="reopen-case">Reopen case</button>
+        {% elif handover.status not in ("cancelled", "completed") %}
+        <button type="button" class="btn btn-outline btn-sm" data-action="close-case">Close with gaps</button>
+        {% endif %}
         <button type="button" class="btn btn-destructive btn-sm" data-action="cancel"
-                {% if handover.status in ("cancelled", "completed") %}disabled{% endif %}>
-          Cancel handover
+                {% if handover.status in ("cancelled", "completed", "closed_with_gaps") %}disabled{% endif %}>
+          Cancel case
         </button>
       </div>
     </div>
 
     {% if handover.status == "cancelled" %}
     <div class="alert alert-warning mb-6" role="status">
-      <p class="alert-title">This handover is cancelled</p>
-      <p class="alert-description">No further stage can be confirmed. The case stays visible for the audit trail.</p>
+      <p class="alert-title">This case is cancelled</p>
+      <p class="alert-description">No further operation can be recorded. The case stays visible for the audit trail.</p>
     </div>
     {% elif handover.status == "completed" %}
     <div class="alert alert-success mb-6" role="status">
-      <p class="alert-title">Handover complete</p>
-      <p class="alert-description">All nine stages passed. The signed sheet is attached and pushed to Snipe-IT.</p>
+      <p class="alert-title">Case complete</p>
+      <p class="alert-description">Every operation passed. The audit trail holds the evidence.</p>
+    </div>
+    {% elif handover.status == "closed_with_gaps" %}
+    <div class="alert alert-warning mb-6" role="status">
+      <p class="alert-title">Closed with gaps</p>
+      <p class="alert-description">
+        {{ handover.closed_gaps | length }} operation{{ "" if handover.closed_gaps | length == 1 else "s" }} were not done.
+        Reopen the case to finish them.
+      </p>
     </div>
     {% elif stalled_by_age_message %}
     <div class="alert alert-warning mb-6" role="status">
-      <p class="alert-title">This handover is stalled</p>
+      <p class="alert-title">This case is stalled</p>
       <p class="alert-description">{{ stalled_by_age_message }}</p>
     </div>
     {% elif missing %}
     <div class="alert alert-warning mb-6" role="status">
       <p class="alert-title">Still missing</p>
       <p class="alert-description">
-        {{ missing | length }} step{{ "" if missing | length == 1 else "s" }} left.
+        {{ missing | length }} operation{{ "" if missing | length == 1 else "s" }} left.
         Next: {{ missing[0].hint }}
       </p>
     </div>
     {% endif %}
 
     <div class="grid items-start gap-6 lg:grid-cols-[1.15fr_1fr]">
-      <!-- Stages ------------------------------------------------------- -->
-      <section aria-labelledby="stages-heading">
-        <h2 id="stages-heading" class="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Stages
+      <!-- Operations --------------------------------------------------- -->
+      <section aria-labelledby="operations-heading">
+        <h2 id="operations-heading" class="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Operations
         </h2>
         <ol class="flex flex-col gap-2" id="stage-list">
           {% for stage in stages %}
@@ -78,9 +94,9 @@
                 <p class="mt-1 text-xs text-destructive" data-stage-reason>{{ stage.reason }}</p>
                 {% endif %}
                 {% if stage.stage in ("device_prepared", "user_signed_in") %}
-                <p class="mt-1 text-xs text-muted-foreground">Manual confirmation. The system does not collect evidence or values for this step.</p>
+                <p class="mt-1 text-xs text-muted-foreground">Manual confirmation. The system does not collect evidence or values for this operation.</p>
                 {% elif stage.stage == "report_printed" %}
-                <p class="mt-1 text-xs text-muted-foreground">Print and review the report, then confirm this step.</p>
+                <p class="mt-1 text-xs text-muted-foreground">Print and review the report, then confirm this operation.</p>
                 {% elif stage.stage == "user_signed" %}
                 <p class="mt-1 text-xs text-muted-foreground">Manual confirmation after the paper copy is signed.</p>
                 {% endif %}
@@ -111,7 +127,7 @@
                   {% else %}<p>No software checks were reported.</p>{% endif %}
                 </div>
                 {% else %}
-                <p class="mt-2 text-xs text-muted-foreground">No agent report is attached to this handover yet. Start the linked device check below.</p>
+                <p class="mt-2 text-xs text-muted-foreground">No agent report is attached to this case yet. Start the linked device check below.</p>
                 {% endif %}
                 {% endif %}
                 <p class="mt-1 text-xs text-muted-foreground">
@@ -120,18 +136,18 @@
               </div>
               <div class="flex flex-wrap gap-2">
                 {% set retry = stage.status in ("failed", "not_done") %}
-                {% if stage.status != "passed" %}
+                {% if stage.status != "passed" and case_open %}
                   {% if stage.stage in ("device_prepared", "user_signed_in", "report_printed", "user_signed") %}
                   {% set confirm_text = {
-                    "device_prepared": "Confirm only if you personally checked that this device is prepared. No device evidence is collected for this step.",
-                    "user_signed_in": "Confirm only if you observed the intended employee sign in to this device. This step is not verified by the agent report.",
+                    "device_prepared": "Confirm only if you personally checked that this device is prepared. No device evidence is collected for this operation.",
+                    "user_signed_in": "Confirm only if you observed the intended employee sign in to this device. This operation is not verified by the agent report.",
                     "report_printed": "Confirm only after printing and reviewing the report.",
                     "user_signed": "Confirm only after the employee has signed the paper copy."
                   } %}
                   <button type="button" class="btn btn-default btn-sm" data-action="confirm-stage"
                           data-stage="{{ stage.stage }}" data-confirm-message="{{ confirm_text[stage.stage] }}">{{ "Retry" if retry else "Confirm after checking" }}</button>
                   {% elif stage.stage == "agent_report" %}
-                  <a class="btn btn-outline btn-sm" href="/?handover_id={{ handover.id }}">Start device check</a>
+                  <a class="btn btn-outline btn-sm" href="/device-check?handover_id={{ handover.id }}">Start device check</a>
                   {% elif stage.stage == "software_check" %}
                   {% if stage.status == "failed" %}
                   <form class="software-override-form flex w-full flex-col gap-2" data-software-override>
@@ -160,6 +176,9 @@
                     {{ "Retry" if retry else "Push to Snipe-IT" }}
                   </button>
                   {% endif %}
+                  <button type="button" class="btn btn-ghost btn-sm" data-action="not-done"
+                          data-stage="{{ stage.stage }}"
+                          data-operation-title="{{ stage_label(stage.stage) }}">Not done</button>
                 {% endif %}
               </div>
             </div>
@@ -290,8 +309,14 @@
     <!-- Events --------------------------------------------------------- -->
     <section class="card mt-6" aria-labelledby="events-heading">
       <div class="card-header">
-        <h2 id="events-heading" class="card-title text-sm">Events</h2>
-        <p class="card-description">Append-only audit trail, newest last.</p>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="events-heading" class="card-title text-sm">Events</h2>
+          <a class="text-xs text-muted-foreground underline-offset-4 hover:underline"
+             href="/cases/{{ handover.id }}/history">
+            Full history ({{ event_total }})
+          </a>
+        </div>
+        <p class="card-description">The five latest events, newest last.</p>
       </div>
       <div class="card-content">
         <ol class="timeline" id="event-list">
