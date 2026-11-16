@@ -4,7 +4,7 @@
   {% include "partials/page_head.html" %}
 </head>
 <body class="min-h-screen bg-background text-foreground md:pl-16 pb-16 md:pb-0 transition-[padding] duration-200">
-{% from "partials/labels.html" import stage_label, stage_badge, handover_badge, kind_label %}
+{% from "partials/labels.html" import stage_label, stage_badge, handover_badge, kind_label, maintenance_badge %}
 {% include "partials/rail.html" %}
 {% include "partials/bottom_nav.html" %}
 
@@ -69,7 +69,11 @@
         <div>
           <div class="flex items-center justify-between gap-2">
             <span class="badge badge-outline text-[11px]">{{ kind_label(handover.kind) }}</span>
-            {{ handover_badge(display_status) }}
+            {% if handover.kind == "maintenance" %}
+              {{ maintenance_badge(handover.maintenance_state or "needs_maintenance") }}
+            {% else %}
+              {{ handover_badge(display_status) }}
+            {% endif %}
           </div>
           <h1 class="mt-2 font-mono text-xl font-bold tracking-tight text-foreground select-all" dir="ltr">
             {{ handover.device_serial }}
@@ -86,25 +90,59 @@
         </div>
         {% endif %}
 
-        {# Recipient Avatar + Name #}
-        {% set recipient_display = handover.recipient_snipeit_name or handover.recipient_snipeit_username or handover.recipient_reported_username or (detected_user.sam if detected_user else None) %}
-        <div class="flex items-center gap-2.5 pt-2 border-t">
-          <div class="size-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-xs shrink-0">
-            {% if recipient_display %}
-              {{ recipient_display[:2] | upper }}
-            {% else %}
-              ?
+        {% if handover.kind == "maintenance" %}
+          {# Maintenance Passport Info: Vendor, Reported Issue, Turnaround / Overdue #}
+          <div class="pt-2 border-t text-xs space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-muted-foreground">Vendor:</span>
+              <span class="font-medium text-foreground truncate">{{ (maintenance.vendor or "Unassigned") if maintenance else "Unassigned" }}</span>
+            </div>
+            {% if maintenance and maintenance.reported_issue %}
+            <div class="text-[11px] text-muted-foreground truncate" title="{{ maintenance.reported_issue }}">
+              <span class="text-foreground/70">Issue:</span> {{ maintenance.reported_issue }}
+            </div>
+            {% endif %}
+            {% if maintenance and maintenance.sent_date %}
+            <div class="flex items-center justify-between gap-2 text-[11px]">
+              <span class="text-muted-foreground">Sent:</span>
+              <span class="font-mono">{{ maintenance.sent_date }}</span>
+            </div>
+            {% endif %}
+            {% if maintenance and maintenance.returned_date %}
+            <div class="flex items-center justify-between gap-2 text-[11px]">
+              <span class="text-muted-foreground">Turnaround:</span>
+              <span class="font-medium text-emerald-600 dark:text-emerald-400">
+                {% if maintenance.turnaround_days is not none %}{{ maintenance.turnaround_days }}d{% else %}Done{% endif %}
+              </span>
+            </div>
+            {% elif maintenance and maintenance.is_overdue %}
+            <div class="flex items-center justify-between gap-2 text-[11px]">
+              <span class="text-amber-600 dark:text-amber-400 font-medium">Overdue</span>
+              <span class="badge badge-warning text-[10px]">Past due</span>
+            </div>
             {% endif %}
           </div>
-          <div class="min-w-0 flex-1">
-            <p class="text-xs font-medium truncate">
-              {{ recipient_display or "No recipient yet" }}
-            </p>
-            <p class="text-[11px] text-muted-foreground truncate hidden sm:block">
-              {{ handover.recipient_snipeit_email or "Unassigned" }}
-            </p>
+        {% else %}
+          {# Recipient Avatar + Name #}
+          {% set recipient_display = handover.recipient_snipeit_name or handover.recipient_snipeit_username or handover.recipient_reported_username or (detected_user.sam if detected_user else None) %}
+          <div class="flex items-center gap-2.5 pt-2 border-t">
+            <div class="size-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-xs shrink-0">
+              {% if recipient_display %}
+                {{ recipient_display[:2] | upper }}
+              {% else %}
+                ?
+              {% endif %}
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-medium truncate">
+                {{ recipient_display or "No recipient yet" }}
+              </p>
+              <p class="text-[11px] text-muted-foreground truncate hidden sm:block">
+                {{ handover.recipient_snipeit_email or "Unassigned" }}
+              </p>
+            </div>
           </div>
-        </div>
+        {% endif %}
 
         {# Ticket & Engineer info #}
         <div class="text-[11px] text-muted-foreground space-y-0.5 pt-2 border-t hidden sm:block">
@@ -207,6 +245,14 @@
                   Scan attached
                 {% elif st.stage == "checkout" %}
                   Verified in Snipe-IT
+                {% elif st.stage == "received" and maintenance and maintenance.reported_issue %}
+                  Issue: {{ maintenance.reported_issue | truncate(30) }}
+                {% elif st.stage == "diagnosis" and maintenance and maintenance.diagnosis_category %}
+                  {{ maintenance.diagnosis_category }}
+                {% elif st.stage == "sent_out" and maintenance and (maintenance.vendor or maintenance.sent_date) %}
+                  To {{ maintenance.vendor or "vendor" }}{% if maintenance.sent_date %} ({{ maintenance.sent_date }}){% endif %}
+                {% elif st.stage == "returned" and maintenance and maintenance.returned_date %}
+                  Returned {{ maintenance.returned_date }}
                 {% else %}
                   Completed
                 {% endif %}
@@ -217,6 +263,7 @@
               {% else %}
                 {% if st.stage == "agent_report" %}Awaiting agent check
                 {% elif st.stage == "recipient_check" and detected_user %}Detected {{ detected_user }}
+                {% elif st.stage == "sent_out" and maintenance and maintenance.vendor %}Vendor: {{ maintenance.vendor }}
                 {% else %}Pending{% endif %}
               {% endif %}
             </div>
@@ -232,50 +279,21 @@
           </div>
         {% endmacro %}
 
-        {# ── Lane 1: Prepare ── #}
+        {% for lane_name, op_keys in lanes %}
         <div class="space-y-2">
           <div class="flex items-center gap-2">
-            <h2 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">1. Prepare</h2>
+            <h2 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{{ loop.index }}. {{ lane_name }}</h2>
             <div class="flex-1 h-px bg-border/60"></div>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-            {% for key in ["device_prepared", "user_signed_in", "agent_report", "software_check"] %}
+          <div class="grid grid-cols-1 sm:grid-cols-2 {% if op_keys | length >= 4 %}lg:grid-cols-4{% elif op_keys | length == 3 %}lg:grid-cols-3{% else %}lg:grid-cols-2{% endif %} gap-2.5">
+            {% for key in op_keys %}
               {% for s in stages if s.stage == key %}
                 {{ render_tile(s) }}
               {% endfor %}
             {% endfor %}
           </div>
         </div>
-
-        {# ── Lane 2: Assign ── #}
-        <div class="space-y-2">
-          <div class="flex items-center gap-2">
-            <h2 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">2. Assign</h2>
-            <div class="flex-1 h-px bg-border/60"></div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {% for key in ["recipient_check", "checkout"] %}
-              {% for s in stages if s.stage == key %}
-                {{ render_tile(s) }}
-              {% endfor %}
-            {% endfor %}
-          </div>
-        </div>
-
-        {# ── Lane 3: Paperwork ── #}
-        <div class="space-y-2">
-          <div class="flex items-center gap-2">
-            <h2 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">3. Paperwork</h2>
-            <div class="flex-1 h-px bg-border/60"></div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-            {% for key in ["report_printed", "user_signed", "document_scanned", "document_pushed"] %}
-              {% for s in stages if s.stage == key %}
-                {{ render_tile(s) }}
-              {% endfor %}
-            {% endfor %}
-          </div>
-        </div>
+        {% endfor %}
       </section>
     </div>
 
@@ -444,6 +462,117 @@
             Push to Snipe-IT
           </button>
           {% endif %}
+        </div>
+
+        {# Panel: received #}
+        <div data-drawer-panel="received" class="space-y-4 hidden">
+          <p class="text-xs text-muted-foreground">Intake inspection and issue description.</p>
+          <form id="maint-received-form" class="space-y-3" data-maint-stage="received">
+            <div>
+              <label for="maint-reported-issue" class="text-xs font-medium block mb-1">Reported issue</label>
+              <textarea id="maint-reported-issue" name="reported_issue" class="input text-xs w-full h-16 resize-none" placeholder="Description of the issue">{{ (maintenance.reported_issue or '') if maintenance else '' }}</textarea>
+            </div>
+            <div>
+              <label for="maint-condition-notes" class="text-xs font-medium block mb-1">Condition notes</label>
+              <input id="maint-condition-notes" name="condition_notes" type="text" class="input h-8 text-xs w-full" value="{{ (maintenance.condition_notes or '') if maintenance else '' }}" placeholder="Scratches, dents, etc." />
+            </div>
+            <div>
+              <label for="maint-accessories" class="text-xs font-medium block mb-1">Accessories</label>
+              <input id="maint-accessories" name="accessories" type="text" class="input h-8 text-xs w-full" value="{{ (maintenance.accessories or '') if maintenance else '' }}" placeholder="Charger, cable, bag..." />
+            </div>
+            {% if case_open %}
+            <button type="submit" class="btn btn-default btn-sm w-full">Confirm received</button>
+            {% endif %}
+          </form>
+        </div>
+
+        {# Panel: diagnosis #}
+        <div data-drawer-panel="diagnosis" class="space-y-4 hidden">
+          <p class="text-xs text-muted-foreground">Technical assessment and fault categorization.</p>
+          <form id="maint-diagnosis-form" class="space-y-3" data-maint-stage="diagnosis">
+            <div>
+              <label for="maint-diagnosis-category" class="text-xs font-medium block mb-1">Diagnosis category</label>
+              <select id="maint-diagnosis-category" name="diagnosis_category" class="input h-8 text-xs w-full">
+                <option value="">Select category...</option>
+                {% for cat in categories %}
+                <option value="{{ cat.name }}" {% if maintenance and maintenance.diagnosis_category == cat.name %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="maint-diagnosis-note" class="text-xs font-medium block mb-1">Diagnosis notes</label>
+              <textarea id="maint-diagnosis-note" name="diagnosis_note" class="input text-xs w-full h-16 resize-none" placeholder="Findings and diagnosis...">{{ (maintenance.diagnosis_note or '') if maintenance else '' }}</textarea>
+            </div>
+            {% if case_open %}
+            <button type="submit" class="btn btn-default btn-sm w-full">Confirm diagnosis</button>
+            {% endif %}
+          </form>
+        </div>
+
+        {# Panel: snipeit_status #}
+        <div data-drawer-panel="snipeit_status" class="space-y-4 hidden">
+          <p class="text-xs text-muted-foreground">Sync device maintenance status to Snipe-IT.</p>
+          {% if case_open %}
+          <button type="button" class="btn btn-default btn-sm w-full" data-action="stage-confirm" data-stage="snipeit_status">Confirm Snipe-IT status</button>
+          {% endif %}
+        </div>
+
+        {# Panel: sent_out #}
+        <div data-drawer-panel="sent_out" class="space-y-4 hidden">
+          <p class="text-xs text-muted-foreground">Dispatch device to maintenance vendor.</p>
+          <form id="maint-sent-out-form" class="space-y-3" data-maint-stage="sent_out">
+            <div>
+              <label for="maint-vendor" class="text-xs font-medium block mb-1">Vendor</label>
+              <select id="maint-vendor" name="vendor" class="input h-8 text-xs w-full">
+                <option value="">Select vendor...</option>
+                {% for v in vendors %}
+                <option value="{{ v.name }}" {% if maintenance and maintenance.vendor == v.name %}selected{% endif %}>{{ v.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="maint-sent-date" class="text-xs font-medium block mb-1">Sent date</label>
+              <input id="maint-sent-date" name="sent_date" type="date" class="input h-8 text-xs w-full" value="{{ (maintenance.sent_date or '') if maintenance else '' }}" />
+            </div>
+            <div>
+              <label for="maint-expected-date" class="text-xs font-medium block mb-1">Expected return date</label>
+              <input id="maint-expected-date" name="expected_return_date" type="date" class="input h-8 text-xs w-full" value="{{ (maintenance.expected_return_date or '') if maintenance else '' }}" />
+            </div>
+            <div>
+              <label for="maint-reference" class="text-xs font-medium block mb-1">Tracking / RMA reference</label>
+              <input id="maint-reference" name="reference" type="text" class="input h-8 text-xs w-full" value="{{ (maintenance.reference or '') if maintenance else '' }}" placeholder="Vendor RMA or ticket #" />
+            </div>
+            {% if case_open %}
+            <button type="submit" class="btn btn-default btn-sm w-full">Confirm sent out</button>
+            {% endif %}
+          </form>
+        </div>
+
+        {# Panel: returned #}
+        <div data-drawer-panel="returned" class="space-y-4 hidden">
+          <p class="text-xs text-muted-foreground">Record return from maintenance vendor.</p>
+          <form id="maint-returned-form" class="space-y-3" data-maint-stage="returned">
+            <div>
+              <label for="maint-returned-date" class="text-xs font-medium block mb-1">Returned date</label>
+              <input id="maint-returned-date" name="returned_date" type="date" class="input h-8 text-xs w-full" value="{{ (maintenance.returned_date or '') if maintenance else '' }}" />
+            </div>
+            <div>
+              <label for="maint-outcome" class="text-xs font-medium block mb-1">Outcome</label>
+              <select id="maint-outcome" name="outcome" class="input h-8 text-xs w-full">
+                <option value="repaired" {% if maintenance and maintenance.outcome == 'repaired' %}selected{% endif %}>Repaired</option>
+                <option value="replaced" {% if maintenance and maintenance.outcome == 'replaced' %}selected{% endif %}>Replaced</option>
+                <option value="unrepairable" {% if maintenance and maintenance.outcome == 'unrepairable' %}selected{% endif %}>Unrepairable</option>
+                <option value="no_fault_found" {% if maintenance and maintenance.outcome == 'no_fault_found' %}selected{% endif %}>No fault found</option>
+              </select>
+            </div>
+            <div>
+              <label for="maint-outcome-note" class="text-xs font-medium block mb-1">Outcome notes</label>
+              <textarea id="maint-outcome-note" name="outcome_note" class="input text-xs w-full h-16 resize-none" placeholder="Resolution details...">{{ (maintenance.outcome_note or '') if maintenance else '' }}</textarea>
+            </div>
+            {% if case_open %}
+            <button type="submit" class="btn btn-default btn-sm w-full">Confirm returned</button>
+            {% endif %}
+          </form>
         </div>
 
       </div>

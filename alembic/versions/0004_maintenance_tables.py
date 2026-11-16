@@ -82,9 +82,18 @@ def upgrade() -> None:
         "maintenance_info",
         ["expected_return_date"],
     )
+    op.add_column(
+        "handovers",
+        sa.Column("maintenance_state", sa.String(length=40), nullable=True),
+    )
+    op.create_index(
+        "ix_handovers_maintenance_state", "handovers", ["maintenance_state"]
+    )
 
 
 def downgrade() -> None:
+    op.drop_index("ix_handovers_maintenance_state", table_name="handovers")
+    op.drop_column("handovers", "maintenance_state")
     op.drop_index(
         "ix_maintenance_info_expected_return", table_name="maintenance_info"
     )

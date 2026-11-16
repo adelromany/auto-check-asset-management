@@ -560,6 +560,11 @@
     paper_signed: "Signed paper",
     scan_attached: "Scan attached",
     snipeit_push: "Push to Snipe-IT",
+    received: "Received",
+    diagnosis: "Diagnosis",
+    snipeit_status: "Snipe-IT status",
+    sent_out: "Sent out",
+    returned: "Returned",
   };
 
   function openDrawer(stageKey) {
@@ -752,6 +757,35 @@
       }
     });
   }
+
+  // Maintenance forms submission
+  document.querySelectorAll("form[data-maint-stage]").forEach(function (maintForm) {
+    maintForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      var stage = maintForm.getAttribute("data-maint-stage");
+      var submitBtn = maintForm.querySelector("button[type=submit]");
+      setBusy(submitBtn, true);
+      var formData = new FormData(maintForm);
+      var payload = {};
+      formData.forEach(function (value, key) {
+        var str = String(value).trim();
+        if (str) payload[key] = str;
+      });
+      try {
+        await request(base + "/maintenance", {
+          method: "POST",
+          json: payload,
+        });
+        await request(base + "/stages/" + encodeURIComponent(stage) + "/confirm", {
+          method: "POST",
+        });
+        flashAndReload("Operation confirmed: " + stage + ".", "success");
+      } catch (error) {
+        showToast(error.message, "error");
+        setBusy(submitBtn, false);
+      }
+    });
+  });
 
   // Action dispatcher
   document.addEventListener("click", function (event) {

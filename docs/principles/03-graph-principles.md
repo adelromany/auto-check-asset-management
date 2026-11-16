@@ -43,6 +43,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/domain/catalog.py | domain | case kinds, operation catalog, lanes and recommended order |
   | module | app/domain/stages.py | domain | operation keys, four outcome statuses and six case statuses |
 | module | app/domain/handover_rules.py | domain | pure derive_status, missing_steps, advice and gap rules |
+| module | app/domain/maintenance_rules.py | domain | pure maintenance state derivation, turnaround days and due dates |
   | module | app/domain/software_rules.py | domain | pure hardware, required software and activation evaluators |
 | module | app/domain/errors.py | domain | typed handover workflow exceptions |
 | module | app/domain/redaction.py | domain | strip windows_activation.partial_key before storage |
@@ -53,6 +54,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/dto/dashboard.py | dto | dashboard summary and paged-row response models |
 | module | app/repositories/filters.py | repository | shared case status, search and active-case SQL filters |
 | module | app/repositories/handovers.py | repository | handover, stage and agent-report data access |
+| module | app/repositories/maintenance.py | repository | maintenance info and governed list values data access |
 | module | app/repositories/documents.py | repository | stored evidence document data access |
 | module | app/repositories/events.py | repository | insert-only business event trail |
 | module | app/services/handovers.py | service | create, get, list, record operations, retry, close/reopen, agent report |
@@ -93,7 +95,12 @@ The project graph is a map of what depends on what, so any change can be assesse
 | route | POST /api/handovers | app/routers/handovers.py |
 | route | GET /api/handovers | app/routers/handovers.py |
 | route | GET /api/handovers/active | app/routers/handovers.py |
+| route | GET /api/handovers/maintenance/destinations | app/routers/handovers.py |
+| route | GET /api/handovers/maintenance/vendors | app/routers/handovers.py |
+| route | GET /api/handovers/maintenance/categories | app/routers/handovers.py |
 | route | GET /api/handovers/{id} | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/maintenance | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/operations/{stage}/confirm | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/stages/{stage}/confirm | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/cancel | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/operations/{operation}/not-done | app/routers/handovers.py |
@@ -145,6 +152,9 @@ The project graph is a map of what depends on what, so any change can be assesse
 | table | agent_reports | app/repositories/handovers.py | app/repositories/handovers.py |
 | table | documents | app/repositories/documents.py | app/repositories/documents.py |
 | table | events | app/repositories/events.py | app/repositories/events.py |
+| table | maintenance_destinations | app/repositories/maintenance.py | app/repositories/maintenance.py |
+| table | diagnosis_categories | app/repositories/maintenance.py | app/repositories/maintenance.py |
+| table | maintenance_info | app/repositories/maintenance.py; app/repositories/handovers.py | app/repositories/maintenance.py; app/repositories/handovers.py |
 
 ### Nodes — assets (templates / static JS)
 | kind | path | used by | purpose |

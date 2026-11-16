@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import (
@@ -79,13 +79,153 @@ class MissingStepOut(BaseModel):
     hint: str
 
 
+class DestinationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    active: bool = True
+
+
+class CategoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    active: bool = True
+
+
+class MaintenanceInfoOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
+
+    reported_issue: str | None = None
+    condition_notes: str | None = None
+    accessories: str | None = None
+    diagnosis_category: str | None = None
+    diagnosis_note: str | None = None
+    destination_id: int | None = None
+    vendor: str | None = None
+    sent_date: date | None = None
+    sent_by: str | None = None
+    reference: str | None = None
+    expected_return_date: date | None = None
+    returned_date: date | None = None
+    turnaround_days: int | None = None
+    is_overdue: bool = False
+    outcome: str | None = None
+    outcome_note: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_data(cls, data: Any) -> Any:
+        if data is None:
+            return None
+        if not isinstance(data, dict):
+            from app.domain.maintenance_rules import (
+                is_overdue as _is_overdue,
+                turnaround_days as _turnaround_days,
+            )
+
+            today = date.today()
+            sent = getattr(data, "sent_date", None)
+            exp = getattr(data, "expected_return_date", None)
+            ret = getattr(data, "returned_date", None)
+            dest = None
+            try:
+                from sqlalchemy import inspect
+                from sqlalchemy.orm.base import NO_VALUE
+
+                ins_d = inspect(data)
+                if (
+                    ins_d is not None
+                    and hasattr(ins_d, "attrs")
+                    and hasattr(ins_d.attrs, "destination")
+                ):
+                    if ins_d.attrs.destination.loaded_value is not NO_VALUE:
+                        dest = ins_d.attrs.destination.loaded_value
+                else:
+                    dest = getattr(data, "destination", None)
+            except Exception:
+                pass
+            vendor_name = dest.name if dest is not None else None
+            return {
+                "reported_issue": getattr(data, "reported_issue", None),
+                "condition_notes": getattr(data, "condition_notes", None),
+                "accessories": getattr(data, "accessories", None),
+                "diagnosis_category": getattr(data, "diagnosis_category", None),
+                "diagnosis_note": getattr(data, "diagnosis_note", None),
+                "destination_id": getattr(data, "destination_id", None),
+                "vendor": vendor_name,
+                "sent_date": sent,
+                "sent_by": getattr(data, "sent_by", None),
+                "reference": getattr(data, "reference", None),
+                "expected_return_date": exp,
+                "returned_date": ret,
+                "turnaround_days": _turnaround_days(sent_date=sent, returned_date=ret),
+                "is_overdue": _is_overdue(
+                    sent_date=sent,
+                    expected_return_date=exp,
+                    today=today,
+                    returned=ret is not None,
+                ),
+                "outcome": getattr(data, "outcome", None),
+                "outcome_note": getattr(data, "outcome_note", None),
+            }
+        return data
+
+
+class MaintenanceUpdate(BaseModel):
+    reported_issue: str | None = None
+    condition_notes: str | None = None
+    accessories: str | None = None
+    diagnosis_category: str | None = None
+    diagnosis_note: str | None = None
+    vendor: str | None = None
+    destination: str | None = None
+    sent_date: date | None = None
+    sent_by: str | None = None
+    reference: str | None = None
+    expected_return_date: date | None = None
+    returned_date: date | None = None
+    outcome: str | None = None
+    outcome_note: str | None = None
+
+
 class HandoverSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _extract_from_orm(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            return data
+        try:
+            from sqlalchemy import inspect
+            from sqlalchemy.orm.base import NO_VALUE
+
+            ins = inspect(data)
+            if (
+                ins is not None
+                and hasattr(ins, "attrs")
+                and hasattr(ins.attrs, "maintenance")
+            ):
+                maint_val = ins.attrs.maintenance.loaded_value
+                maint = None if maint_val is NO_VALUE else maint_val
+                result = {
+                    col.key: getattr(data, col.key)
+                    for col in ins.mapper.column_attrs
+                }
+                result["maintenance"] = maint
+                return result
+        except Exception:
+            pass
+        return data
 
     id: uuid.UUID
     ticket_ref: str | None = None
     kind: str = "handover"
     status: str
+    maintenance_state: str | None = None
     engineer_email: str
     engineer_name: str
     device_serial: str
@@ -102,6 +242,7 @@ class HandoverSummary(BaseModel):
     updated_at: datetime
     closed_at: datetime | None = None
     closed_gaps: list[dict[str, Any]] | None = None
+    maintenance: MaintenanceInfoOut | None = None
 
 
 class HandoverDetail(HandoverSummary):

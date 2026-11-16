@@ -30,11 +30,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import config
 from app.dependencies import current_user, get_session
+from app.domain.catalog import lanes_for
 from app.domain.errors import HandoverNotFound
 from app.domain.handover_rules import stalled_by_age
 from app.domain.recipient_identity import detect_recipient
 from app.domain.stages import HandoverStatus
 from app.dto.dashboard import DashboardSummaryOut
+from app.repositories.maintenance import MaintenanceRepository
 from app.security.csrf import get_or_create_token
 from app.services.dashboard import DashboardService
 from app.services.handovers import HandoverService
@@ -227,6 +229,12 @@ async def case_page(
     view, report, detected_user, display_status, age_stalled = await _case_view(
         handover_id, session
     )
+    is_maintenance = view.handover.kind == "maintenance"
+    lanes = lanes_for(view.handover.kind or "handover")
+    m_repo = MaintenanceRepository(session)
+    vendors = await m_repo.list_vendors() if is_maintenance else []
+    categories = await m_repo.list_diagnosis_categories() if is_maintenance else []
+
     return templates.TemplateResponse(
         request=request,
         name="handover_detail.html",
@@ -244,6 +252,10 @@ async def case_page(
             "stalled_by_age_message": (
                 f"No activity for {config.STALL_HOURS} hours" if age_stalled else None
             ),
+            "lanes": lanes,
+            "maintenance": view.handover.maintenance,
+            "vendors": vendors,
+            "categories": categories,
         },
     )
 

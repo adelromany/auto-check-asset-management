@@ -19,6 +19,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import config
 from app.db.models.handover import Event, Handover, HandoverStage
+from app.db.models.maintenance import MaintenanceInfo
+from app.domain.maintenance_rules import MaintenanceState, derive_maintenance_state
+from app.repositories.maintenance import MaintenanceRepository
 from app.domain.catalog import (
     MANUAL_OPERATIONS,
     NOT_DONE_REASON_MAX,
@@ -174,6 +177,11 @@ class HandoverService:
                 for operation in operations_for(resolved_kind)
             ],
         )
+        if resolved_kind == CaseKind.MAINTENANCE:
+            handover.maintenance_state = MaintenanceState.NEEDS_MAINTENANCE.value
+            handover.maintenance = MaintenanceInfo(handover_id=handover.id)
+        else:
+            handover.maintenance = None
         try:
             await self._handovers.add(handover)
         except IntegrityError as exc:
@@ -264,6 +272,35 @@ class HandoverService:
                 now=_utcnow(),
             )
             if changed:
+                if handover.kind == CaseKind.MAINTENANCE.value and parsed in (
+                    Operation.RECEIVED,
+                    Operation.DIAGNOSIS,
+                    Operation.SENT_OUT,
+                    Operation.RETURNED,
+                    Operation.SNIPEIT_STATUS,
+                ):
+                    if handover.maintenance is None:
+                        handover.maintenance = MaintenanceInfo(handover_id=handover.id)
+                        self._session.add(handover.maintenance)
+                    m_repo = MaintenanceRepository(self._session)
+                    m_fields = dict(detail or {})
+                    if (
+                        parsed == Operation.SENT_OUT
+                        and status == StageStatus.PASSED
+                        and not handover.maintenance.sent_date
+                        and "sent_date" not in m_fields
+                    ):
+                        m_fields["sent_date"] = _utcnow().date()
+                    if (
+                        parsed == Operation.RETURNED
+                        and status == StageStatus.PASSED
+                        and not handover.maintenance.returned_date
+                        and "returned_date" not in m_fields
+                    ):
+                        m_fields["returned_date"] = _utcnow().date()
+                    if m_fields:
+                        await m_repo.apply_fields(handover.maintenance, m_fields)
+
                 event_detail: dict[str, Any] = {
                     "operation": parsed.value,
                     "outcome": status.value,
@@ -402,6 +439,35 @@ class HandoverService:
         return await self.view(handover)
 
     # -- status -----------------------------------------------------------
+    async def update_maintenance_info(
+        self,
+        handover_id: uuid.UUID,
+        fields: dict[str, Any],
+        *,
+        actor: str,
+    ) -> HandoverDetailView:
+        """Update typed maintenance fields on a maintenance case."""
+        handover = await self.get(handover_id, with_details=True)
+        self._ensure_open(handover)
+        if handover.kind != CaseKind.MAINTENANCE.value:
+            raise CaseStateConflict(
+                "Cannot update maintenance fields on a non-maintenance case."
+            )
+        if handover.maintenance is None:
+            handover.maintenance = MaintenanceInfo(handover_id=handover.id)
+            self._session.add(handover.maintenance)
+        m_repo = MaintenanceRepository(self._session)
+        changed = await m_repo.apply_fields(handover.maintenance, fields)
+        if changed:
+            await self._events.add(
+                handover_id=handover.id,
+                actor=actor,
+                type="maintenance_updated",
+                detail={"changed_fields": changed},
+            )
+            await self.recompute_status(handover)
+        return await self.view(handover)
+
     async def recompute_status(
         self,
         handover: Handover,
@@ -426,6 +492,9 @@ class HandoverService:
             stall_hours=config.STALL_HOURS,
         )
         handover.status = status.value
+        if handover.kind == CaseKind.MAINTENANCE.value:
+            st_dict = {s.stage: s.status for s in handover.stages}
+            handover.maintenance_state = derive_maintenance_state(st_dict).value
         if status in (
             HandoverStatus.COMPLETED,
             HandoverStatus.CANCELLED,

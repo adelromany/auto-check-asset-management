@@ -17,19 +17,23 @@ from app.dependencies import current_user, get_session, get_snipeit_client
 from app.domain.errors import HandoverError
 from app.domain.stages import HandoverStatus
 from app.dto.handover import (
+    CategoryOut,
     CheckinRequest,
     CheckinResult,
     CloseCaseRequest,
+    DestinationOut,
     HandoverCreate,
     HandoverDetail,
     HandoverList,
     HandoverPreview,
     HandoverSummary,
+    MaintenanceUpdate,
     NotDoneRequest,
     RecipientConfirm,
     RecipientSearchResult,
     SoftwareCheckOverride,
 )
+from app.repositories.maintenance import MaintenanceRepository
 from app.routers.http_errors import (
     handover_detail,
     handover_http_error,
@@ -109,6 +113,27 @@ async def active_case(
     return HandoverSummary.model_validate(handover) if handover else None
 
 
+@router.get("/maintenance/destinations", response_model=list[DestinationOut])
+@router.get("/maintenance/vendors", response_model=list[DestinationOut])
+async def list_maintenance_vendors(
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[DestinationOut]:
+    repo = MaintenanceRepository(session)
+    destinations = await repo.list_destinations()
+    return [DestinationOut.model_validate(d) for d in destinations]
+
+
+@router.get("/maintenance/categories", response_model=list[CategoryOut])
+async def list_diagnosis_categories(
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[CategoryOut]:
+    repo = MaintenanceRepository(session)
+    categories = await repo.list_diagnosis_categories()
+    return [CategoryOut.model_validate(c) for c in categories]
+
+
 @router.get("/{handover_id}", response_model=HandoverDetail)
 async def get_handover(
     handover_id: uuid.UUID,
@@ -125,6 +150,9 @@ async def get_handover(
 
 @router.post(
     "/{handover_id}/stages/{stage}/confirm", response_model=HandoverDetail
+)
+@router.post(
+    "/{handover_id}/operations/{stage}/confirm", response_model=HandoverDetail
 )
 async def confirm_stage(
     handover_id: uuid.UUID,
@@ -217,6 +245,25 @@ async def reopen_case(
     service = HandoverService(session)
     try:
         view = await service.reopen(handover_id, actor=_actor(user))
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.post("/{handover_id}/maintenance", response_model=HandoverDetail)
+async def update_maintenance(
+    handover_id: uuid.UUID,
+    payload: MaintenanceUpdate,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> HandoverDetail:
+    service = HandoverService(session)
+    try:
+        view = await service.update_maintenance_info(
+            handover_id,
+            payload.model_dump(exclude_unset=True),
+            actor=_actor(user),
+        )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
     return handover_detail(view)

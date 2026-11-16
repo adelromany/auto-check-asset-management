@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models.handover import AgentReport, Handover, HandoverStage
+from app.db.models.maintenance import MaintenanceInfo
 from app.domain.stages import HandoverStatus, Stage
 from app.repositories.filters import build_case_filters
 
@@ -59,7 +60,7 @@ class HandoverRepository:
                 selectinload(Handover.events),
                 selectinload(Handover.agent_reports),
                 selectinload(Handover.documents),
-                selectinload(Handover.maintenance),
+                selectinload(Handover.maintenance).selectinload(MaintenanceInfo.destination),
             )
         result = await self._session.execute(statement)
         return result.scalar_one_or_none()
@@ -109,7 +110,10 @@ class HandoverRepository:
         result = await self._session.execute(
             select(Handover)
             .where(*filters)
-            .options(selectinload(Handover.stages))
+            .options(
+                selectinload(Handover.stages),
+                selectinload(Handover.maintenance).selectinload(MaintenanceInfo.destination),
+            )
             .order_by(Handover.created_at.desc(), Handover.id)
             .offset((page - 1) * page_size)
             .limit(page_size)

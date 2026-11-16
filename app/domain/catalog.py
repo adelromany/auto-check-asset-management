@@ -144,6 +144,11 @@ MANUAL_OPERATIONS: frozenset[Operation] = frozenset(
         Operation.USER_SIGNED_IN,
         Operation.REPORT_PRINTED,
         Operation.USER_SIGNED,
+        Operation.RECEIVED,
+        Operation.DIAGNOSIS,
+        Operation.SNIPEIT_STATUS,
+        Operation.SENT_OUT,
+        Operation.RETURNED,
     }
 )
 

@@ -61,6 +61,7 @@ class Handover(Base):
                 "status NOT IN ('completed', 'closed_with_gaps', 'cancelled')"
             ),
         ),
+        Index("ix_handovers_maintenance_state", "maintenance_state"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -72,6 +73,9 @@ class Handover(Base):
     )
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="draft", server_default="draft"
+    )
+    maintenance_state: Mapped[str | None] = mapped_column(
+        String(40), nullable=True
     )
     engineer_email: Mapped[str] = mapped_column(String(320), nullable=False)
     engineer_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
@@ -128,6 +132,7 @@ class Handover(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         uselist=False,
+        lazy="selectin",
     )
 
 

@@ -111,4 +111,22 @@ class MaintenanceInfo(Base):
         onupdate=_utcnow,
         server_default=text("CURRENT_TIMESTAMP"),
     )
+    destination: Mapped[MaintenanceDestination | None] = relationship(lazy="selectin")
     handover: Mapped["Handover"] = relationship(back_populates="maintenance")
+
+    @property
+    def vendor(self) -> MaintenanceDestination | None:
+        return self.destination
+
+    @property
+    def vendor_id(self) -> int | None:
+        return self.destination_id
+
+    @vendor_id.setter
+    def vendor_id(self, value: int | None) -> None:
+        self.destination_id = value
+
+
+# Semantic aliases for review vocabulary
+MaintenanceVendor = MaintenanceDestination
+IssueCategory = DiagnosisCategory

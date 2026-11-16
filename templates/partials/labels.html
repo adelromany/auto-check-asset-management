@@ -60,6 +60,14 @@
 {%- endmacro -%}
 
 
+{%- macro maintenance_badge(state) -%}
+{%- if state == "returned" -%}<span class="badge badge-success">Returned</span>
+{%- elif state == "in_maintenance" -%}<span class="badge badge-default">In maintenance</span>
+{%- else -%}<span class="badge badge-warning">Needs maintenance</span>
+{%- endif -%}
+{%- endmacro -%}
+
+
 {%- macro progress(stages) -%}
 {%- set passed = stages | selectattr("status", "equalto", "passed") | list | length -%}
 <span class="inline-flex items-center gap-2">

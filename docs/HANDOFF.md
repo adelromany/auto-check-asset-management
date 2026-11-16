@@ -64,4 +64,18 @@ step done: 1 inspection + HANDOFF created; next: A1/A2 domain rule + statuses; t
 
 ## Part C — calm case board (branch `feature/case-board-ui`)
 - Brand tokens: `b_labs` teal accent on charcoal neutrals in light and dark.
-- Initial case board pass.
+- Complete 3-zone case board UI redesign per `docs/ui/DESIGN.md`.
+- step done: 44abd6e feat(ui): calm case board redesign with sticky passport, 3-lane board, and side-sheet drawer; next: Part D maintenance cases; tests: 377 passed, 7 skipped
+
+## Part D — maintenance cases (branch `feature/maintenance-cases`)
+- Pure domain rules: `app/domain/maintenance_rules.py` with `MaintenanceState` (needs_maintenance, in_maintenance, returned), `derive_maintenance_state`, `turnaround_days`, `due_date`, `is_overdue`, `maintenance_label`.
+- Operations catalog: `app/domain/catalog.py` updated with maintenance manual operations (`received`, `diagnosis`, `snipeit_status`, `sent_out`, `returned`) and 3-lane grouping (Intake, Status, Transit).
+- Schema & models: `app/db/models/handover.py` adds indexed `maintenance_state` column. `app/db/models/maintenance.py` adds `MaintenanceInfo`, `MaintenanceDestination` with `vendor`/`vendor_id` aliases, and migration `alembic/versions/0004_maintenance_tables.py` tested for upgrade and downgrade.
+- Repository: `app/repositories/maintenance.py` with `MaintenanceRepository` for governed lists (vendors, categories), seeding default vendor `FixTech` and categories (`Screen`, `Battery`, `Keyboard`, `Motherboard`, `Software`, `Other`).
+- Service & API: `app/services/handovers.py` creates maintenance cases, auto-derives maintenance state on transit operations, tracks turnaround and overdue days, and provides `update_maintenance_info`.
+- Endpoints: `GET /api/handovers/maintenance/destinations`, `GET /api/handovers/maintenance/vendors`, `GET /api/handovers/maintenance/categories`, `POST /api/handovers/{id}/maintenance`, and `POST /api/handovers/{id}/operations/{stage}/confirm`.
+- UI: Case Board `templates/handover_detail.html` dynamically renders Intake, Status, and Transit lanes, passport vendor/issue/turnaround indicators, and dedicated side-sheet drawer panels with form submission for maintenance operations. `templates/cases.html` displays maintenance badge and vendor.
+- Tests: `test_maintenance_rules.py` (5 passed), `test_maintenance_repo.py` (4 passed), `test_maintenance_api.py` (4 passed), `test_case_board_visual.py` (3 passed).
+- Screenshots: `docs/review/maintenance-case-1440-dark.png`, `docs/review/maintenance-case-1440-light.png`, `docs/review/maintenance-case-390-dark.png`, `docs/review/maintenance-case-390-light.png`.
+- Full test suite: 393 passed, 7 skipped.
+- step done: Part D maintenance cases complete; next: Part E docs/ui-sync; tests: 393 passed, 7 skipped
