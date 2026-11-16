@@ -64,3 +64,21 @@ def test_neutrals_are_charcoal_not_blue() -> None:
         for name in ("background", "foreground", "card", "border"):
             _, chroma, _ = _oklch(_token(block, name))
             assert chroma <= 0.02, f"{selector}: --{name} is tinted, not charcoal"
+
+
+def test_templates_do_not_use_raw_color_literals() -> None:
+    """Quality gate C0.4: templates must use CSS variables/design tokens, not raw hex colors."""
+    hex_pattern = re.compile(r"(?<!&)(#[0-9a-fA-F]{3,8})\b")
+    offenders: list[str] = []
+
+    templates_dir = REPO_ROOT / "templates"
+    for template_path in templates_dir.rglob("*.html"):
+        content = template_path.read_text(encoding="utf-8")
+        # Ignore comments or inline CSS variable fallbacks like var(--logo-bg, #1A1A1A)
+        stripped = re.sub(r"\{#-.*?-\#\}", "", content, flags=re.DOTALL)
+        stripped = re.sub(r"var\([^)]+\)", "", stripped)
+        matches = hex_pattern.findall(stripped)
+        if matches:
+            offenders.append(f"{template_path.name}: {matches}")
+
+    assert not offenders, f"Templates with raw color literals (use CSS variables instead): {offenders}"

@@ -48,6 +48,18 @@ step done: 1 inspection + HANDOFF created; next: A1/A2 domain rule + statuses; t
 - `GET /?handover_id=` redirects (307) to `/device-check?handover_id=`.
 - `GET /` with SSO off answers 200, characterization tests green.
 - Branding: `b_labs.jpeg` logo in `partials/logo.html`, `Handover Portal` title in `app/config.py` and `app/main.py`, favicon updated, monitor SVG and old title removed, `tests/test_branding.py` passes.
+- Tests: 369 passed, 7 skipped.
+
+## Part C — calm case board UI (branch `feature/case-board-ui`)
+- Design doc `docs/ui/DESIGN.md` (364 words, <400 budget) defining surface `#1A1A1A`, mint accent `#71E3D9`, 3-zone layout (Sticky Passport, 3-lane Board, Side-sheet Drawer), day-grouped history.
+- Shell components: left rail (`partials/rail.html`) with mint active tab, mobile bottom nav (`partials/bottom_nav.html`), topbar with omnibox search (`partials/topbar.html`).
+- Centered calm registration card in `templates/new_case.html` (<80 words).
+- 3-zone case board in `templates/handover_detail.html` (Passport with SVG progress ring, 3 lanes with 10 operation tiles, hidden side-sheet drawer).
+- Side-sheet operation drawer in `static/js/handover_detail.js` with keyboard navigation, Esc/backdrop dismissal, reason chips, retry, and software override.
+- Day-grouped history timeline in `templates/case_history.html` with 2s event coalescing, human-readable sentences, and collapsible JSON disclosure.
+- Word budgets strictly met: Desktop board <=220, Dashboard <=160, Registration <=80, Mobile 390px <=80.
+- Visual review screenshots captured at 1440x900 and 390x844 (light & dark).
+- Tests: 377 passed, 7 skipped.
 - step done: b2e01b4 feat(branding): use b_labs logo, Handover Portal name, and split dashboard and device-check routes; next: Part C complete redesign; tests: 369 passed, 7 skipped
 
 ## Part C — calm case board (branch `feature/case-board-ui`)

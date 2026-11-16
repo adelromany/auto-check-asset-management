@@ -6,7 +6,7 @@
 -#}
 
 {% macro logo_mark(size=32, cls="") -%}
-<span class="inline-flex items-center justify-center rounded-[8px] bg-[#1A1A1A] p-0.5 overflow-hidden shrink-0 shadow-xs {{ cls }}" style="width: {{ size }}px; height: {{ size }}px;">
+<span class="inline-flex items-center justify-center rounded-[8px] bg-[var(--logo-bg)] p-0.5 overflow-hidden shrink-0 shadow-xs {{ cls }}" style="width: {{ size }}px; height: {{ size }}px;">
   <img src="/static/img/b_labs.jpeg" alt="b_labs" width="{{ size }}" height="{{ size }}"
        class="h-full w-full rounded-[6px] object-cover" />
 </span>

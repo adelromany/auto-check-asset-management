@@ -28,6 +28,9 @@
  * ------------------------------------------------------------------------- */
 :root {
   --radius: 0.625rem;
+  --brand-ink: #1A1A1A;
+  --brand-mint: #71E3D9;
+  --logo-bg: #1A1A1A;
 
   /* Brand: the b_labs wordmark — charcoal neutrals, teal accent. */
   --background: oklch(0.985 0.002 180);
@@ -84,6 +87,9 @@
  * Tokens — dark
  * ------------------------------------------------------------------------- */
 .dark {
+  --brand-ink: #1A1A1A;
+  --brand-mint: #71E3D9;
+  --logo-bg: #1A1A1A;
   --background: oklch(0.16 0.004 180);
   --foreground: oklch(0.95 0.006 180);
 
@@ -203,6 +209,9 @@
   }
 
   html.dark {
+  --brand-ink: #1A1A1A;
+  --brand-mint: #71E3D9;
+  --logo-bg: #1A1A1A;
     color-scheme: dark;
   }
 

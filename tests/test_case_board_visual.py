@@ -175,19 +175,39 @@ def test_case_board_meets_the_visible_word_budgets(headless_chrome, case_board) 
             page.close()
 
 
-def test_operation_actions_collapse_only_on_mobile(headless_chrome, case_board) -> None:
+def test_case_board_has_ten_operation_tiles_and_drawer(headless_chrome, case_board) -> None:
     base, handover_id = case_board
-    for width, expected_open in ((1440, True), (390, False)):
-        page = headless_chrome.new_page(viewport={"width": width, "height": 900})
-        try:
-            page.goto(
-                f"{base}/cases/{handover_id}", wait_until="networkidle"
-            )
-            states = page.eval_on_selector_all(
-                "[data-compact-actions]",
-                "nodes => nodes.map(node => node.open)",
-            )
-            assert len(states) == 10
-            assert all(state is expected_open for state in states)
-        finally:
-            page.close()
+    page = headless_chrome.new_page(viewport={"width": 1440, "height": 900})
+    try:
+        page.goto(f"{base}/cases/{handover_id}", wait_until="networkidle")
+        tiles = page.locator("[data-tile]")
+        assert tiles.count() == 10
+
+        # Drawer is closed initially
+        drawer = page.locator("#operation-drawer")
+        assert "hidden" in (drawer.get_attribute("class") or "")
+
+        # Clicking a tile opens the drawer
+        page.locator('[data-tile="agent_report"]').click()
+        assert "hidden" not in (drawer.get_attribute("class") or "")
+
+        # Pressing Escape closes the drawer
+        page.keyboard.press("Escape")
+        assert "hidden" in (drawer.get_attribute("class") or "")
+    finally:
+        page.close()
+
+
+def test_dashboard_and_registration_meet_word_budgets(headless_chrome, case_board) -> None:
+    base, _ = case_board
+    page = headless_chrome.new_page(viewport={"width": 1440, "height": 900})
+    try:
+        page.goto(f"{base}/", wait_until="networkidle")
+        dashboard_words = len(_words(page))
+        assert dashboard_words <= 160, f"Dashboard shows {dashboard_words} words, budget 160"
+
+        page.goto(f"{base}/new", wait_until="networkidle")
+        new_case_words = len(_words(page))
+        assert new_case_words <= 80, f"New case registration shows {new_case_words} words, budget 80"
+    finally:
+        page.close()

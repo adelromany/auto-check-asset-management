@@ -546,60 +546,225 @@
   }
 
   // -- wiring -----------------------------------------------------------
-  function openContainingDetails(element) {
-    var details = element.closest ? element.closest("details") : null;
-    if (details) details.open = true;
+  // -- drawer controller ------------------------------------------------
+  var activeDrawerStage = null;
+
+  var STAGE_LABELS = {
+    device_prepared: "Device prepared",
+    user_account_created: "User signed in",
+    agent_report: "Agent report",
+    software_check: "Software check",
+    recipient_check: "Recipient check",
+    snipeit_checkout: "Checkout",
+    print_form: "Print form",
+    paper_signed: "Signed paper",
+    scan_attached: "Scan attached",
+    snipeit_push: "Push to Snipe-IT",
+  };
+
+  function openDrawer(stageKey) {
+    if (!stageKey) return;
+    activeDrawerStage = stageKey;
+
+    var drawer = document.getElementById("operation-drawer");
+    var backdrop = document.getElementById("drawer-backdrop");
+    var title = document.getElementById("drawer-title");
+    var retryBtn = document.getElementById("drawer-retry-btn");
+
+    if (title) {
+      title.textContent = STAGE_LABELS[stageKey] || stageKey;
+    }
+
+    // Switch visible panel
+    document.querySelectorAll("[data-drawer-panel]").forEach(function (panel) {
+      if (panel.getAttribute("data-drawer-panel") === stageKey) {
+        panel.classList.remove("hidden");
+      } else {
+        panel.classList.add("hidden");
+      }
+    });
+
+    // Configure retry button
+    if (retryBtn) {
+      var tile = document.querySelector('[data-tile="' + stageKey + '"]');
+      var badge = tile ? tile.querySelector(".badge") : null;
+      var status = badge ? badge.textContent.trim().toLowerCase() : "";
+      if (status === "failed" || status === "not done") {
+        retryBtn.classList.remove("hidden");
+        retryBtn.setAttribute("data-stage", stageKey);
+      } else {
+        retryBtn.classList.add("hidden");
+      }
+    }
+
+    // Show drawer and backdrop
+    if (backdrop) backdrop.classList.remove("hidden");
+    if (drawer) {
+      drawer.classList.remove("hidden");
+      drawer.classList.remove("translate-x-full");
+      var focusable = drawer.querySelector("button:not([disabled]), input:not([disabled]), a[href]");
+      if (focusable) focusable.focus();
+    }
+
+    if (stageKey === "recipient_check" && main.getAttribute("data-recipient-confirmed") === "true") {
+      preview(null, true);
+    }
   }
 
-  function syncCompactActions() {
-    var compact = window.matchMedia("(max-width: 767px)").matches;
-    document.querySelectorAll("[data-compact-actions]").forEach(function (details) {
-      details.open = !compact;
+  function closeDrawer() {
+    activeDrawerStage = null;
+    var drawer = document.getElementById("operation-drawer");
+    var backdrop = document.getElementById("drawer-backdrop");
+    if (drawer) {
+      drawer.classList.add("translate-x-full");
+      drawer.classList.add("hidden");
+    }
+    if (backdrop) backdrop.classList.add("hidden");
+  }
+
+  // Close triggers
+  var closeBtn = document.getElementById("drawer-close-btn");
+  if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
+  var backdrop = document.getElementById("drawer-backdrop");
+  if (backdrop) backdrop.addEventListener("click", closeDrawer);
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") closeDrawer();
+  });
+
+  // Tile clicks and Enter key open drawer
+  document.addEventListener("click", function (event) {
+    var trigger = event.target.closest ? event.target.closest("[data-open-drawer]") : null;
+    if (trigger) {
+      var stage = trigger.getAttribute("data-open-drawer");
+      if (stage) openDrawer(stage);
+    }
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+      var target = event.target;
+      if (target && target.hasAttribute && target.hasAttribute("data-open-drawer")) {
+        var stage = target.getAttribute("data-open-drawer");
+        if (stage) openDrawer(stage);
+      }
+    }
+  });
+
+  // Preset chips for "Mark not done"
+  document.addEventListener("click", function (event) {
+    var chip = event.target.closest ? event.target.closest("[data-preset-reason]") : null;
+    if (chip) {
+      var reasonInput = document.getElementById("drawer-not-done-reason");
+      if (reasonInput) {
+        reasonInput.value = chip.getAttribute("data-preset-reason") || "";
+        reasonInput.focus();
+      }
+    }
+  });
+
+  async function submitDrawerNotDone(button) {
+    var stage = activeDrawerStage || (button ? button.getAttribute("data-stage") : null);
+    if (!stage) return;
+    var reasonInput = document.getElementById("drawer-not-done-reason");
+    var reason = reasonInput ? reasonInput.value.trim() : "";
+    if (reason.length < 3 || reason.length > 300) {
+      showToast("Please provide a reason between 3 and 300 characters.", "error");
+      return;
+    }
+    setBusy(button, true);
+    try {
+      await request(base + "/operations/" + encodeURIComponent(stage) + "/not-done", {
+        method: "POST",
+        json: { reason: reason },
+      });
+      flashAndReload("Operation marked not done: " + stage + ".", "success");
+    } catch (error) {
+      showToast(error.message, "error");
+      setBusy(button, false);
+    }
+  }
+
+  async function submitDrawerRetry(button) {
+    var stage = activeDrawerStage || (button ? button.getAttribute("data-stage") : null);
+    if (!stage) return;
+    setBusy(button, true);
+    try {
+      await request(base + "/operations/" + encodeURIComponent(stage) + "/retry", {
+        method: "POST",
+      });
+      flashAndReload("Operation queued for retry: " + stage + ".", "success");
+    } catch (error) {
+      showToast(error.message, "error");
+      setBusy(button, false);
+    }
+  }
+
+  // Scan file upload (supports both file input names)
+  async function handleScanUpload(event) {
+    event.preventDefault();
+    var input = document.getElementById("scan-file") || document.getElementById("document-file");
+    var button = event.currentTarget.querySelector("button[type=submit]");
+    if (!input || !input.files || input.files.length === 0) {
+      showToast("Choose a PDF, PNG or JPEG file first.", "error");
+      return;
+    }
+    var data = new FormData();
+    data.append("file", input.files[0]);
+    setBusy(button, true);
+    try {
+      var documentRecord = await request(base + "/document", {
+        method: "POST",
+        body: data,
+      });
+      flashAndReload("Scan attached: " + documentRecord.original_name + ".", "success");
+    } catch (error) {
+      showToast(error.message, "error");
+      setBusy(button, false);
+    }
+  }
+
+  var scanForm = document.getElementById("scan-upload-form") || document.getElementById("upload-form");
+  if (scanForm) scanForm.addEventListener("submit", handleScanUpload);
+
+  // Software check override
+  var swForm = document.getElementById("software-override-form");
+  if (swForm) {
+    swForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      var reasonInput = document.getElementById("sw-override-reason");
+      var reason = reasonInput ? reasonInput.value.trim() : "";
+      if (!reason) {
+        showToast("Enter an override justification.", "error");
+        return;
+      }
+      var submitBtn = swForm.querySelector("button[type=submit]");
+      setBusy(submitBtn, true);
+      try {
+        await request(base + "/software-check/override", {
+          method: "POST",
+          json: { reason: reason },
+        });
+        flashAndReload("Software check overridden.", "success");
+      } catch (error) {
+        showToast(error.message, "error");
+        setBusy(submitBtn, false);
+      }
     });
   }
 
-  function closeCompactPanels() {
-    if (!window.matchMedia("(max-width: 767px)").matches) return;
-    document.querySelectorAll("[data-compact-panel]").forEach(function (details) {
-      details.open = false;
-    });
-  }
-
-  syncCompactActions();
-  closeCompactPanels();
-  var compactQuery = window.matchMedia("(max-width: 767px)");
-  if (compactQuery.addEventListener) {
-    compactQuery.addEventListener("change", syncCompactActions);
-  } else if (compactQuery.addListener) {
-    compactQuery.addListener(syncCompactActions);
-  }
-
+  // Action dispatcher
   document.addEventListener("click", function (event) {
     var button = event.target.closest ? event.target.closest("[data-action]") : null;
     if (!button) return;
     var action = button.getAttribute("data-action");
-    if (action === "confirm-stage") confirmStage(button);
-    else if (action === "focus-recipient") {
-      openContainingDetails(button);
-      var query = document.getElementById("recipient-query");
-      if (query) {
-        query.focus();
-        query.scrollIntoView({ block: "center" });
-      }
-    } else if (action === "focus-upload") {
-      openContainingDetails(button);
-      var file = document.getElementById("document-file");
-      if (file) {
-        file.focus();
-        file.scrollIntoView({ block: "center" });
-      }
-    } else if (action === "confirm-recipient") confirmRecipient(button);
-    else if (action === "recipient-not-found") recipientNotFound(button);
-    else if (action === "preview") preview(button);
-    else if (action === "checkout") checkout(button);
-    else if (action === "checkin") checkin(button);
-    else if (action === "push-document") pushDocument(button);
-    else if (action === "not-done") markNotDone(button);
+    if (action === "stage-confirm" || action === "confirm-stage") confirmStage(button);
+    else if (action === "confirm-recipient") confirmRecipient(button);
+    else if (action === "preview-checkout" || action === "preview") preview(button);
+    else if (action === "confirm-checkout" || action === "checkout") checkout(button);
+    else if (action === "push-to-snipeit" || action === "push-document") pushDocument(button);
+    else if (action === "mark-not-done" || action === "not-done") submitDrawerNotDone(button);
+    else if (action === "retry") submitDrawerRetry(button);
     else if (action === "close-case") closeCase(button);
     else if (action === "reopen-case") reopenCase(button);
     else if (action === "cancel") cancel(button);
@@ -607,9 +772,6 @@
 
   var searchForm = document.getElementById("recipient-search-form");
   if (searchForm) searchForm.addEventListener("submit", searchRecipients);
-
-  var uploadForm = document.getElementById("upload-form");
-  if (uploadForm) uploadForm.addEventListener("submit", upload);
 
   if (main.getAttribute("data-recipient-confirmed") === "true") {
     preview(null, true);

@@ -487,13 +487,10 @@ async def test_case_board_keeps_secondary_information_collapsed(
 
     assert response.status_code == 200, response.text
     body = response.text
-    # One compact action group per open operation; the page stays calm by
-    # closing it on small screens and opening it on desktop (see the UI test).
-    assert body.count("data-compact-actions") == 10
-    # Recipient, Snipe-IT, signed sheet and events are disclosures, not walls.
-    assert body.count("data-compact-panel") == 4
-    assert '<details class="board-disclosure group" aria-labelledby="events-heading"' in body
-    assert 'data-compact-actions open' in body
+    # 10 operation tiles across 3 lanes; secondary information is kept in the side-sheet drawer
+    assert body.count("data-operation-tile") == 10
+    assert 'id="operation-drawer"' in body
+    assert f'href="/cases/{handover_id}/history"' in body
 
 
 async def test_case_history_page_renders_the_audit_trail(

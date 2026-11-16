@@ -1,5 +1,5 @@
 /**
- * Shared page shell: signed-in identity, header clock and the CSRF token.
+ * Shared page shell: signed-in identity, omnibox shortcut and CSRF token.
  *
  * One responsibility, no data rendering: every value is inserted with
  * textContent so the page stays safe under Jinja/CSP rules.
@@ -28,7 +28,16 @@
 
   mePromise.then(function (me) {
     if (!me) return;
-    setText("user-info", me.name ? me.name + " · " + me.email : me.email || "");
+    var name = me.name || me.email || "Engineer";
+    var container = document.getElementById("user-info");
+    if (container) {
+      var display = container.querySelector(".user-display-name");
+      if (display) {
+        display.textContent = name;
+      } else {
+        container.textContent = name;
+      }
+    }
   });
 
   /** Resolve the per-session CSRF token delivered by GET /api/me. */
@@ -38,13 +47,17 @@
     });
   }
 
-  function tick() {
-    var clock = document.getElementById("clock");
-    if (clock) clock.textContent = new Date().toLocaleTimeString();
-  }
-
-  tick();
-  setInterval(tick, 1000);
+  // Keyboard shortcut '/' to focus global omnibox search
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) {
+      event.preventDefault();
+      var searchInput = document.getElementById("global-search");
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      }
+    }
+  });
 
   window.HandoverShell = { csrfToken: csrfToken };
 })();

@@ -1,0 +1,85 @@
+{#-
+  Desktop slim left rail navigation.
+  Active link receives the b_labs brand motif: a mint underscore.
+-#}
+{% from "partials/logo.html" import logo_mark %}
+<aside class="hidden md:flex flex-col w-16 hover:w-48 group transition-all duration-200 border-r bg-card shrink-0 fixed inset-y-0 left-0 z-40 select-none shadow-xs">
+  <div class="h-16 flex items-center px-3.5 border-b gap-3 overflow-hidden">
+    <a href="/" class="flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg" aria-label="Handover Portal Home">
+      {{ logo_mark(32) }}
+      <span class="font-semibold text-sm tracking-tight whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        Handover Portal
+      </span>
+    </a>
+  </div>
+
+  <nav class="flex-1 py-4 flex flex-col gap-1.5 px-2 overflow-hidden" aria-label="Main Navigation">
+    {#- Dashboard -#}
+    <a href="/"
+       class="flex items-center gap-3.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative {% if active_nav == 'dashboard' %}text-foreground bg-accent/30 font-semibold{% else %}text-muted-foreground hover:text-foreground hover:bg-muted/50{% endif %}"
+       title="Dashboard">
+      <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/>
+        <rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
+      </svg>
+      <span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Dashboard</span>
+      {% if active_nav == 'dashboard' %}
+      <span class="absolute bottom-1 left-3 right-3 h-0.5 bg-primary rounded-full" aria-hidden="true"></span>
+      {% endif %}
+    </a>
+
+    {#- New Case -#}
+    <a href="/new"
+       class="flex items-center gap-3.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative {% if active_nav == 'new' %}text-foreground bg-accent/30 font-semibold{% else %}text-muted-foreground hover:text-foreground hover:bg-muted/50{% endif %}"
+       title="New case">
+      <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
+      </svg>
+      <span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">New case</span>
+      {% if active_nav == 'new' %}
+      <span class="absolute bottom-1 left-3 right-3 h-0.5 bg-primary rounded-full" aria-hidden="true"></span>
+      {% endif %}
+    </a>
+
+    {#- Cases -#}
+    <a href="/cases"
+       class="flex items-center gap-3.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative {% if active_nav == 'cases' and request.query_params.get('kind') != 'maintenance' %}text-foreground bg-accent/30 font-semibold{% else %}text-muted-foreground hover:text-foreground hover:bg-muted/50{% endif %}"
+       title="Cases">
+      <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+        <path d="M15 2H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1Z"/>
+        <path d="M9 12h6M9 16h6"/>
+      </svg>
+      <span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Cases</span>
+      {% if active_nav == 'cases' and request.query_params.get('kind') != 'maintenance' %}
+      <span class="absolute bottom-1 left-3 right-3 h-0.5 bg-primary rounded-full" aria-hidden="true"></span>
+      {% endif %}
+    </a>
+
+    {#- Maintenance -#}
+    <a href="/cases?kind=maintenance"
+       class="flex items-center gap-3.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative {% if request.query_params.get('kind') == 'maintenance' %}text-foreground bg-accent/30 font-semibold{% else %}text-muted-foreground hover:text-foreground hover:bg-muted/50{% endif %}"
+       title="Maintenance">
+      <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+      </svg>
+      <span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Maintenance</span>
+      {% if request.query_params.get('kind') == 'maintenance' %}
+      <span class="absolute bottom-1 left-3 right-3 h-0.5 bg-primary rounded-full" aria-hidden="true"></span>
+      {% endif %}
+    </a>
+
+    {#- Device check -#}
+    <a href="/device-check"
+       class="flex items-center gap-3.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative {% if active_nav == 'device' %}text-foreground bg-accent/30 font-semibold{% else %}text-muted-foreground hover:text-foreground hover:bg-muted/50{% endif %}"
+       title="Device check">
+      <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m4 17 6-6-6-6M12 19h8"/>
+      </svg>
+      <span class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Device check</span>
+      {% if active_nav == 'device' %}
+      <span class="absolute bottom-1 left-3 right-3 h-0.5 bg-primary rounded-full" aria-hidden="true"></span>
+      {% endif %}
+    </a>
+  </nav>
+</aside>

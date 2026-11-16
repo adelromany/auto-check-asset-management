@@ -248,6 +248,114 @@ async def case_page(
     )
 
 
+def _format_event_sentence(etype: str, detail: dict, actor_name: str) -> str:
+    if etype == "handover_created":
+        return "Case opened"
+    elif etype == "operation_recorded":
+        op = detail.get("operation", "")
+        op_label = op.replace("_", " ").title()
+        outcome = detail.get("outcome", "")
+        reason = detail.get("reason", "")
+        if outcome == "passed":
+            return f"{actor_name} completed {op_label}"
+        elif outcome == "not_done":
+            return f"{actor_name} marked {op_label} as not done: {reason}"
+        elif outcome == "failed":
+            return f"{op_label} failed: {reason}"
+        elif outcome == "retry":
+            return f"{actor_name} retried {op_label}"
+        return f"{actor_name} recorded {op_label}"
+    elif etype == "agent_report_received":
+        return "Device check received: serial matched"
+    elif etype == "software_check_evaluated":
+        return "Software checks evaluated"
+    elif etype == "software_check_deferred":
+        return "Software checks deferred"
+    elif etype == "software_check_overridden":
+        return f"{actor_name} overridden software check: {detail.get('reason', '')}"
+    elif etype == "recipient_identity_detected":
+        return f"Recipient detected from device: {detail.get('username', '')}"
+    elif etype == "recipient_identity_blocked":
+        return "Recipient blocked: domain user not found"
+    elif etype == "snipeit_recipient_confirmed":
+        return f"{actor_name} confirmed recipient in Snipe-IT"
+    elif etype == "snipeit_checkout_performed":
+        return "Checkout verified in Snipe-IT"
+    elif etype == "document_uploaded":
+        return "Signed paper scan attached"
+    elif etype == "snipeit_document_pushed":
+        return "Changes pushed to Snipe-IT"
+    elif etype == "handover_closed":
+        return "Case closed with gaps"
+    elif etype == "handover_reopened":
+        return "Case reopened"
+    elif etype == "handover_cancelled":
+        return "Case cancelled"
+    return etype.replace("_", " ").capitalize()
+
+
+def _build_timeline_groups(events: list) -> list[dict]:
+    import json
+    if not events:
+        return []
+
+    sorted_events = sorted(
+        events,
+        key=lambda e: getattr(e, "created_at", getattr(e, "at", None)) or datetime.min,
+        reverse=True,
+    )
+
+    coalesced: list[dict] = []
+    for ev in sorted_events:
+        dt = getattr(ev, "created_at", getattr(ev, "at", None))
+        if isinstance(dt, str):
+            try:
+                dt = datetime.fromisoformat(dt)
+            except Exception:
+                dt = datetime.now(timezone.utc)
+        elif dt is None:
+            dt = datetime.now(timezone.utc)
+
+        actor_raw = getattr(ev, "actor", "") or "System"
+        actor_name = (
+            actor_raw.split("<")[0].strip() or actor_raw.split("@")[0] or "Engineer"
+        )
+        detail = getattr(ev, "detail", {}) or {}
+        etype = getattr(ev, "type", "")
+        sentence = _format_event_sentence(etype, detail, actor_name)
+        detail_json = json.dumps(detail, indent=2) if detail else ""
+
+        if coalesced:
+            prev = coalesced[-1]
+            time_diff = abs((prev["dt"] - dt).total_seconds())
+            if prev["actor_raw"] == actor_raw and time_diff <= 2:
+                if sentence not in prev["sentence"]:
+                    prev["sentence"] = f"{prev['sentence']}; {sentence}"
+                if detail_json:
+                    prev["details_json"] = (prev["details_json"] + "\n" + detail_json).strip()
+                continue
+
+        coalesced.append({
+            "dt": dt,
+            "date": dt.strftime("%B %d, %Y") if hasattr(dt, "strftime") else str(dt)[:10],
+            "time": dt.strftime("%H:%M:%S") if hasattr(dt, "strftime") else str(dt)[11:19],
+            "actor_raw": actor_raw,
+            "actor": actor_raw,
+            "actor_display": actor_name,
+            "sentence": sentence,
+            "details_json": detail_json,
+        })
+
+    groups_dict: dict[str, list[dict]] = {}
+    for entry in coalesced:
+        d = entry["date"]
+        if d not in groups_dict:
+            groups_dict[d] = []
+        groups_dict[d].append(entry)
+
+    return [{"date": d, "entries": entries} for d, entries in groups_dict.items()]
+
+
 @router.get("/cases/{handover_id}/history", response_class=HTMLResponse)
 async def case_history_page(
     handover_id: uuid.UUID,
@@ -263,6 +371,9 @@ async def case_history_page(
         view = await service.get_detail(handover_id)
     except HandoverNotFound as exc:
         raise HTTPException(status_code=404, detail="Case not found") from exc
+
+    timeline_groups = _build_timeline_groups(view.events)
+
     return templates.TemplateResponse(
         request=request,
         name="case_history.html",
@@ -270,7 +381,8 @@ async def case_history_page(
             "page_title": f"History {view.handover.device_serial}",
             "active_nav": "cases",
             "handover": view.handover,
-            "events": list(reversed(view.events)),
+            "timeline_groups": timeline_groups,
+            "timeline_count": len(view.events),
         },
     )
 
