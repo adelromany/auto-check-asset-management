@@ -546,17 +546,53 @@
   }
 
   // -- wiring -----------------------------------------------------------
+  function openContainingDetails(element) {
+    var details = element.closest ? element.closest("details") : null;
+    if (details) details.open = true;
+  }
+
+  function syncCompactActions() {
+    var compact = window.matchMedia("(max-width: 767px)").matches;
+    document.querySelectorAll("[data-compact-actions]").forEach(function (details) {
+      details.open = !compact;
+    });
+  }
+
+  function closeCompactPanels() {
+    if (!window.matchMedia("(max-width: 767px)").matches) return;
+    document.querySelectorAll("[data-compact-panel]").forEach(function (details) {
+      details.open = false;
+    });
+  }
+
+  syncCompactActions();
+  closeCompactPanels();
+  var compactQuery = window.matchMedia("(max-width: 767px)");
+  if (compactQuery.addEventListener) {
+    compactQuery.addEventListener("change", syncCompactActions);
+  } else if (compactQuery.addListener) {
+    compactQuery.addListener(syncCompactActions);
+  }
+
   document.addEventListener("click", function (event) {
     var button = event.target.closest ? event.target.closest("[data-action]") : null;
     if (!button) return;
     var action = button.getAttribute("data-action");
     if (action === "confirm-stage") confirmStage(button);
     else if (action === "focus-recipient") {
+      openContainingDetails(button);
       var query = document.getElementById("recipient-query");
-      if (query) query.focus();
+      if (query) {
+        query.focus();
+        query.scrollIntoView({ block: "center" });
+      }
     } else if (action === "focus-upload") {
+      openContainingDetails(button);
       var file = document.getElementById("document-file");
-      if (file) file.focus();
+      if (file) {
+        file.focus();
+        file.scrollIntoView({ block: "center" });
+      }
     } else if (action === "confirm-recipient") confirmRecipient(button);
     else if (action === "recipient-not-found") recipientNotFound(button);
     else if (action === "preview") preview(button);

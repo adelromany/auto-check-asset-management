@@ -245,3 +245,28 @@ Conservative option taken: 14 days, shown as a warning only; it never changes
 an operation status.
 
 Owner: product owner.
+
+## Q-21 — Do the 220/160/80 word budgets mean 1440/768/390 px? (OPEN)
+
+Context: the owner review asks for a calmer case board and gives three word
+budgets (220/160/80), but does not name the widths. The implementation applies
+them to the whole visible case board at 1440, 768 and 390 px; a Playwright test
+enforces the limits with a seeded draft case.
+
+Conservative option taken: read the numbers as desktop/tablet/mobile budgets
+and keep supporting panels and per-operation actions behind disclosures. The
+owner may instead mean per-screen budgets (dashboard/registration/case board).
+
+Owner: product/UI owner.
+
+## Q-22 — Should an operation's actor and timestamp stay off the case board? (OPEN)
+
+Context: review C asks for a calmer board. Actor and timestamp now sit behind
+the per-operation details disclosure, and a passed operation hides the
+disclosure when it has no remaining help or evidence; the full audit trail is
+always on `/cases/{id}/history`.
+
+Conservative option taken: keep the board quiet and keep the evidence in the
+history page. The owner may want the actor/time visible on every operation.
+
+Owner: product/UI owner.

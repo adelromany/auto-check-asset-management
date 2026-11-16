@@ -123,7 +123,9 @@ async def test_case_page_links_device_check_and_explains_manual_confirmations(
     case_page = await api.client.get(f"/cases/{handover_id}")
     assert case_page.status_code == 200
     assert f'href="/device-check?handover_id={handover_id}"' in case_page.text
-    assert "Manual confirmation. The system does not collect evidence or values" in case_page.text
+    # Review C shortened the help copy but kept the meaning: this is a manual
+    # confirmation, and no device evidence is collected for it.
+    assert "Manual confirmation. The system does not collect evidence for this operation." in case_page.text
     assert 'data-action="confirm-stage"' in case_page.text
     assert 'data-stage="report_printed"' in case_page.text
     assert "Print and review the report, then confirm this operation." in case_page.text

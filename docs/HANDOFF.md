@@ -12,7 +12,7 @@ C `feature/case-board-ui` → D `feature/maintenance-cases` → E `docs/ui-sync`
 - Visible word count (test client, tags stripped): `/handovers` = **105**,
   case page `/handovers/{id}` = **332**.
 - Confirmed: `can_run` blocks on `STAGE_DEPENDENCIES` (409 "Waiting for …");
-  any failed/blocked ⇒ case `stalled`; `record_agent_report` couples software
+  any failed/blocked → case `stalled`; `record_agent_report` couples software
   and recipient; `/` is the agent page; `/handovers` is dashboard + creation
   form; no maintenance concept; one active case per serial via partial index.
 - Brand: `static/img/b_labs.jpeg` = white `b_labs` wordmark on charcoal with a
@@ -49,3 +49,7 @@ step done: 1 inspection + HANDOFF created; next: A1/A2 domain rule + statuses; t
 - `GET /` with SSO off answers 200, characterization tests green.
 - Branding: `b_labs.jpeg` logo in `partials/logo.html`, `Handover Portal` title in `app/config.py` and `app/main.py`, favicon updated, monitor SVG and old title removed, `tests/test_branding.py` passes.
 - step done: b2e01b4 feat(branding): use b_labs logo, Handover Portal name, and split dashboard and device-check routes; next: Part C complete redesign; tests: 369 passed, 7 skipped
+
+## Part C — calm case board (branch `feature/case-board-ui`)
+- Brand tokens: `b_labs` teal accent on charcoal neutrals in light and dark.
+- Initial case board pass.

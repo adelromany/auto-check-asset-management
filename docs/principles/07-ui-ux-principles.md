@@ -15,11 +15,13 @@ The UI is server-rendered Jinja + vanilla JS, styled by Tailwind v4 with the sha
 
 ## Hierarchy and flow
 - UIX-07 Each screen has one primary action, visually distinct from secondary ones.
-- UIX-08 The case page reads top to bottom as the real process: stages in order, the current/blocked stage visually prominent, the action for each stage next to it.
+- UIX-08 The case board lists operations in reading order. Operations are independent, so none is visually locked; a failed or not-done operation keeps its reason and next action visible.
 - UIX-09 Always show what is missing: a stalled or incomplete handover names the missing step and the reason in plain language, next to a button that fixes it (for example Retry).
 - UIX-10 Forms are a single column. Group fields with whitespace rather than nested boxes.
-- UIX-20 `/handovers` shows KPI tiles, filters (status, engineer, date range), and one row per handover with a status badge, serial, recipient, engineer, compact stage progress and a Missing column. `/handovers/{id}` is the case page with the stage checklist, software override, detected recipient identity, Snipe-IT devices, signed-sheet actions, preview and event timeline.
+- UIX-20 `/dashboard` is the KPI overview; `/cases` shows the filters and one row per case; `/new` is the registration form; `/cases/{id}` is the case board with the operation checklist, recipient, Snipe-IT devices, signed sheet and event timeline; `/cases/{id}/history` is the full audit trail; `/device-check` is the agent device check.
 - UIX-21 The printable report includes an explicit `[Company legal text goes here]` placeholder until the owner supplies approved wording; it must not invent legal claims.
+- UIX-22 The case board stays calm: visible words are budgeted at 220 (1440 px), 160 (768 px) and 80 (390 px). Supporting panels and per-operation actions are disclosures; the board opens actions on desktop and keeps them collapsed on small screens. The audit trail is one click away rather than printed on the board.
+- UIX-23 The accent is the `b_labs` teal and the neutrals are charcoal in both themes. Status colours (success, warning, destructive) stay semantic and always carry text, never colour alone.
 
 ## States and feedback
 - UIX-11 Every list/table has three distinct states: loading (skeleton or spinner), empty (message with a next action), populated.

@@ -8,135 +8,115 @@
 <div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
   {% include "partials/topbar.html" %}
   {% set case_open = handover.status not in ("cancelled", "completed", "closed_with_gaps") %}
+  {% set passed_count = stages | selectattr("status", "equalto", "passed") | list | length %}
 
-  <main class="flex-1 px-4 py-6" data-handover-id="{{ handover.id }}"
+  <main class="flex-1 px-4 py-5" data-handover-id="{{ handover.id }}"
         data-recipient-confirmed="{{ 'true' if handover.recipient_snipeit_id else 'false' }}">
-    <a href="/cases" class="text-xs text-muted-foreground underline-offset-4 hover:underline">← All cases</a>
+    <div class="mb-3 flex items-center justify-between gap-2">
+      <a href="/cases" class="text-xs text-muted-foreground underline-offset-4 hover:underline">← Cases</a>
+      <a href="/cases/{{ handover.id }}/history"
+         class="text-xs text-muted-foreground underline-offset-4 hover:underline">History</a>
+    </div>
 
-    <div class="mt-2 mb-6 flex flex-wrap items-start justify-between gap-4">
-      <div>
+    <header class="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div class="min-w-0">
         <div class="flex flex-wrap items-center gap-2">
           <h1 class="font-mono text-xl font-semibold tracking-tight" dir="ltr">{{ handover.device_serial }}</h1>
           {{ handover_badge(display_status) }}
           <span class="badge badge-outline">{{ kind_label(handover.kind) }}</span>
         </div>
-        <p class="mt-1 text-sm text-muted-foreground">
+        <p class="mt-1 text-xs text-muted-foreground">
           {% if handover.ticket_ref %}Ticket {{ handover.ticket_ref }} · {% endif %}
-          {{ handover.engineer_name or handover.engineer_email }} · created {{ handover.created_at }}
+          {{ handover.engineer_name or handover.engineer_email }}
+          <span class="hidden sm:inline">· created {{ handover.created_at }}</span>
         </p>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <a class="btn btn-ghost btn-sm" href="/cases/{{ handover.id }}/history">History</a>
-        <a class="btn btn-outline btn-sm" href="/api/handovers/{{ handover.id }}/report"
-           target="_blank" rel="noopener">Print report</a>
-        {% if handover.status == "closed_with_gaps" %}
-        <button type="button" class="btn btn-default btn-sm" data-action="reopen-case">Reopen case</button>
-        {% elif handover.status not in ("cancelled", "completed") %}
-        <button type="button" class="btn btn-outline btn-sm" data-action="close-case">Close with gaps</button>
-        {% endif %}
-        <button type="button" class="btn btn-destructive btn-sm" data-action="cancel"
-                {% if handover.status in ("cancelled", "completed", "closed_with_gaps") %}disabled{% endif %}>
-          Cancel case
-        </button>
-      </div>
-    </div>
+
+      <details class="relative">
+        <summary class="btn btn-outline btn-sm list-none">More</summary>
+        <div class="absolute right-0 z-30 mt-1 flex w-52 flex-col gap-1 rounded-lg border bg-card p-2 text-sm shadow-lg">
+          <a class="btn btn-ghost btn-sm justify-start" href="/api/handovers/{{ handover.id }}/report"
+             target="_blank" rel="noopener">Print report</a>
+          {% if handover.status == "closed_with_gaps" %}
+          <button type="button" class="btn btn-ghost btn-sm justify-start" data-action="reopen-case">Reopen case</button>
+          {% elif handover.status not in ("cancelled", "completed") %}
+          <button type="button" class="btn btn-ghost btn-sm justify-start" data-action="close-case">Close with gaps</button>
+          {% endif %}
+          <button type="button" class="btn btn-ghost btn-sm justify-start text-destructive" data-action="cancel"
+                  {% if handover.status in ("cancelled", "completed", "closed_with_gaps") %}disabled{% endif %}>
+            Cancel case
+          </button>
+        </div>
+      </details>
+    </header>
 
     {% if handover.status == "cancelled" %}
-    <div class="alert alert-warning mb-6" role="status">
-      <p class="alert-title">This case is cancelled</p>
-      <p class="alert-description">No further operation can be recorded. The case stays visible for the audit trail.</p>
+    <div class="alert alert-warning mb-4" role="status">
+      <p class="alert-title">Cancelled</p>
+      <p class="alert-description hidden sm:block">No further operation can be recorded. The case stays in the audit trail.</p>
     </div>
     {% elif handover.status == "completed" %}
-    <div class="alert alert-success mb-6" role="status">
-      <p class="alert-title">Case complete</p>
-      <p class="alert-description">Every operation passed. The audit trail holds the evidence.</p>
+    <div class="alert alert-success mb-4" role="status">
+      <p class="alert-title">Complete</p>
+      <p class="alert-description hidden sm:block">Every operation passed. The audit trail holds the evidence.</p>
     </div>
     {% elif handover.status == "closed_with_gaps" %}
-    <div class="alert alert-warning mb-6" role="status">
+    <div class="alert alert-warning mb-4" role="status">
       <p class="alert-title">Closed with gaps</p>
       <p class="alert-description">
-        {{ handover.closed_gaps | length }} operation{{ "" if handover.closed_gaps | length == 1 else "s" }} were not done.
-        Reopen the case to finish them.
+        {{ handover.closed_gaps | length }} operation{{ "" if handover.closed_gaps | length == 1 else "s" }}
+        <span class="hidden sm:inline">were not done. Reopen the case to finish them.</span>
+        <span class="sm:hidden">not done.</span>
       </p>
     </div>
     {% elif stalled_by_age_message %}
-    <div class="alert alert-warning mb-6" role="status">
-      <p class="alert-title">This case is stalled</p>
+    <div class="alert alert-warning mb-4" role="status">
+      <p class="alert-title">Stalled</p>
       <p class="alert-description">{{ stalled_by_age_message }}</p>
     </div>
     {% elif missing %}
-    <div class="alert alert-warning mb-6" role="status">
+    <div class="alert alert-warning mb-4" role="status">
       <p class="alert-title">Still missing</p>
       <p class="alert-description">
-        {{ missing | length }} operation{{ "" if missing | length == 1 else "s" }} left.
-        Next: {{ missing[0].hint }}
+        <span class="hidden sm:inline">{{ missing | length }} left · Next: {{ stage_label(missing[0].stage) }}</span>
+        <span class="sm:hidden">Next: {{ stage_label(missing[0].stage) }}</span>
       </p>
     </div>
     {% endif %}
 
-    <div class="grid items-start gap-6 lg:grid-cols-[1.15fr_1fr]">
+    <div class="grid items-start gap-5 lg:grid-cols-[1.2fr_1fr]">
       <!-- Operations --------------------------------------------------- -->
       <section aria-labelledby="operations-heading">
-        <h2 id="operations-heading" class="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Operations
-        </h2>
+        <div class="mb-2 flex items-baseline justify-between gap-2">
+          <h2 id="operations-heading" class="text-sm font-semibold">Operations</h2>
+          <span class="text-xs tabular-nums text-muted-foreground">{{ passed_count }}/{{ stages | length }} passed</span>
+        </div>
         <ol class="flex flex-col gap-2" id="stage-list">
           {% for stage in stages %}
-          <li class="card p-3" data-stage="{{ stage.stage }}">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-              <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-2">
-                  <span class="font-mono text-xs text-muted-foreground">{{ loop.index }}</span>
-                  <h3 class="text-sm font-medium">{{ stage_label(stage.stage) }}</h3>
-                  <span data-stage-status>{{ stage_badge(stage.status) }}</span>
-                </div>
-                {% if stage.reason %}
-                <p class="mt-1 text-xs text-destructive" data-stage-reason>{{ stage.reason }}</p>
-                {% endif %}
-                {% if stage.stage in ("device_prepared", "user_signed_in") %}
-                <p class="mt-1 text-xs text-muted-foreground">Manual confirmation. The system does not collect evidence or values for this operation.</p>
-                {% elif stage.stage == "report_printed" %}
-                <p class="mt-1 text-xs text-muted-foreground">Print and review the report, then confirm this operation.</p>
-                {% elif stage.stage == "user_signed" %}
-                <p class="mt-1 text-xs text-muted-foreground">Manual confirmation after the paper copy is signed.</p>
-                {% endif %}
-                {% if stage.stage == "software_check" and stage.status == "pending" and stage.detail.message %}
-                <p class="mt-1 text-xs text-muted-foreground" data-stage-reason>{{ stage.detail.message }}</p>
-                {% endif %}
-                {% if stage.stage == "agent_report" %}
-                {% if agent_report %}
-                {% set activation = agent_report.get("windows_activation") or {} %}
-                <div class="mt-3 rounded-md border bg-muted/20 p-3 text-xs" data-agent-report-evidence>
-                  <h4 class="mb-2 font-semibold">Values received from this device</h4>
-                  <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-                    <dt class="text-muted-foreground">Serial</dt><dd class="font-mono" dir="ltr">{{ agent_report.get("serial") or "—" }}</dd>
-                    <dt class="text-muted-foreground">Computer</dt><dd>{{ agent_report.get("manufacturer") or "—" }} {{ agent_report.get("model") or "" }}</dd>
-                    <dt class="text-muted-foreground">CPU</dt><dd>{{ agent_report.get("cpu") or "—" }}</dd>
-                    <dt class="text-muted-foreground">RAM</dt><dd>{{ agent_report.get("ram_gb") or "—" }}{% if agent_report.get("ram_gb") %} GB{% endif %}</dd>
-                    <dt class="text-muted-foreground">Operating system</dt><dd>{{ agent_report.get("os_name") or "—" }} {{ agent_report.get("os_version") or "" }}</dd>
-                    <dt class="text-muted-foreground">Console user</dt><dd class="font-mono" dir="ltr">{{ agent_report.get("console_user") or agent_report.get("username") or "—" }}</dd>
-                    <dt class="text-muted-foreground">Windows activation</dt><dd>{{ activation.get("status") or "Not reported" }} ({{ activation.get("status_code", "—") }})</dd>
-                  </dl>
-                  <h5 class="mt-3 mb-1 font-medium">Disks</h5>
-                  {% if agent_report.get("disks") %}
-                  <ul class="list-disc pl-5">{% for disk in agent_report.get("disks") %}{% if disk is mapping %}<li>{{ disk.get("name") or "Disk" }} · {{ disk.get("size_gb") or "—" }} GB · {{ disk.get("type") or "type not reported" }}</li>{% else %}<li>{{ disk }}</li>{% endif %}{% endfor %}</ul>
-                  {% else %}<p>No disks reported.</p>{% endif %}
-                  <h5 class="mt-3 mb-1 font-medium">Required software</h5>
-                  {% if agent_report.get("software_checks") %}
-                  <ul class="list-disc pl-5">{% for check in agent_report.get("software_checks") %}{% if check is mapping %}<li>{{ check.get("name") or check.get("id") }} — {{ "Installed" if check.get("installed") else "Missing" }}{% if check.get("version") %} · {{ check.get("version") }}{% endif %}</li>{% else %}<li>{{ check }}</li>{% endif %}{% endfor %}</ul>
-                  {% else %}<p>No software checks were reported.</p>{% endif %}
-                </div>
-                {% else %}
-                <p class="mt-2 text-xs text-muted-foreground">No agent report is attached to this case yet. Start the linked device check below.</p>
-                {% endif %}
-                {% endif %}
-                <p class="mt-1 text-xs text-muted-foreground">
-                  {% if stage.actor %}{{ stage.actor }} · {% endif %}{{ stage.updated_at }}
-                </p>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                {% set retry = stage.status in ("failed", "not_done") %}
-                {% if stage.status != "passed" and case_open %}
+          {% set retry = stage.status in ("failed", "not_done") %}
+          {% set has_actions = stage.status != "passed" and case_open %}
+          {% set has_info = (stage.stage == "agent_report" and agent_report)
+                            or (stage.stage in ("device_prepared", "user_signed_in", "report_printed", "user_signed") and stage.status != "passed")
+                            or (stage.stage == "software_check" and stage.status == "pending" and stage.detail.message) %}
+          <li class="card px-3 py-2.5" data-stage="{{ stage.stage }}">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span class="hidden font-mono text-[0.7rem] text-muted-foreground sm:inline">{{ "%02d" | format(loop.index) }}</span>
+              <h3 class="min-w-0 flex-1 text-sm font-medium">{{ stage_label(stage.stage) }}</h3>
+              <span data-stage-status>{{ stage_badge(stage.status) }}</span>
+            </div>
+            {% if stage.reason %}
+            <p class="mt-1 text-xs text-destructive" data-stage-reason>{{ stage.reason }}</p>
+            {% endif %}
+
+            <div class="mt-2 flex flex-wrap items-start gap-2">
+              {% if has_actions %}
+              <details class="compact-actions group w-full md:w-auto" data-compact-actions open>
+                <summary class="btn btn-outline btn-sm md:hidden" aria-label="Actions for {{ stage_label(stage.stage) }}" title="Actions">
+                  <svg viewBox="0 0 24 24" fill="currentColor" class="size-4" aria-hidden="true">
+                    <circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>
+                  </svg>
+                </summary>
+                <div class="flex flex-wrap items-center gap-2 pt-2 md:pt-0">
                   {% if stage.stage in ("device_prepared", "user_signed_in", "report_printed", "user_signed") %}
                   {% set confirm_text = {
                     "device_prepared": "Confirm only if you personally checked that this device is prepared. No device evidence is collected for this operation.",
@@ -145,7 +125,7 @@
                     "user_signed": "Confirm only after the employee has signed the paper copy."
                   } %}
                   <button type="button" class="btn btn-default btn-sm" data-action="confirm-stage"
-                          data-stage="{{ stage.stage }}" data-confirm-message="{{ confirm_text[stage.stage] }}">{{ "Retry" if retry else "Confirm after checking" }}</button>
+                          data-stage="{{ stage.stage }}" data-confirm-message="{{ confirm_text[stage.stage] }}">{{ "Retry" if retry else "Confirm" }}</button>
                   {% elif stage.stage == "agent_report" %}
                   <a class="btn btn-outline btn-sm" href="/device-check?handover_id={{ handover.id }}">Start device check</a>
                   {% elif stage.stage == "software_check" %}
@@ -179,37 +159,94 @@
                   <button type="button" class="btn btn-ghost btn-sm" data-action="not-done"
                           data-stage="{{ stage.stage }}"
                           data-operation-title="{{ stage_label(stage.stage) }}">Not done</button>
-                {% endif %}
-              </div>
+                </div>
+              </details>
+              {% endif %}
+
+              {% if has_info %}
+              <details class="compact-actions group text-xs text-muted-foreground">
+                <summary class="btn btn-ghost btn-sm" aria-label="Details for {{ stage_label(stage.stage) }}" title="Details">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round" class="size-3.5 transition-transform group-open:rotate-180" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6"/>
+                  </svg>
+                </summary>
+                <div class="mt-2 flex flex-col gap-2">
+                  {% if stage.actor or stage.updated_at %}
+                  <p>{{ stage.actor or "System" }} · {{ stage.updated_at }}</p>
+                  {% endif %}
+                  {% if stage.stage in ("device_prepared", "user_signed_in") %}
+                  <p>Manual confirmation. The system does not collect evidence for this operation.</p>
+                  {% elif stage.stage == "report_printed" %}
+                  <p>Print and review the report, then confirm this operation.</p>
+                  {% elif stage.stage == "user_signed" %}
+                  <p>Manual confirmation after the paper copy is signed.</p>
+                  {% endif %}
+                  {% if stage.stage == "software_check" and stage.status == "pending" and stage.detail.message %}
+                  <p data-stage-reason>{{ stage.detail.message }}</p>
+                  {% endif %}
+                  {% if stage.stage == "agent_report" and agent_report %}
+                  {% set activation = agent_report.get("windows_activation") or {} %}
+                  <div class="rounded-md border bg-muted/20 p-3" data-agent-report-evidence>
+                    <h4 class="mb-2 font-semibold">Values received from this device</h4>
+                    <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                      <dt class="text-muted-foreground">Serial</dt><dd class="font-mono" dir="ltr">{{ agent_report.get("serial") or "—" }}</dd>
+                      <dt class="text-muted-foreground">Computer</dt><dd>{{ agent_report.get("manufacturer") or "—" }} {{ agent_report.get("model") or "" }}</dd>
+                      <dt class="text-muted-foreground">CPU</dt><dd>{{ agent_report.get("cpu") or "—" }}</dd>
+                      <dt class="text-muted-foreground">RAM</dt><dd>{{ agent_report.get("ram_gb") or "—" }}{% if agent_report.get("ram_gb") %} GB{% endif %}</dd>
+                      <dt class="text-muted-foreground">Operating system</dt><dd>{{ agent_report.get("os_name") or "—" }} {{ agent_report.get("os_version") or "" }}</dd>
+                      <dt class="text-muted-foreground">Console user</dt><dd class="font-mono" dir="ltr">{{ agent_report.get("console_user") or agent_report.get("username") or "—" }}</dd>
+                      <dt class="text-muted-foreground">Windows activation</dt><dd>{{ activation.get("status") or "Not reported" }} ({{ activation.get("status_code", "—") }})</dd>
+                    </dl>
+                    <h5 class="mt-3 mb-1 font-medium">Disks</h5>
+                    {% if agent_report.get("disks") %}
+                    <ul class="list-disc pl-5">{% for disk in agent_report.get("disks") %}{% if disk is mapping %}<li>{{ disk.get("name") or "Disk" }} · {{ disk.get("size_gb") or "—" }} GB · {{ disk.get("type") or "type not reported" }}</li>{% else %}<li>{{ disk }}</li>{% endif %}{% endfor %}</ul>
+                    {% else %}<p>No disks reported.</p>{% endif %}
+                    <h5 class="mt-3 mb-1 font-medium">Required software</h5>
+                    {% if agent_report.get("software_checks") %}
+                    <ul class="list-disc pl-5">{% for check in agent_report.get("software_checks") %}{% if check is mapping %}<li>{{ check.get("name") or check.get("id") }} — {{ "Installed" if check.get("installed") else "Missing" }}{% if check.get("version") %} · {{ check.get("version") }}{% endif %}</li>{% else %}<li>{{ check }}</li>{% endif %}{% endfor %}</ul>
+                    {% else %}<p>No software checks were reported.</p>{% endif %}
+                  </div>
+                  {% endif %}
+                </div>
+              </details>
+              {% endif %}
             </div>
           </li>
           {% endfor %}
         </ol>
       </section>
 
-      <!-- Right column ------------------------------------------------- -->
-      <div class="flex flex-col gap-4">
-        <section class="card" id="recipient-card" aria-labelledby="recipient-heading">
-          <div class="card-header">
+      <!-- Supporting panels --------------------------------------------- -->
+      <div class="flex flex-col gap-3">
+        <details class="board-disclosure group" id="recipient-card" aria-labelledby="recipient-heading"
+                 data-compact-panel {% if not handover.recipient_snipeit_id %}open{% endif %}>
+          <summary>
             <h2 id="recipient-heading" class="card-title text-sm">Recipient</h2>
-            <p class="card-description">Reported by the agent, then confirmed against Snipe-IT by the engineer.</p>
-          </div>
-          <div class="card-content flex flex-col gap-3">
+            <span class="flex items-center gap-2 text-xs text-muted-foreground">
+              {{ handover.recipient_snipeit_username or "Not confirmed" }}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" class="size-4 transition-transform group-open:rotate-180" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </span>
+          </summary>
+          <div class="flex flex-col gap-3 p-4 pt-3">
             <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-                <dt class="text-muted-foreground">Detected on device</dt>
+              <dt class="text-muted-foreground">Detected</dt>
               <dd class="font-mono text-xs" dir="ltr">{{ handover.recipient_reported_username or "—" }}</dd>
               <dt class="text-muted-foreground">Confirmed</dt>
               <dd class="font-mono text-xs" dir="ltr">{{ handover.recipient_snipeit_username or "—" }}</dd>
-              <dt class="text-muted-foreground">Confirmed by</dt>
-              <dd class="text-xs">{{ handover.recipient_confirmed_by or "—" }}</dd>
-              <dt class="text-muted-foreground">Confirmed at</dt>
-              <dd class="text-xs">{{ handover.recipient_confirmed_at or "—" }}</dd>
+              {% if handover.recipient_confirmed_by %}
+              <dt class="text-muted-foreground">By</dt>
+              <dd class="text-xs">{{ handover.recipient_confirmed_by }}</dd>
+              {% endif %}
             </dl>
             {% if detected_user %}
             <p class="text-xs text-muted-foreground" data-detected-user
                data-is-local="{{ 'true' if detected_user.is_local else 'false' }}"
                data-same-as-engineer="{{ 'true' if detected_user.same_as_engineer else 'false' }}">
-              Detected on device: <span class="font-mono" dir="ltr">{{ detected_user.domain ~ "\\" if detected_user.domain else "" }}{{ detected_user.sam }}</span>
+              On device: <span class="font-mono" dir="ltr">{{ detected_user.domain ~ "\\" if detected_user.domain else "" }}{{ detected_user.sam }}</span>
             </p>
             {% if detected_user.same_as_engineer %}
             <div class="alert alert-warning" role="status">
@@ -218,7 +255,7 @@
             </div>
             {% endif %}
             {% if detected_user.is_local %}
-            <p class="text-xs text-muted-foreground" role="status">Cannot determine a domain user on this device — search manually.</p>
+            <p class="text-xs text-muted-foreground" role="status">Cannot determine a domain user — search manually.</p>
             {% endif %}
             {% endif %}
 
@@ -234,24 +271,29 @@
               Not in Snipe-IT
             </button>
           </div>
-        </section>
+        </details>
 
-        <section class="card" aria-labelledby="snipeit-heading">
-          <div class="card-header">
+        <details class="board-disclosure group" aria-labelledby="snipeit-heading" data-compact-panel>
+          <summary>
             <h2 id="snipeit-heading" class="card-title text-sm">Snipe-IT</h2>
-            <p class="card-description">Checkout the new device to the confirmed recipient. Their currently assigned devices appear below for optional check-in.</p>
-          </div>
-          <div class="card-content flex flex-col gap-4">
+            <span class="flex items-center gap-2 text-xs text-muted-foreground">
+              {{ "Checked out" if handover.stages | selectattr("stage", "equalto", "checkout") | selectattr("status", "equalto", "passed") | list else "Checkout pending" }}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" class="size-4 transition-transform group-open:rotate-180" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </span>
+          </summary>
+          <div class="flex flex-col gap-3 p-4 pt-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p class="text-xs text-muted-foreground">New device</p>
                 <p class="font-mono text-sm" dir="ltr">{{ handover.device_serial }}</p>
                 {% if handover.snipeit_asset_tag %}
-                <p class="text-xs text-muted-foreground">Asset tag {{ handover.snipeit_asset_tag }}</p>
+                <p class="text-xs text-muted-foreground">Asset {{ handover.snipeit_asset_tag }}</p>
                 {% endif %}
               </div>
               <div class="flex flex-wrap gap-2">
-                <button type="button" class="btn btn-outline btn-sm" data-action="preview">Refresh assigned devices</button>
+                <button type="button" class="btn btn-outline btn-sm" data-action="preview">Refresh devices</button>
                 <button type="button" class="btn btn-default btn-sm" data-action="checkout">Checkout</button>
               </div>
             </div>
@@ -259,36 +301,36 @@
             <div id="preview-panel" class="hidden rounded-md border p-3 text-sm" aria-live="polite"></div>
 
             <div>
-              <p class="text-xs font-medium text-muted-foreground">Devices currently assigned to the confirmed recipient</p>
+              <p class="text-xs font-medium text-muted-foreground">Assigned to the recipient</p>
               <div id="recipient-devices" class="mt-2 flex flex-col gap-2">
-                <p class="text-sm text-muted-foreground">
-                  Confirm the recipient above to load their currently assigned devices.
-                </p>
+                <p class="text-sm text-muted-foreground">Confirm the recipient to load their devices.</p>
               </div>
             </div>
           </div>
-        </section>
+        </details>
 
-        <section class="card" aria-labelledby="sheet-heading">
-          <div class="card-header">
+        <details class="board-disclosure group" aria-labelledby="sheet-heading" data-compact-panel>
+          <summary>
             <h2 id="sheet-heading" class="card-title text-sm">Signed sheet</h2>
-            <p class="card-description">The paper sheet is the legal record; the scan is the evidence copy.</p>
-          </div>
-          <div class="card-content flex flex-col gap-3">
+            <span class="flex items-center gap-2 text-xs text-muted-foreground">
+              {{ "Scan attached" if handover.documents else "No scan" }}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" class="size-4 transition-transform group-open:rotate-180" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </span>
+          </summary>
+          <div class="flex flex-col gap-3 p-4 pt-3">
             {% if handover.documents %}
             {% set document = handover.documents | last %}
             <p class="text-xs text-muted-foreground">
-              Attached: <span class="font-medium">{{ document.original_name }}</span>
-              · {{ document.size_bytes }} bytes
+              {{ document.original_name }} · {{ document.size_bytes }} bytes
               · SHA-256 <span class="font-mono">{{ document.sha256[:12] }}…</span>
             </p>
             <a class="btn btn-outline btn-sm self-start" href="/api/handovers/{{ handover.id }}/document">
               Download scan
             </a>
-            {% else %}
-            <p class="text-xs text-muted-foreground">No scan attached yet.</p>
             {% endif %}
-
             <form id="upload-form" class="flex flex-col gap-2">
               <label for="document-file" class="text-xs font-medium text-muted-foreground">
                 Scan (PDF, PNG or JPEG)
@@ -297,49 +339,49 @@
                      accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" />
               <button type="submit" class="btn btn-default btn-sm self-start">Attach scan</button>
             </form>
-
             <button type="button" class="btn btn-outline btn-sm self-start" data-action="push-document">
               Push to Snipe-IT
             </button>
           </div>
-        </section>
+        </details>
+
+        <details class="board-disclosure group" aria-labelledby="events-heading" data-compact-panel>
+          <summary>
+            <h2 id="events-heading" class="card-title text-sm">Events</h2>
+            <span class="flex items-center gap-2 text-xs text-muted-foreground">
+              Latest {{ events | length }}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" class="size-4 transition-transform group-open:rotate-180" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </span>
+          </summary>
+          <div class="p-4 pt-3">
+            <ol class="timeline" id="event-list">
+              {% for event in events %}
+              <li class="timeline-item">
+                <p class="text-xs text-muted-foreground">{{ event.at }} · {{ event.actor }}</p>
+                <p class="text-sm font-medium">{{ event.type }}</p>
+                {% if event.detail %}
+                <pre class="mt-1 overflow-x-auto text-xs text-muted-foreground">{{ event.detail | tojson(indent=2) }}</pre>
+                {% endif %}
+              </li>
+              {% else %}
+              <li class="text-sm text-muted-foreground">No events yet.</li>
+              {% endfor %}
+            </ol>
+            <a class="mt-3 inline-block text-xs text-muted-foreground underline-offset-4 hover:underline"
+               href="/cases/{{ handover.id }}/history">Full history ({{ event_total }})</a>
+          </div>
+        </details>
       </div>
     </div>
-
-    <!-- Events --------------------------------------------------------- -->
-    <section class="card mt-6" aria-labelledby="events-heading">
-      <div class="card-header">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="events-heading" class="card-title text-sm">Events</h2>
-          <a class="text-xs text-muted-foreground underline-offset-4 hover:underline"
-             href="/cases/{{ handover.id }}/history">
-            Full history ({{ event_total }})
-          </a>
-        </div>
-        <p class="card-description">The five latest events, newest last.</p>
-      </div>
-      <div class="card-content">
-        <ol class="timeline" id="event-list">
-          {% for event in events %}
-          <li class="timeline-item">
-            <p class="text-xs text-muted-foreground">{{ event.at }} · {{ event.actor }}</p>
-            <p class="text-sm font-medium">{{ event.type }}</p>
-            {% if event.detail %}
-            <pre class="mt-1 overflow-x-auto text-xs text-muted-foreground">{{ event.detail | tojson(indent=2) }}</pre>
-            {% endif %}
-          </li>
-          {% else %}
-          <li class="text-sm text-muted-foreground">No events yet.</li>
-          {% endfor %}
-        </ol>
-      </div>
-    </section>
   </main>
 
-  <footer class="border-t px-4 py-4">
+  <footer class="hidden border-t px-4 py-4 sm:block">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-      <span>Handover Portal</span>
-      <span>Every Snipe-IT write is explicit, verified and recorded in the event trail.</span>
+      <span>H-Caliper</span>
+      <span>Every Snipe-IT write is explicit, verified and recorded.</span>
     </div>
   </footer>
 </div>
