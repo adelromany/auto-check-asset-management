@@ -20,8 +20,9 @@ The UI is server-rendered Jinja + vanilla JS, styled by Tailwind v4 with the sha
 - UIX-10 Forms are a single column. Group fields with whitespace rather than nested boxes.
 - UIX-20 `/dashboard` is the KPI overview; `/cases` shows the filters and one row per case; `/new` is the registration form; `/cases/{id}` is the case board with the operation checklist, recipient, Snipe-IT devices, signed sheet and event timeline; `/cases/{id}/history` is the full audit trail; `/device-check` is the agent device check.
 - UIX-21 The printable report includes an explicit `[Company legal text goes here]` placeholder until the owner supplies approved wording; it must not invent legal claims.
-- UIX-22 The case board stays calm: visible words are budgeted at 220 (1440 px), 160 (768 px) and 80 (390 px). Supporting panels and per-operation actions are disclosures; the board opens actions on desktop and keeps them collapsed on small screens. The audit trail is one click away rather than printed on the board.
+- UIX-22 The case board stays calm via a 3-zone architecture: Sticky Passport (left), 3-lane Board (center), and Side-sheet Drawer (right). Visible words are strictly budgeted at 220 (1440 px), 160 (768 px), and 80 (390 px). Supporting evidence, secondary inputs, and per-operation forms live inside the drawer, keeping the board tranquil and readable at all viewports.
 - UIX-23 The accent is the `b_labs` teal and the neutrals are charcoal in both themes. Status colours (success, warning, destructive) stay semantic and always carry text, never colour alone.
+- UIX-24 Maintenance case boards dynamically present 3 lanes (Intake, Status, Transit) with 5 tiles, displaying transit states, vendor assignment, and turnaround/overdue indicators clearly in both list and board views.
 
 ## States and feedback
 - UIX-11 Every list/table has three distinct states: loading (skeleton or spinner), empty (message with a next action), populated.

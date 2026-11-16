@@ -1,7 +1,7 @@
 # 05 — Business Principles
 
 ## Vocabulary (use exactly these words in code, API, DB, UI)
-- BIZ-01 **Handover**: one case of giving one device to one employee. **Checkout**: assign an asset to a user in Snipe-IT. **Checkin**: return an asset from a user in Snipe-IT. **Recipient**: the employee receiving the device. **Engineer**: the IT person performing the handover (SSO identity). **Operation**: one recordable step of a case. The old word **Stage** remains an alias in code and API paths.
+- BIZ-01 **Handover**: one case of giving one device to one employee. **Checkout**: assign an asset to a user in Snipe-IT. **Checkin**: return an asset from a user in Snipe-IT. **Recipient**: the employee receiving the device. **Engineer**: the IT person performing the handover (SSO identity). **Operation**: one recordable step of a case. The old word **Stage** remains an alias in code and API paths. **Maintenance case**: one case of tracking a device through repair and maintenance. **Vendor**: a company responsible for repairing devices (synonym of destination in API and storage). **Maintenance state**: derived device state among `needs_maintenance`, `in_maintenance`, and `returned`.
 
 ## Principles
 - BIZ-02 Snipe-IT is the system of record for assignments. The portal stores workflow state and evidence only. It is not a second asset inventory.
@@ -13,6 +13,9 @@
 ## The ten handover operations (reading order, not a gate)
 `device_prepared` → `user_signed_in` → `agent_report` → `software_check` → `recipient_check` → `checkout` → `report_printed` → `user_signed` → `document_scanned` → `document_pushed`.
 
+## The five maintenance operations (grouped into Intake, Status, Transit)
+`received` → `diagnosis` → `snipeit_status` → `sent_out` → `returned`.
+
 BIZ-19 Operations are independent. The arrows above, and the `RECOMMENDED_AFTER` map, are advice only: any operation can be recorded at any time. Starting an operation before a recommended predecessor is allowed and stores an `advice`/`performed_before` note on that outcome. Nothing returns "Waiting for …".
 
 ## Rules
@@ -21,6 +24,9 @@ BIZ-19 Operations are independent. The arrows above, and the `RECOMMENDED_AFTER`
 - BIZ-08 The recipient is the Snipe-IT user explicitly confirmed by the engineer. If the user does not exist in Snipe-IT, `recipient_check` is `failed` ("Recipient not found in Snipe-IT"); other operations can still run and the dashboard names the gap. The portal never creates users.
 - BIZ-09 The signed sheet is attached to the DEVICE (the Snipe-IT asset), never to the user. It does not wait for the recipient or the paper signature: `document_pushed` needs only the stored scan and an existing asset. If the asset serial is unknown in Snipe-IT, it is `failed` with that reason.
 - BIZ-20 `not_done` is an explicit engineer decision with a mandatory reason (3–300 characters) and stays visible as a gap. `failed` means the attempt was made and can be retried. A case can be `closed_with_gaps` only after typing the literal `CLOSE`; its gap list is stored, and only such a case can be reopened. Neither `failed` nor `not_done` blocks another operation.
+- BIZ-21 Maintenance states are derived solely from transit operations: `returned` passed yields `returned`; `sent_out` passed yields `in_maintenance`; otherwise `needs_maintenance`. Failed or not-done attempts never advance the device state.
+- BIZ-22 Turnaround time is calculated as `returned_date - sent_date` in days. A case is overdue when it is not yet returned and `today > due_date`, where due date is `expected_return_date` or defaults to 14 days after `sent_date`.
+- BIZ-23 Governed lists: repair destinations and vendors (`FixTech`) and diagnosis categories (`Screen`, `Battery`, `Keyboard`, `Motherboard`, `Software`, `Other`) are governed database lists and never hardcoded strings.
 - BIZ-10 If the detected recipient equals the engineer's own account, the portal warns (the script may have run elevated) and forces an explicit choice.
 - BIZ-11 An asset assigned to someone else is never taken over silently: stage 5 fails and names the current holder.
 - BIZ-12 Old devices of the recipient are checked in only by an explicit per-device engineer decision (a device may be kept, for example during a temporary swap).

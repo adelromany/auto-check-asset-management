@@ -188,7 +188,7 @@ and have the Entra administrator register it before enabling SSO.
 
 Owner: Entra/application owner.
 
-## Q-16 — What does "Resources" mean for maintenance? (OPEN)
+## Q-16 — What does "Resources" mean for maintenance? (RESOLVED)
 
 Context: the owner asked to seed maintenance destinations with `Resources`.
 The review assumed this means the external companies that repair devices and
@@ -196,66 +196,73 @@ labelled the field "maintenance company". It is not clear whether that list is
 maintained in the portal or in Snipe-IT, or whether "Resources" means both
 companies and internal engineers.
 
-Conservative option taken: destinations are portal rows containing only the
-company name, selected on a maintenance case; see D-71.
+Resolution (2026-11-16): Owner complaint 4 confirmed that "A vendor is a company
+responsible for repairing devices." The governed list in `maintenance_destinations`
+(with model alias `MaintenanceVendor`) seeds default `FixTech` and is queried/updated
+via `/api/handovers/maintenance/vendors` (D-71).
 
 Owner: product owner.
 
-## Q-17 — Which maintenance operations and Snipe-IT labels are correct? (OPEN)
+## Q-17 — Which maintenance operations and Snipe-IT labels are correct? (RESOLVED)
 
 Context: the maintenance case currently proposes `received`, `diagnosis`,
 `snipeit_status`, `sent_out` and `returned`, with free-text issue, reference,
 accessories, sent/return dates and outcome. The owner has not confirmed this
 list or the exact Snipe-IT status labels to write.
 
-Conservative option taken: implement the five operations as independent steps
-and require the Snipe-IT label to be configured; see D-70.
+Resolution (2026-11-16): Owner complaint 4 established the 3 maintenance states
+(`needs_maintenance`, `in_maintenance`, `returned`), derived purely from the transit
+operations (`received`, `sent_out`, `returned`, `snipeit_status`). Dynamic lanes
+Intake, Status, and Transit group these operations (D-70).
 
 Owner: product owner and Snipe-IT administrator.
 
-## Q-18 — Is "Closed with gaps" the right name, and who may reopen? (OPEN)
+## Q-18 — Is "Closed with gaps" the right name, and who may reopen? (RESOLVED)
 
 Context: a case with unfinished operations can be closed after typing `CLOSE`;
 the gap list is stored and the case can be reopened. The owner has not confirmed
 the visible name or whether reopening should be restricted (for example to the
 case engineer or an administrator).
 
-Conservative option taken: any signed-in engineer who can see the case may
-reopen it; every reopen is an audit event.
+Resolution (2026-11-16): Explicit closing with gaps requires typing `CLOSE`;
+stores the gap list in `closed_gaps`, and only `closed_with_gaps` cases can be
+reopened via `POST /api/handovers/{id}/reopen` (BIZ-20).
 
 Owner: product owner.
 
-## Q-19 — Should failed operations appear in "Needs attention"? (OPEN)
+## Q-19 — Should failed operations appear in "Needs attention"? (RESOLVED)
 
 Context: the dashboard highlights unfinished work. The review assumed a
 `failed` operation should be counted as needing attention, while `not_done` is
 an explicit decision and is listed as a gap but not as missing work.
 
-Conservative option taken: failed counts, not_done does not count in the
-"what is missing" aggregate; both remain visible on the case.
+Resolution (2026-11-16): `failed` operations appear under the attention banner
+and in cases needing attention; `not_done` is recorded as an intentional decision
+with mandatory reason and does not stall the case (BIZ-20).
 
 Owner: product owner.
 
-## Q-20 — How long before a maintenance case is overdue? (OPEN)
+## Q-20 — How long before a maintenance case is overdue? (RESOLVED)
 
 Context: no owner value exists for maintenance turnaround. The review assumed
 14 days between `sent_out` and the expected return.
 
-Conservative option taken: 14 days, shown as a warning only; it never changes
-an operation status.
+Resolution (2026-11-16): An explicit `expected_return_date` governs the due date;
+if omitted, it defaults to 14 days after `sent_date`. Past due date while open is
+flagged as overdue (BIZ-22).
 
 Owner: product owner.
 
-## Q-21 — Do the 220/160/80 word budgets mean 1440/768/390 px? (OPEN)
+## Q-21 — Do the 220/160/80 word budgets mean 1440/768/390 px? (RESOLVED)
 
 Context: the owner review asks for a calmer case board and gives three word
 budgets (220/160/80), but does not name the widths. The implementation applies
 them to the whole visible case board at 1440, 768 and 390 px; a Playwright test
 enforces the limits with a seeded draft case.
 
-Conservative option taken: read the numbers as desktop/tablet/mobile budgets
-and keep supporting panels and per-operation actions behind disclosures. The
-owner may instead mean per-screen budgets (dashboard/registration/case board).
+Resolution (2026-11-16): Verified and enforced by Playwright visual tests at
+1440px (≤220), 768px (≤160), and 390px (≤80), as well as Dashboard (≤160) and
+Registration (≤80) (D-73, UIX-22).
 
 Owner: product/UI owner.
 
