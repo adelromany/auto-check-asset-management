@@ -4,6 +4,7 @@ import asyncio
 import os
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -12,8 +13,11 @@ from alembic.config import Config
 from sqlalchemy import inspect, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.orm import selectinload
 
 from app.db.models.handover import Handover
+from app.db.models.maintenance import MaintenanceInfo
+from app.repositories import events as events_module
 from app.repositories.events import EventRepository
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -23,6 +27,9 @@ EXPECTED_TABLES = {
     "agent_reports",
     "documents",
     "events",
+    "maintenance_destinations",
+    "diagnosis_categories",
+    "maintenance_info",
 }
 
 
@@ -143,6 +150,35 @@ async def test_second_active_handover_for_same_serial_is_rejected(
         await engine.dispose()
 
 
+async def test_migrated_database_loads_a_case_with_maintenance(
+    sqlite_url: str,
+) -> None:
+    """0004 must match the ORM: a case page eagerly loads this relationship."""
+    await asyncio.to_thread(_upgrade, sqlite_url)
+    engine = create_async_engine(sqlite_url)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with session_factory() as session:
+            handover = _handover("SN-MAINT", "draft")
+            handover.kind = "maintenance"
+            handover.maintenance = MaintenanceInfo(
+                reported_issue="Fan noise", destination_id=None
+            )
+            session.add(handover)
+            await session.commit()
+
+        async with session_factory() as session:
+            loaded = (
+                await session.execute(
+                    select(Handover).options(selectinload(Handover.maintenance))
+                )
+            ).scalars().one()
+            assert loaded.maintenance is not None
+            assert loaded.maintenance.reported_issue == "Fan noise"
+    finally:
+        await engine.dispose()
+
+
 async def test_events_are_append_only_and_ordered(sqlite_url: str) -> None:
     await asyncio.to_thread(_upgrade, sqlite_url)
     engine = create_async_engine(sqlite_url)
@@ -174,6 +210,46 @@ async def test_events_are_append_only_and_ordered(sqlite_url: str) -> None:
                 "handover_created",
                 "stage_confirmed",
             ]
+    finally:
+        await engine.dispose()
+
+
+async def test_events_written_in_the_same_instant_stay_ordered(
+    sqlite_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await asyncio.to_thread(_upgrade, sqlite_url)
+    frozen = datetime(2030, 1, 1, 12, 0, tzinfo=timezone.utc)
+
+    class FrozenClock(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[no-untyped-def]
+            return frozen
+
+    monkeypatch.setattr(events_module, "datetime", FrozenClock)
+    monkeypatch.setattr(events_module, "_last_event_at", None)
+
+    engine = create_async_engine(sqlite_url)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with session_factory() as session:
+            handover = _handover("SN-CLOCK", "draft")
+            session.add(handover)
+            await session.flush()
+
+            repository = EventRepository(session)
+            first = await repository.add(
+                handover_id=handover.id, actor="engineer@example.com", type="a"
+            )
+            second = await repository.add(
+                handover_id=handover.id, actor="engineer@example.com", type="b"
+            )
+            await session.commit()
+
+        assert first.at < second.at
+
+        async with session_factory() as session:
+            events = await EventRepository(session).list_for_handover(handover.id)
+            assert [event.type for event in events] == ["a", "b"]
     finally:
         await engine.dispose()
 

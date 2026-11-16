@@ -5,14 +5,34 @@ There is deliberately no update or delete method: events are the audit trail.
 
 from __future__ import annotations
 
+import threading
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.handover import Event
+
+_clock_lock = threading.Lock()
+_last_event_at: datetime | None = None
+
+
+def _next_event_at() -> datetime:
+    """Return a timestamp strictly later than any event written by this process.
+
+    The Windows system clock can return the same value for two consecutive
+    reads. Two events written in the same millisecond must still keep their
+    insertion order, so nudge the timestamp forward by one microsecond.
+    """
+    global _last_event_at
+    with _clock_lock:
+        now = datetime.now(timezone.utc)
+        if _last_event_at is not None and now <= _last_event_at:
+            now = _last_event_at + timedelta(microseconds=1)
+        _last_event_at = now
+        return now
 
 
 class EventRepository:
@@ -36,7 +56,7 @@ class EventRepository:
             actor=actor,
             type=type,
             detail=detail or {},
-            at=at or datetime.now(timezone.utc),
+            at=at or _next_event_at(),
         )
         self._session.add(event)
         await self._session.flush()
