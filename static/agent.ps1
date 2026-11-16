@@ -1,5 +1,5 @@
 # ==============================================================================
-# Snipe-IT Onboarding Agent — Windows
+# Handover Portal Agent — Windows
 # Phase 3: Hardware + Software inventory + Windows Activation status
 #
 # Called automatically by the web page. Paste the one-liner shown in
@@ -21,7 +21,7 @@ if (-not $ServerUrl -or -not $Code) {
 }
 
 Write-Host ""
-Write-Host "  Snipe-IT Onboarding Agent (Windows)" -ForegroundColor Cyan
+Write-Host "  Handover Portal Agent (Windows)" -ForegroundColor Cyan
 Write-Host "  Session : $Code" -ForegroundColor Cyan
 Write-Host "  Server  : $ServerUrl" -ForegroundColor Cyan
 Write-Host ""

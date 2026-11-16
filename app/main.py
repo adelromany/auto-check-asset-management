@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 def create_app() -> FastAPI:
     configure_logging()
     validate_startup_config()
-    application = FastAPI(title="Snipe-IT Onboarding", docs_url=None, redoc_url=None)
+    application = FastAPI(title=config.APP_NAME, docs_url=None, redoc_url=None)
     application.add_exception_handler(Exception, _internal_error)
     application.mount("/static", StaticFiles(directory="static"), name="static")
     # Added inner-to-outer: the session must exist before CSRF reads it, and

@@ -1,5 +1,5 @@
 /**
- * Snipe-IT Onboarding — Phase 3
+ * Handover Portal — Phase 3
  *
  * Flow:
  *  1. Page loads → request a session code from the server

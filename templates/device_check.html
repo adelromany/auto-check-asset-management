@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Device check — Handover Portal</title>
+
+  <link rel="icon" type="image/jpeg" href="/static/img/b_labs.jpeg" />
+
+  <link rel="stylesheet" href="/static/css/app.css?v=3" />
+
+  <!--
+    Applied before first paint so the page never flashes the wrong theme.
+    External file: the self-only CSP forbids inline script.
+  -->
+  <script src="/static/js/theme-init.js?v=1"></script>
+</head>
+<body class="min-h-screen bg-background text-foreground">
+<div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
+
+  <!-- ═══ Topbar ═══════════════════════════════════════════════════════ -->
+  {% include "partials/topbar.html" %}
+
+  <!-- ═══ Content ══════════════════════════════════════════════════════ -->
+  <main class="flex-1 px-4 py-6" id="device-check-page"
+        data-handover-id="{{ request.query_params.get('handover_id', '') }}">
+
+    {% if request.query_params.get('handover_id') %}
+    <div class="alert alert-info mb-4" role="status">
+      <p class="alert-title">Device check for this handover</p>
+      <p class="alert-description">The agent report will be attached to this case. When it finishes, return to the case to review the reported values.</p>
+      <div class="col-start-2 mt-4">
+        <a class="btn btn-outline btn-sm" href="/cases/{{ request.query_params.get('handover_id') }}">
+          <span aria-hidden="true">←</span>
+          <span>Return to case</span>
+        </a>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info mb-4" role="status">
+      <p class="alert-title">Not linked to a case</p>
+      <p class="alert-description">To update a case, start the device check from that case's Agent report operation.</p>
+      <div class="col-start-2 mt-4">
+        <a class="btn btn-outline btn-sm" href="/cases">
+          <span aria-hidden="true">←</span>
+          <span>Open cases</span>
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!--
+      The agent panel is the primary action of this page, so it spans the
+      full width: the one-liner command then fits on a single line instead
+      of wrapping.
+    -->
+    <div id="agent-slot"></div>
+
+    <div class="mt-6 grid items-start gap-6 lg:grid-cols-[1.05fr_1fr]">
+
+      <!-- ─── LEFT: everything the agent reported ────────────────────── -->
+      <div id="agent-sections" class="hidden flex-col gap-4"></div>
+
+      <!-- ─── RIGHT: browser data + Snipe-IT lookup ─────────────────── -->
+      <div class="flex flex-col gap-4">
+
+        <div id="browser-sections"></div>
+
+        <div id="snipeit-section" class="card overflow-hidden">
+          <div class="card-header border-b bg-muted/40 py-3">
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="card-title text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Snipe-IT record
+              </h2>
+              <span id="snipeit-api-status" class="api-status api-status-checking"
+                    role="img" aria-label="Checking Snipe-IT API connection"
+                    title="Checking Snipe-IT API connection"></span>
+            </div>
+          </div>
+          <div class="snipeit-body card-content py-4">
+            <p class="snipeit-looking flex items-center gap-2 text-sm text-muted-foreground">
+              <span class="size-1.5 rounded-full bg-muted-foreground"></span>
+              Waiting for the agent to report a serial number…
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ═══ Footer ═══════════════════════════════════════════════════════ -->
+  <footer class="border-t px-4 py-4">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <span>Device check</span>
+      <span>Browser data collected locally. Agent data sent directly to this server.</span>
+    </div>
+  </footer>
+
+</div>
+
+<script src="/static/js/theme.js?v=1"></script>
+<script src="/static/js/clipboard.js?v=1"></script>
+<script src="/static/app.js?v=7"></script>
+</body>
+</html>

@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import config
@@ -33,6 +34,7 @@ from app.domain.errors import HandoverNotFound
 from app.domain.handover_rules import stalled_by_age
 from app.domain.recipient_identity import detect_recipient
 from app.domain.stages import HandoverStatus
+from app.dto.dashboard import DashboardSummaryOut
 from app.security.csrf import get_or_create_token
 from app.services.dashboard import DashboardService
 from app.services.handovers import HandoverService
@@ -83,12 +85,20 @@ async def dashboard_page(
     if redirect is not None:
         return redirect
 
-    dashboard = DashboardService(session)
-    summary = await dashboard.summary()
-    recent = await dashboard.rows(page=1, page_size=DASHBOARD_RECENT)
-    attention = await dashboard.rows(
-        status=HandoverStatus.STALLED.value, page_size=DASHBOARD_ATTENTION
-    )
+    try:
+        dashboard = DashboardService(session)
+        summary = await dashboard.summary()
+        recent_page = await dashboard.rows(page=1, page_size=DASHBOARD_RECENT)
+        recent = recent_page.items
+        attention_page = await dashboard.rows(
+            status=HandoverStatus.STALLED.value, page_size=DASHBOARD_ATTENTION
+        )
+        attention = attention_page.items
+    except OperationalError:
+        summary = DashboardSummaryOut()
+        recent = []
+        attention = []
+
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
@@ -96,8 +106,8 @@ async def dashboard_page(
             "page_title": "Dashboard",
             "active_nav": "dashboard",
             "summary": summary,
-            "recent": recent.items,
-            "attention": attention.items,
+            "recent": recent,
+            "attention": attention,
             "status_rows": _status_rows(summary),
             "stall_hours": config.STALL_HOURS,
         },
@@ -272,17 +282,26 @@ def _device_check(request: Request):
     host = config.APP_HOST or f"http://{request.headers.get('host', 'localhost:8080')}"
     return templates.TemplateResponse(
         request=request,
-        name="index.html",
+        name="device_check.html",
         context={"app_host": host, "page_title": "Device check", "active_nav": "device"},
     )
 
 
 @router.get("/", response_class=HTMLResponse)
-async def device_check_home(request: Request):
+async def home_page(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+):
     redirect = _login_redirect(request)
     if redirect is not None:
         return redirect
-    return _device_check(request)
+
+    if request.query_params.get("handover_id"):
+        query = str(request.url.query)
+        target = f"/device-check?{query}" if query else "/device-check"
+        return RedirectResponse(target, status_code=307)
+
+    return await dashboard_page(request, session)
 
 
 @router.get("/device-check", response_class=HTMLResponse)

@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+APP_NAME = os.getenv("APP_NAME", "Handover Portal")
 SNIPEIT_URL = os.getenv("SNIPEIT_URL", "http://localhost:8081")
 SNIPEIT_TOKEN = os.getenv("SNIPEIT_TOKEN", "")
 SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL", "600"))  # 10 min default

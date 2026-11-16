@@ -516,8 +516,8 @@ async def test_device_check_page_is_available_under_both_urls(
     assert f'data-handover-id="{handover_id}"' in named.text
 
     legacy = await dashboard.client.get(f"/?handover_id={handover_id}")
-    assert legacy.status_code == 200
-    assert f'data-handover-id="{handover_id}"' in legacy.text
+    assert legacy.status_code == 307
+    assert legacy.headers["location"] == f"/device-check?handover_id={handover_id}"
 
 
 async def test_pages_escape_recipient_names(
