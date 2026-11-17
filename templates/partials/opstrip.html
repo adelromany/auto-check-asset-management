@@ -1,0 +1,21 @@
+{#-
+  The signature "operation strip": one round dot per operation, state icon
+  and a hover label. Used on every row, card and tile. Never colour alone:
+  each dot carries a glyph and a full state word in its title.
+-#}
+{% macro state_word(status) -%}
+  {%- if status == "passed" %}Done{% elif status == "failed" %}Failed{% elif status == "not_done" %}Not done{% else %}Pending{% endif -%}
+{%- endmacro %}
+
+{% macro opstrip(states, clickable=False, case_id=None) -%}
+<div class="opstrip" data-opstrip {% if clickable %}data-opstrip-clickable="true"{% endif %}>
+  {% for stage, status in states %}
+  <button type="button" class="opdot opdot-{{ status }}" data-opdot data-state="{{ status }}"
+          {% if clickable and case_id %}data-open-op="{{ stage }}" data-op-case="{{ case_id }}"{% else %}tabindex="-1" disabled{% endif %}
+          title="{{ stage.replace('_', ' ')|title }} — {{ state_word(status) }}">
+    <span class="opdot-glyph" aria-hidden="true">{% if status == "passed" %}✓{% elif status == "failed" %}✕{% elif status == "not_done" %}⊘{% else %}○{% endif %}</span>
+    <span class="sr-only">{{ stage.replace('_', ' ')|title }} — {{ state_word(status) }}</span>
+  </button>
+  {% endfor %}
+</div>
+{%- endmacro %}

@@ -44,6 +44,12 @@ DOCUMENTS_DIR = os.getenv("DOCUMENTS_DIR", "./data/documents")
 DOCUMENT_MAX_BYTES = int(os.getenv("DOCUMENT_MAX_BYTES", "10485760"))
 SNIPEIT_TIMEOUT_SECONDS = float(os.getenv("SNIPEIT_TIMEOUT_SECONDS", "10"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+# Snipe-IT status label names used when a maintenance device changes state.
+# Empty means "not configured": the UI notes it and records the snipeit_status
+# operation as not done (never blocking).
+SNIPEIT_STATUS_NEEDS_MAINTENANCE = os.getenv("SNIPEIT_STATUS_NEEDS_MAINTENANCE", "")
+SNIPEIT_STATUS_IN_MAINTENANCE = os.getenv("SNIPEIT_STATUS_IN_MAINTENANCE", "")
+SNIPEIT_STATUS_RETURNED = os.getenv("SNIPEIT_STATUS_RETURNED", "")
 STALL_HOURS = int(os.getenv("STALL_HOURS", "24"))
 REQUIRED_SOFTWARE_IDS = [
     item.strip().casefold()

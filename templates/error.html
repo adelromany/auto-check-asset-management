@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{#-
+  The friendly in-app error page (rule 5): one line on what happened, a Back
+  button, the request id. Never a raw JSON body on a browser navigation.
+-#}
+{% block content %}
+<div class="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center gap-4 text-center">
+  {% from "partials/logo.html" import logo %}
+  {{ logo(48, 12) }}
+  <h1 class="text-xl font-semibold tracking-tight">{{ headline }}</h1>
+  <p class="text-sm text-muted-foreground">
+    {% if detail %}{{ detail }}{% elif status == 404 %}This page does not exist.{% else %}The action could not be completed.{% endif %}
+  </p>
+  <div class="flex items-center gap-2">
+    <button type="button" data-back class="btn btn-default">Back</button>
+    <a href="/" class="btn btn-outline">Dashboard</a>
+  </div>
+  <p class="font-mono text-xs text-muted-foreground">Request <span data-request-id>{{ request_id }}</span></p>
+</div>
+{% endblock %}

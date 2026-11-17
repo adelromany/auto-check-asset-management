@@ -4,8 +4,10 @@ import logging
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import auth, config
@@ -36,6 +38,8 @@ def create_app() -> FastAPI:
     validate_startup_config()
     application = FastAPI(title=config.APP_NAME, docs_url=None, redoc_url=None)
     application.add_exception_handler(Exception, _internal_error)
+    application.add_exception_handler(StarletteHTTPException, _http_error)
+    application.add_exception_handler(RequestValidationError, _validation_error)
     application.mount("/static", StaticFiles(directory="static"), name="static")
     # Added inner-to-outer: the session must exist before CSRF reads it, and
     # the header middleware must wrap every response, including errors.
@@ -76,12 +80,88 @@ def create_app() -> FastAPI:
     return application
 
 
-async def _internal_error(request: Request, exc: Exception) -> JSONResponse:
+async def _internal_error(request: Request, exc: Exception) -> Response:
     logger.error("unhandled_request_error exception_type=%s", type(exc).__name__)
+    if _wants_html(request):
+        return _html_error(request, status=500, headline="Something went wrong")
     return JSONResponse(
         {"detail": "Internal server error", "request_id": request_id_var.get()},
         status_code=500,
     )
+
+
+def _wants_html(request: Request) -> bool:
+    """A browser navigation (Accept: text/html) gets an HTML error page.
+
+    API and fetch calls (Accept: */* or application/json) keep JSON errors.
+    """
+    accept = request.headers.get("accept", "")
+    first = accept.split(",")[0].strip().lower() if accept else ""
+    return first.startswith("text/html")
+
+
+def _html_error(request: Request, *, status: int, headline: str) -> HTMLResponse:
+    from app.routers.pages import templates
+
+    return templates.TemplateResponse(
+        request=request,
+        name="error.html",
+        context={
+            "page_title": headline,
+            "status": status,
+            "headline": headline,
+            "detail": "",
+            "request_id": request_id_var.get(),
+        },
+        status_code=status,
+    )
+
+
+async def _http_error(request: Request, exc: StarletteHTTPException) -> Response:
+    if _wants_html(request):
+        headlines = {
+            404: "Page not found",
+            403: "Not allowed",
+            401: "Sign-in required",
+            500: "Something went wrong",
+        }
+        return _html_error(
+            request,
+            status=exc.status_code,
+            headline=headlines.get(exc.status_code, "Something went wrong"),
+        )
+    detail = exc.detail
+    headers = getattr(exc, "headers", None)
+    return JSONResponse(
+        {"detail": detail},
+        status_code=exc.status_code,
+        headers=headers,
+    )
+
+
+async def _validation_error(request: Request, exc: RequestValidationError) -> Response:
+    if _wants_html(request):
+        return _html_error(
+            request, status=422, headline="The form had invalid values"
+        )
+    return JSONResponse(
+        {"detail": jsonable(exc.errors()), "request_id": request_id_var.get()},
+        status_code=422,
+    )
+
+
+def jsonable(errors: list) -> list:
+    """Validation errors contain exceptions; strip the non-JSON parts."""
+    safe = []
+    for error in errors:
+        safe.append(
+            {
+                key: error.get(key)
+                for key in ("loc", "msg", "type", "input")
+                if key in error
+            }
+        )
+    return safe
 
 
 app = create_app()

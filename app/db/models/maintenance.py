@@ -104,6 +104,8 @@ class MaintenanceInfo(Base):
     returned_date: Mapped[date | None] = mapped_column(Date)
     outcome: Mapped[str | None] = mapped_column(String(40))
     outcome_note: Mapped[str | None] = mapped_column(Text)
+    cost: Mapped[str | None] = mapped_column(String(100))
+    warranty: Mapped[str | None] = mapped_column(String(40))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

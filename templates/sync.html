@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{#-
+  Sync: the engineer stays in the portal on his own PC; the employee's PC
+  runs one short command. Start sync shows the code and commands; the
+  result arrives live; then it can be attached to a case.
+-#}
+{% block body_attrs %} data-app-host="{{ app_host }}"{% endblock %}
+{% block content %}
+<h1 class="sr-only">Sync</h1>
+<div class="stack-lg sync-page">
+  <p class="page-intro">Check a device without opening the portal on it</p>
+
+  <section id="sync-start" class="card sync-card">
+    <div class="card-content sync-center">
+      <button type="button" id="sync-start-button" class="btn btn-default btn-lg sync-start" data-primary-action>Start sync</button>
+      <p class="muted sync-hint">The device runs one command; the report lands here.</p>
+    </div>
+  </section>
+
+  <section id="sync-waiting" class="card hidden" aria-label="Waiting for the device">
+    <div class="card-content sync-center">
+      <p class="sync-code mono" id="sync-code" data-sync-code></p>
+      <p class="muted">Expires in <span class="mono" id="sync-countdown">--:--</span> · <button type="button" class="link-quiet" id="sync-cancel">Stop</button></p>
+      <div class="cmd-block">
+        <div class="cmd-label">Windows</div>
+        <pre class="cmd-pre mono" id="sync-cmd-windows"></pre>
+        <button type="button" class="btn btn-outline btn-sm copy-btn" data-copy-target="sync-cmd-windows">Copy</button>
+      </div>
+      <div class="cmd-block">
+        <div class="cmd-label">Linux / macOS</div>
+        <pre class="cmd-pre mono" id="sync-cmd-unix"></pre>
+        <button type="button" class="btn btn-outline btn-sm copy-btn" data-copy-target="sync-cmd-unix">Copy</button>
+      </div>
+      <div class="sync-waiting-indicator" data-waiting aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="muted" data-waiting-text>Waiting for the device…</p>
+    </div>
+  </section>
+
+  <section id="sync-result" class="card hidden" aria-label="Sync result">
+    <div class="card-content stack">
+      <div class="row-between">
+        <h2 class="card-title">Report</h2>
+        <span id="sync-result-serial" class="badge badge-secondary mono"></span>
+      </div>
+      <dl class="facts" id="sync-result-facts"></dl>
+      <ul class="software-list" id="sync-result-software"></ul>
+      <div class="attach-box">
+        <h3 class="drawer-sub">Attach to case</h3>
+        <div class="row-between wrap">
+          <input id="attach-search" class="input input-inline" placeholder="Search serial or recipient" maxlength="100">
+          <div class="row-actions">
+            <button type="button" class="btn btn-outline btn-sm" id="attach-create-handover">Create handover</button>
+            <button type="button" class="btn btn-outline btn-sm" id="attach-create-maintenance">Create maintenance</button>
+          </div>
+        </div>
+        <div id="attach-results" class="stack-sm"></div>
+      </div>
+      <div class="row-between">
+        <button type="button" class="btn btn-default" id="sync-again">Start another</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2 class="card-title">Recent syncs</h2></div>
+    <div class="card-content">
+      <ul class="recent-syncs" id="recent-syncs"></ul>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/clipboard.js" defer></script>
+<script src="/static/js/sync.js" defer></script>
+{% endblock %}

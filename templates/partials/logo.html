@@ -1,26 +1,10 @@
 {#-
-  App logo: b_labs mark.
-
-  Derived from static/img/b_labs.jpeg. The JPEG has a dark background (#1A1A1A),
-  so in light mode it sits on an ink-colored rounded chip to prevent raw edges.
+  Logo: the b_labs mark, shown whole (object-fit: contain, no crop) on an
+  ink chip so its dark background blends in light mode.
 -#}
-
-{% macro logo_mark(size=32, cls="") -%}
-<span class="inline-flex items-center justify-center rounded-[8px] bg-[var(--logo-bg)] p-0.5 overflow-hidden shrink-0 shadow-xs {{ cls }}" style="width: {{ size }}px; height: {{ size }}px;">
+{% macro logo(size=40, radius=10) -%}
+<span class="logo-chip" style="width: {{ size }}px; height: {{ size }}px; border-radius: {{ radius }}px;">
   <img src="/static/img/b_labs.jpeg" alt="b_labs" width="{{ size }}" height="{{ size }}"
-       class="h-full w-full rounded-[6px] object-cover" />
-</span>
-{%- endmacro %}
-
-
-{% macro logo_lockup(size=32, title="Handover Portal", subtitle="") -%}
-<span class="flex min-w-0 items-center gap-2.5">
-  {{ logo_mark(size) }}
-  <span class="flex min-w-0 flex-col leading-tight">
-    <span class="truncate text-sm font-semibold tracking-tight whitespace-nowrap">{{ title }}</span>
-    {% if subtitle %}
-    <span class="mt-0.5 hidden truncate text-xs text-muted-foreground sm:block">{{ subtitle }}</span>
-    {% endif %}
-  </span>
+       class="logo-img" style="border-radius: {{ radius - 2 }}px;" data-logo>
 </span>
 {%- endmacro %}

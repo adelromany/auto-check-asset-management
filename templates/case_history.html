@@ -1,76 +1,31 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-<head>
-  {% include "partials/page_head.html" %}
-</head>
-<body class="min-h-screen bg-background text-foreground md:pl-16 pb-16 md:pb-0 transition-[padding] duration-200">
-{% from "partials/labels.html" import handover_badge, kind_label %}
-{% include "partials/rail.html" %}
-{% include "partials/bottom_nav.html" %}
-
-<div class="mx-auto flex min-h-screen w-full flex-col">
-  {% include "partials/topbar.html" %}
-
-  <main class="flex-1 px-4 py-6 max-w-4xl w-full mx-auto">
-    <div class="mb-4">
-      <a href="/cases/{{ handover.id }}" class="text-xs text-muted-foreground underline-offset-4 hover:underline">
-        ← Back to case
-      </a>
-    </div>
-
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-3 pb-4 border-b">
-      <div>
-        <div class="flex items-center gap-2">
-          <h1 class="font-mono text-xl font-bold tracking-tight" dir="ltr">{{ handover.device_serial }}</h1>
-          {{ handover_badge(handover.status) }}
-          <span class="badge badge-outline text-xs">{{ kind_label(handover.kind) }}</span>
-        </div>
-        <p class="text-xs text-muted-foreground mt-1">Audit trail · append-only history</p>
-      </div>
-      <span class="text-xs font-mono text-muted-foreground">{{ timeline_count }} events</span>
-    </div>
-
-    <section aria-label="History Timeline" class="space-y-6">
-      {% for group in timeline_groups %}
-      <div class="space-y-3">
-        <h2 class="text-xs font-semibold text-muted-foreground sticky top-16 bg-background/90 py-1 backdrop-blur uppercase tracking-wider">
-          {{ group.date }}
-        </h2>
-
-        <ol class="relative border-l border-border/60 ml-3 space-y-4">
-          {% for item in group.entries %}
-          <li class="ml-4 space-y-1">
-            <div class="absolute -left-1.5 mt-1.5 size-3 rounded-full border border-background bg-primary"></div>
-            <div class="flex items-baseline justify-between gap-2">
-              <p class="text-sm font-medium text-foreground">{{ item.sentence }}</p>
-              <span class="text-[11px] font-mono text-muted-foreground shrink-0">{{ item.time }}</span>
-            </div>
-            <p class="text-xs text-muted-foreground">
-              By <span class="font-medium text-foreground" title="{{ item.actor }}">{{ item.actor_display }}</span>
-            </p>
-
-            {% if item.details_json %}
-            <details class="text-xs mt-1">
-              <summary class="cursor-pointer text-muted-foreground hover:text-foreground text-[11px] select-none">
-                Technical details
-              </summary>
-              <pre class="mt-1.5 p-2 rounded-md bg-muted/40 text-[10px] font-mono overflow-x-auto text-muted-foreground select-all">{{ item.details_json }}</pre>
-            </details>
-            {% endif %}
-          </li>
-          {% endfor %}
-        </ol>
-      </div>
-      {% else %}
-      <div class="rounded-xl border p-8 text-center text-xs text-muted-foreground">
-        No events recorded yet.
-      </div>
-      {% endfor %}
-    </section>
-  </main>
+{% extends "base.html" %}
+{#-
+  The append-only case history: one human sentence per event line.
+-#}
+{% block content %}
+<h1 class="page-h1">History · <span class="mono">{{ handover.device_serial }}</span></h1>
+<div class="row-between wrap">
+  <a href="/{{ 'maintenance' if handover.kind == 'maintenance' else 'handovers' }}/{{ handover.id }}" class="link-quiet">← Back to case</a>
+  <span class="badge badge-secondary">{{ timeline_count }} events</span>
 </div>
 
-<script src="/static/js/theme.js?v=1"></script>
-<script src="/static/js/shell.js?v=1"></script>
-</body>
-</html>
+{% for group in timeline_groups %}
+<section class="history-day">
+  <h2 class="history-date">{{ group.date }}</h2>
+  <ul class="timeline">
+    {% for entry in group.entries %}
+    <li class="timeline-item">
+      <span class="history-time mono">{{ entry.time }}</span>
+      <span class="history-sentence">{{ entry.sentence }}</span>
+      <span class="history-actor muted">{{ entry.actor }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% else %}
+<div class="empty" data-empty>
+  <span>Nothing has happened yet.</span>
+  <a href="/{{ 'maintenance' if handover.kind == 'maintenance' else 'handovers' }}/{{ handover.id }}" class="btn btn-outline btn-sm">Back to case</a>
+</div>
+{% endfor %}
+{% endblock %}

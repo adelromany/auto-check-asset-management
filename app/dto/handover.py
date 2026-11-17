@@ -15,6 +15,12 @@ from pydantic import (
 )
 
 
+class AgentReportAttach(BaseModel):
+    """Body of ``POST /api/handovers/{id}/attach-report`` (the sync flow)."""
+
+    payload: dict[str, Any]
+
+
 class HandoverCreate(BaseModel):
     """``POST /api/handovers`` body."""
 
@@ -114,6 +120,8 @@ class MaintenanceInfoOut(BaseModel):
     is_overdue: bool = False
     outcome: str | None = None
     outcome_note: str | None = None
+    cost: str | None = None
+    warranty: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -189,6 +197,8 @@ class MaintenanceUpdate(BaseModel):
     returned_date: date | None = None
     outcome: str | None = None
     outcome_note: str | None = None
+    cost: str | None = None
+    warranty: str | None = None
 
 
 class HandoverSummary(BaseModel):

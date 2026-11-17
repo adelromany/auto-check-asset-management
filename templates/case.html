@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{#-
+  Case page for both kinds: passport on the left, lanes with operation tiles
+  on the right. Every tile opens a drawer whose controls either work or are
+  disabled with a visible reason. Events live on the history page only.
+-#}
+{% from "partials/opstrip.html" import opstrip, state_word %}
+{% block body_attrs %} data-case-id="{{ handover.id }}" data-case-kind="{{ row.kind }}" data-recipient-confirmed="{{ 'true' if handover.recipient_snipeit_id else 'false' }}" data-has-document="{{ 'true' if handover.documents else 'false' }}" data-active="{{ 'false' if row.status in ('completed', 'cancelled', 'closed_with_gaps') else 'true' }}"{% endblock %}
+{% block content %}
+<h1 class="mono case-title"><span class="case-title-label">{{ 'Repair case' if row.kind == 'maintenance' else 'Handover case' }}</span> {{ row.serial }}</h1>
+
+<div class="case-topbar">
+  <div class="case-chips">
+    {% if row.display_status == 'stalled' %}<span class="badge badge-warning">Stalled</span>
+    {% elif row.status == 'completed' %}<span class="badge badge-success">Completed</span>
+    {% elif row.status == 'cancelled' %}<span class="badge badge-secondary">Cancelled</span>
+    {% elif row.status == 'closed_with_gaps' %}<span class="badge badge-secondary">Closed with gaps</span>
+    {% else %}<span class="badge badge-outline">{{ row.status.replace('_',' ')|title }}</span>{% endif %}
+    {% if row.kind == 'maintenance' %}
+    <span class="badge badge-accent">{{ {'needs_maintenance': 'Needs maintenance', 'in_maintenance': 'In maintenance', 'returned': 'Returned'}[row.maintenance_state or 'needs_maintenance'] }}</span>
+    {% if row.vendor %}<span class="badge badge-outline">{{ row.vendor }}</span>{% endif %}
+    {% endif %}
+    <a href="/{{ 'maintenance' if row.kind == 'maintenance' else 'handovers' }}/{{ handover.id }}/history" class="link-quiet">History ({{ event_total }})</a>
+  </div>
+  <div class="case-actions">
+    <button type="button" class="btn btn-outline btn-sm" data-sync-open>Sync device</button>
+    {% if row.status in ('draft', 'in_progress', 'stalled', 'closed_with_gaps') %}
+    <button type="button" class="btn btn-ghost btn-sm" data-case-cancel {% if row.status != 'closed_with_gaps' %}title="Cancels the case"{% endif %}>Cancel</button>
+    {% elif row.status == 'closed_with_gaps' %}
+    {% endif %}
+  </div>
+</div>
+
+<div class="case-grid">
+  {# -- passport -- #}
+  <section class="passport card" aria-label="Device passport">
+    <div class="card-header"><h2 class="card-title">Device</h2></div>
+    <div class="card-content passport-body">
+      <dl class="facts">
+        <div class="fact"><dt>Serial</dt><dd class="mono">{{ row.serial }}</dd></div>
+        {% if agent_report and agent_report.model %}<div class="fact"><dt>Model</dt><dd>{{ agent_report.model }}</dd></div>
+        {% elif agent_report and agent_report.os_name %}<div class="fact"><dt>OS</dt><dd>{{ agent_report.os_name }} {{ agent_report.os_version or '' }}</dd></div>
+        {% else %}<div class="fact"><dt>Model</dt><dd class="muted">No agent report yet</dd></div>{% endif %}
+        <div class="fact"><dt>Engineer</dt><dd>{{ row.engineer_name }}</dd></div>
+        {% if row.ticket_ref %}<div class="fact"><dt>Ticket</dt><dd class="mono">{{ row.ticket_ref }}</dd></div>{% endif %}
+        <div class="fact"><dt>Age</dt><dd>{{ row.age_days }}d</dd></div>
+        {% if handover.snipeit_asset_tag %}<div class="fact"><dt>Asset tag</dt><dd class="mono">{{ handover.snipeit_asset_tag }}</dd></div>{% endif %}
+        {% if row.recipient %}<div class="fact"><dt>Recipient</dt><dd>{{ row.recipient }}</dd></div>{% endif %}
+      </dl>
+
+      {% if row.kind == 'maintenance' %}
+      <h3 class="passport-section">Repair</h3>
+      <dl class="facts">
+        <div class="fact"><dt>State</dt><dd>{{ {'needs_maintenance': 'Needs maintenance', 'in_maintenance': 'In maintenance', 'returned': 'Returned'}[row.maintenance_state or 'needs_maintenance'] }}</dd></div>
+        {% if maintenance and maintenance.reported_issue %}<div class="fact"><dt>Issue</dt><dd>{{ maintenance.reported_issue[:120] }}</dd></div>{% endif %}
+        {% if row.vendor %}<div class="fact"><dt>Vendor</dt><dd>{{ row.vendor }}</dd></div>{% endif %}
+        {% if maintenance and maintenance.sent_date %}<div class="fact"><dt>Sent</dt><dd class="mono">{{ maintenance.sent_date }}</dd></div>{% endif %}
+        {% if maintenance and maintenance.expected_return_date %}<div class="fact"><dt>Expected back</dt><dd class="mono">{{ maintenance.expected_return_date }}</dd></div>{% endif %}
+        {% if maintenance and maintenance.reference %}<div class="fact"><dt>Reference</dt><dd class="mono">{{ maintenance.reference }}</dd></div>{% endif %}
+        {% if maintenance and maintenance.outcome %}<div class="fact"><dt>Outcome</dt><dd>{{ maintenance.outcome }}</dd></div>{% endif %}
+        {% if maintenance and maintenance.cost %}<div class="fact"><dt>Cost</dt><dd>{{ maintenance.cost }}</dd></div>{% endif %}
+        {% if maintenance and maintenance.warranty %}<div class="fact"><dt>Warranty</dt><dd>{{ maintenance.warranty }}</dd></div>{% endif %}
+      </dl>
+      {% endif %}
+
+      {% if agent_report %}
+      <h3 class="passport-section">Agent report</h3>
+      <dl class="facts">
+        <div class="fact"><dt>Serial match</dt><dd>{% if serial_match %}<span class="state-ok">✓ matches</span>{% else %}<span class="state-fail">✕ differs</span>{% endif %}</dd></div>
+        <div class="fact"><dt>User</dt><dd>{{ agent_report.username or '—' }}</dd></div>
+        <div class="fact"><dt>RAM</dt><dd class="mono">{{ agent_report.ram_gb or '—' }} GB</dd></div>
+        {% if agent_report.disks %}<div class="fact"><dt>Disk</dt><dd class="mono">{{ agent_report.disks[0].size_gb }} GB {{ agent_report.disks[0].type or '' }}</dd></div>{% endif %}
+        {% if agent_report.windows_activation %}<div class="fact"><dt>Activation</dt><dd>{{ 'Activated' if agent_report.windows_activation.status_code == 1 else 'Not activated' }}</dd></div>{% endif %}
+      </dl>
+      {% if agent_report.software_checks %}
+      <ul class="software-list">
+        {% for check in agent_report.software_checks %}
+        <li class="software-item">
+          <span class="{% if check.installed %}state-ok{% else %}state-pending{% endif %}" aria-hidden="true">{% if check.installed %}✓{% else %}✕{% endif %}</span>
+          <span>{{ check.name }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% else %}
+      <h3 class="passport-section">Agent report</h3>
+      <p class="muted">No report yet. Use <em>Sync device</em> to check the device without opening the portal on it.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {# -- lanes and tiles -- #}
+  <section class="lanes" aria-label="Operations">
+    {% for lane_name, lane_ops in lanes %}
+    <div class="lane">
+      <h2 class="lane-title">{{ lane_name }}</h2>
+      <div class="lane-tiles">
+        {% for stage in lane_ops %}
+        {% set st = row.states_map.get(stage.value, 'pending') %}
+        <button type="button" class="op-tile op-tile-{{ st }}" data-op-tile="{{ stage.value }}" data-op-case="{{ handover.id }}" data-op-kind="{{ row.kind }}">
+          <span class="op-tile-icon opdot-{{ st }}" aria-hidden="true">{% if st == 'passed' %}✓{% elif st == 'failed' %}✕{% elif st == 'not_done' %}⊘{% else %}○{% endif %}</span>
+          <span class="op-tile-body">
+            <span class="op-tile-title">{{ OPERATION_TITLES[stage] }}</span>
+            <span class="op-tile-state">{{ state_word(st) }}</span>
+          </span>
+          {% if st == 'not_done' and (row.reasons.get(stage.value) or '') %}<span class="op-tile-reason">{{ row.reasons[stage.value][:40] }}</span>{% endif %}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/sync.js" defer></script><script src="/static/js/case.js" defer></script>{% endblock %}

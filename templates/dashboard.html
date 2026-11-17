@@ -1,143 +1,109 @@
-<!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-<head>
-  {% include "partials/page_head.html" %}
-</head>
-<body class="min-h-screen bg-background text-foreground">
-{% from "partials/labels.html" import handover_badge, kind_label, missing_text %}
-<div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col">
-  {% include "partials/topbar.html" %}
+{% extends "base.html" %}
+{#-
+  Dashboard: "what needs me now?" for both case types.
+  Five tiles, the needs-attention list, two small status panels.
+  No forms here; every tile is a link that opens the right screen filtered.
+-#}
+{% from "partials/opstrip.html" import opstrip, state_word %}
+{% block content %}
+<h1 class="sr-only">Dashboard</h1>
+<div data-refresh-region data-refresh="15" class="stack-lg">
+  <div class="flex items-center justify-between">
+    <p class="page-intro">What needs you now</p>
+    <span class="updated" data-updated data-stamp="0"></span>
+  </div>
 
-  <main class="flex-1 px-4 py-6">
-    <div id="agent-slot" data-slot="agent-slot" class="hidden" aria-hidden="true"></div>
-    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 class="text-xl font-semibold tracking-tight">Dashboard</h1>
-        <p class="mt-1 text-sm text-muted-foreground">What is open, what is stuck and what just finished.</p>
+  <section class="tiles" aria-label="Overview">
+    <a href="/handovers" class="tile">
+      <span class="tile-value" data-countup data-value="{{ tiles.handovers_open }}">{{ tiles.handovers_open }}</span>
+      <span class="tile-label">Handovers open</span>
+    </a>
+    <a href="/handovers?status=stalled" class="tile tile-amber">
+      <span class="tile-value" data-countup data-value="{{ tiles.handovers_attention }}">{{ tiles.handovers_attention }}</span>
+      <span class="tile-label">Stalled / with gaps</span>
+    </a>
+    <a href="/maintenance?state=needs" class="tile">
+      <span class="tile-value" data-countup data-value="{{ tiles.needs_maintenance }}">{{ tiles.needs_maintenance }}</span>
+      <span class="tile-label">Needs maintenance</span>
+    </a>
+    <a href="/maintenance?state=in" class="tile tile-amber">
+      <span class="tile-value" data-countup data-value="{{ tiles.at_vendor }}">{{ tiles.at_vendor }}</span>
+      <span class="tile-label">At vendor</span>
+    </a>
+    <a href="/maintenance?state=returned" class="tile">
+      <span class="tile-value" data-countup data-value="{{ tiles.returned_week }}">{{ tiles.returned_week }}</span>
+      <span class="tile-label">Returned this week</span>
+    </a>
+  </section>
+
+  <section class="card">
+    <div class="card-header row-between">
+      <h2 class="card-title">Needs attention</h2>
+      <span class="badge badge-secondary">{{ attention|length }}</span>
+    </div>
+    <div class="card-content">
+      {% if attention %}
+      <ul class="attention-list">
+        {% for item in attention %}
+        <li class="attention-row">
+          <span class="attention-icon attention-{{ item.urgency }}" data-state-icon>
+            {% if item.urgency == 0 %}✕{% elif item.urgency == 1 %}⏱{% elif item.urgency == 2 %}⏸{% elif item.urgency == 3 %}⊘{% else %}⚑{% endif %}
+          </span>
+          <span class="mono attention-serial">{{ item.serial }}</span>
+          <span class="attention-reason">{{ item.reason }}</span>
+          {% if item.kind == 'maintenance' %}
+          <span class="badge badge-accent">Repair</span>
+          {% endif %}
+          <span class="opstrip-inline">{% for stage, st in item.states %}<span class="opdot opdot-{{ st }} opdot-sm" data-opdot data-state="{{ st }}" title="{{ stage.replace('_',' ')|title }} — {{ state_word(st) }}"><span class="opdot-glyph" aria-hidden="true">{% if st == 'passed' %}✓{% elif st == 'failed' %}✕{% elif st == 'not_done' %}⊘{% else %}○{% endif %}</span></span>{% endfor %}</span>
+          <span class="attention-age muted">{{ item.age_days }}d</span>
+          <a href="{% if item.kind == 'maintenance' %}/maintenance/{% else %}/handovers/{% endif %}{{ item.id }}" class="btn btn-outline btn-sm attention-open">Open</a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty" data-empty>
+        <span>Nothing needs attention.</span>
+        <a href="/handovers?new=1" class="btn btn-outline btn-sm">New handover</a>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <a class="btn btn-outline btn-sm" href="/cases">All cases</a>
-        <a class="btn btn-default btn-sm" href="/new">New case</a>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="panels">
+    <div class="card panel">
+      <div class="card-header"><h2 class="card-title">Handovers by status</h2></div>
+      <div class="card-content">
+        <ul class="bar-list">
+          {% for status, count in handover_status.items() %}
+          {% if count %}
+          <li class="bar-row">
+            <span class="bar-label">{{ status.replace('_', ' ')|title }}</span>
+            <span class="bar-track"><span class="bar-fill bar-{{ status }}" data-bar style="width: {{ (count * 100 / max(1, handover_status.values()|sum))|round(0, 'floor')|int }}%"></span></span>
+            <span class="bar-count mono">{{ count }}</span>
+          </li>
+          {% endif %}
+          {% endfor %}
+          {% if not handover_status.values()|sum %}<li class="empty" data-empty><span>No handovers yet.</span></li>{% endif %}
+        </ul>
       </div>
     </div>
-
-    <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Key figures">
-      <div class="kpi">
-        <p class="kpi-label">Needs attention</p>
-        <p id="kpi-attention" class="kpi-value">{{ summary.by_status.get("stalled", 0) }}</p>
-        <p class="text-xs text-muted-foreground">No activity for {{ stall_hours }} hours</p>
-      </div>
-      <div class="kpi">
-        <p class="kpi-label">In progress</p>
-        <p id="kpi-in-progress" class="kpi-value">{{ summary.by_status.get("in_progress", 0) }}</p>
-        <p class="text-xs text-muted-foreground">Started, not finished</p>
-      </div>
-      <div class="kpi">
-        <p class="kpi-label">Completed</p>
-        <p id="kpi-completed" class="kpi-value">{{ summary.completed }}</p>
-        <p class="text-xs text-muted-foreground">Every operation passed</p>
-      </div>
-      <div class="kpi">
-        <p class="kpi-label">Closed with gaps</p>
-        <p id="kpi-gaps" class="kpi-value">{{ summary.by_status.get("closed_with_gaps", 0) }}</p>
-        <p class="text-xs text-muted-foreground">Finished with recorded gaps</p>
-      </div>
-    </section>
-
-    <div class="mt-6 grid items-start gap-6 lg:grid-cols-[1.4fr_1fr]">
-      <section class="card overflow-hidden" aria-labelledby="recent-heading">
-        <div class="card-header border-b bg-muted/40 py-3">
-          <div class="flex items-center justify-between gap-2">
-            <h2 id="recent-heading" class="card-title text-sm">Recent cases</h2>
-            <a class="text-xs text-muted-foreground underline-offset-4 hover:underline" href="/cases">Open the list</a>
-          </div>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="table table-compact">
-            <thead class="table-header">
-              <tr>
-                <th class="table-head">Status</th>
-                <th class="table-head">Case</th>
-                <th class="table-head">Recipient</th>
-                <th class="table-head">Next</th>
-              </tr>
-            </thead>
-            <tbody class="table-body">
-              {% for row in recent %}
-              <tr class="table-row">
-                <td class="table-cell">{{ handover_badge(row.handover.status) }}</td>
-                <td class="table-cell">
-                  <a class="font-mono text-xs underline-offset-4 hover:underline"
-                     href="/cases/{{ row.handover.id }}" dir="ltr">{{ row.handover.device_serial }}</a>
-                  <span class="ml-1 text-xs text-muted-foreground">{{ kind_label(row.handover.kind) }}</span>
-                </td>
-                <td class="table-cell">
-                  {{ row.handover.recipient_snipeit_username or row.handover.recipient_reported_username or "—" }}
-                </td>
-                <td class="table-cell text-xs">{{ missing_text(row.missing_steps, row.handover.status) }}</td>
-              </tr>
-              {% else %}
-              <tr>
-                <td colspan="4" class="table-cell py-10 text-center text-sm text-muted-foreground">
-                  No cases yet. <a class="underline underline-offset-4" href="/new">Register the first one</a>.
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <div class="flex flex-col gap-4">
-        <section class="card" aria-labelledby="attention-heading">
-          <div class="card-header">
-            <h2 id="attention-heading" class="card-title text-sm">Needs attention</h2>
-            <p class="card-description">Stalled cases, oldest activity first.</p>
-          </div>
-          <div class="card-content flex flex-col gap-2">
-            {% for row in attention %}
-            <a class="flex items-center justify-between gap-2 rounded-md border p-2 text-sm hover:bg-muted/50"
-               href="/cases/{{ row.handover.id }}">
-              <span class="truncate font-mono text-xs" dir="ltr">{{ row.handover.device_serial }}</span>
-              <span class="truncate text-xs text-muted-foreground">
-                {{ row.handover.recipient_snipeit_username or row.handover.recipient_reported_username or "No recipient" }}
-              </span>
-            </a>
-            {% else %}
-            <p class="text-sm text-muted-foreground">Nothing is stalled. Good.</p>
-            {% endfor %}
-          </div>
-        </section>
-
-        <section class="card" aria-labelledby="status-heading">
-          <div class="card-header">
-            <h2 id="status-heading" class="card-title text-sm">All cases by status</h2>
-            <p class="card-description">{{ summary.total }} case{{ "" if summary.total == 1 else "s" }} in total.</p>
-          </div>
-          <div class="card-content">
-            <dl class="flex flex-col gap-1 text-sm">
-              {% for row in status_rows %}
-              <div class="flex items-center justify-between gap-2">
-                <dt class="text-muted-foreground">{{ handover_badge(row.status) }}</dt>
-                <dd class="tabular-nums">{{ row.count }}</dd>
-              </div>
-              {% endfor %}
-            </dl>
-          </div>
-        </section>
+    <div class="card panel">
+      <div class="card-header"><h2 class="card-title">Maintenance by state</h2></div>
+      <div class="card-content">
+        <ul class="bar-list">
+          {% for state, count in maint_states.items() %}
+          {% if count %}
+          <li class="bar-row">
+            <span class="bar-label">{{ state.replace('_', ' ')|title }}</span>
+            <span class="bar-track"><span class="bar-fill bar-maint-{{ state }}" data-bar style="width: {{ count * 100 / max(1, maint_states.values()|sum) }}%"></span></span>
+            <span class="bar-count mono">{{ count }}</span>
+          </li>
+          {% endif %}
+          {% endfor %}
+          {% if not maint_states.values()|sum %}<li class="empty" data-empty><span>No maintenance cases yet.</span></li>{% endif %}
+        </ul>
       </div>
     </div>
-  </main>
-
-  <footer class="border-t px-4 py-4">
-    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-      <span>H-Caliper</span>
-      <span>Figures are computed from the case database.</span>
-    </div>
-  </footer>
+  </section>
 </div>
-
-<script src="/static/js/theme.js?v=1"></script>
-<script src="/static/js/shell.js?v=1"></script>
-</body>
-</html>
+{% endblock %}

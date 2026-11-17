@@ -13,6 +13,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import config
 from app.clients.snipeit import (
     SnipeItAsset,
     SnipeItAuthError,
@@ -54,6 +55,14 @@ ELEVATED_AGENT_WARNING = (
     "The agent reported the engineer's own account. The agent may have been "
     "run elevated; choose the recipient explicitly."
 )
+
+# The Snipe-IT status label used for each maintenance state. Empty means the
+# owner has not configured that label; the flow stays non-blocking.
+_MAINTENANCE_LABEL_SETTINGS = {
+    "needs_maintenance": "SNIPEIT_STATUS_NEEDS_MAINTENANCE",
+    "in_maintenance": "SNIPEIT_STATUS_IN_MAINTENANCE",
+    "returned": "SNIPEIT_STATUS_RETURNED",
+}
 
 
 class SnipeItHandoverService:
@@ -686,6 +695,59 @@ class SnipeItHandoverService:
         )
         await self._core.recompute_status(handover)
         return await self._core.view(handover)
+
+
+    # -- maintenance status label ---------------------------------------------
+
+    async def update_maintenance_status(
+        self,
+        handover_id: uuid.UUID,
+        *,
+        actor: str,
+        client: SnipeItClient,
+    ) -> dict[str, Any]:
+        """Move the asset to the Snipe-IT status label of its state.
+
+        Never raises: the transit operation itself stays authoritative. The
+        result tells the UI whether the label was updated and why not.
+        """
+        handover = await self._core.get(handover_id, with_details=True)
+        state = handover.maintenance_state or "needs_maintenance"
+        setting = _MAINTENANCE_LABEL_SETTINGS.get(state)
+        label = getattr(config, setting, "") if setting else ""
+        if not label:
+            return {"updated": False, "reason": "label_not_configured"}
+        if not handover.snipeit_asset_id:
+            return {"updated": False, "reason": "no_snipeit_asset"}
+        try:
+            labels = await client.list_status_labels()
+        except SnipeItError as exc:
+            return {"updated": False, "reason": snipeit_error_reason(exc)}
+        match = next(
+            (
+                status_id
+                for status_id, name in labels
+                if name.casefold() == str(label).casefold()
+            ),
+            None,
+        )
+        if match is None:
+            return {"updated": False, "reason": "label_not_found"}
+        try:
+            result = await client.update_asset_status(
+                handover.snipeit_asset_id, match
+            )
+        except SnipeItError as exc:
+            return {"updated": False, "reason": snipeit_error_reason(exc)}
+        if result.status != "success":
+            return {"updated": False, "reason": "snipeit_rejected"}
+        await self._events.add(
+            handover_id=handover.id,
+            actor=actor,
+            type="snipeit_status_label_updated",
+            detail={"state": state, "label": label},
+        )
+        return {"updated": True, "reason": None}
 
 
 def _identity_keys(email: str, name: str) -> set[str]:

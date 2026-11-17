@@ -17,6 +17,7 @@ from app.dependencies import current_user, get_session, get_snipeit_client
 from app.domain.errors import HandoverError
 from app.domain.stages import HandoverStatus
 from app.dto.handover import (
+    AgentReportAttach,
     CategoryOut,
     CheckinRequest,
     CheckinResult,
@@ -39,6 +40,7 @@ from app.routers.http_errors import (
     handover_http_error,
     snipeit_http_error,
 )
+from app.schemas import AgentPayload
 from app.services.handovers import HandoverService
 from app.services.snipeit_ops import SnipeItHandoverService
 from app.services.software_check import SoftwareCheckService
@@ -420,4 +422,47 @@ async def reevaluate_software_check(
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.post("/{handover_id}/maintenance/status-label")
+async def maintenance_status_label(
+    handover_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> dict:
+    """Update the Snipe-IT status label for the device's maintenance state.
+
+    Never raises for "not configured" / "no asset": the UI shows the note and
+    records the snipeit_status operation as not done instead.
+    """
+    service = SnipeItHandoverService(session)
+    return await service.update_maintenance_status(
+        handover_id, actor=_actor(user), client=client
+    )
+
+
+@router.post("/{handover_id}/attach-report", response_model=HandoverDetail)
+async def attach_agent_report(
+    handover_id: uuid.UUID,
+    payload: AgentReportAttach,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> HandoverDetail:
+    """Record an agent report collected through the sync flow on this case.
+
+    Same path as the code-based agent submit; the report arrives from the
+    engineer's signed-in session instead of the device's one-liner.
+    """
+    service = HandoverService(session)
+    try:
+        handover = await service.record_agent_report(
+            handover_id,
+            AgentPayload(**payload.payload),
+            actor=_actor(user),
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    view = await service.get_detail(handover_id)
     return handover_detail(view)

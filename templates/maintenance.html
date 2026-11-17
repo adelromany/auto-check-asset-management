@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{#-
+  Maintenance: three states (Needs maintenance / In maintenance / Returned)
+  as a kanban, a vendor panel, and an "At vendors" table. The vendor is a
+  maintenance company that repairs devices.
+-#}
+{% from "partials/opstrip.html" import opstrip, state_word %}
+{% block content %}
+<h1 class="sr-only">Maintenance</h1>
+<div class="page-head">
+  <div class="row-between">
+    <p class="page-intro">Repairs and devices at vendors</p>
+    <span class="updated" data-updated data-stamp="0"></span>
+  </div>
+  <div class="row-between wrap">
+    <form id="maint-filter-form" class="filters" method="get">
+      {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+      {% for chip in [('needs', 'Needs maintenance'), ('in', 'In maintenance'), ('returned', 'Returned')] %}
+      <label class="chip {% if active_state == chip[0] %}chip-active{% endif %}">
+        <input type="radio" name="state" value="{{ chip[0] }}" class="sr-only" {% if active_state == chip[0] %}checked{% endif %}>
+        {{ chip[1] }}
+      </label>
+      {% endfor %}
+      <label class="chip {% if not active_state %}chip-active{% endif %}">
+        <input type="radio" name="state" value="" class="sr-only" {% if not active_state %}checked{% endif %}>
+        All
+      </label>
+    </form>
+    <div class="row-actions">
+      <button type="button" class="btn btn-default" data-new-shortcut="maintenance" data-primary-action>New maintenance</button>
+    </div>
+  </div>
+</div>
+
+<div class="maint-layout" data-refresh-region data-refresh="15">
+  <div class="maint-main">
+    <div class="tabs" role="tablist" aria-label="Maintenance views">
+      <button type="button" class="tabs-trigger" data-maint-tab="board" role="tab" aria-selected="true">Board</button>
+      <button type="button" class="tabs-trigger" data-maint-tab="atvendors" role="tab" aria-selected="false">At vendors</button>
+    </div>
+
+    {# -- kanban board -- #}
+    <section id="maint-board" class="kanban kanban-3" aria-label="Maintenance board">
+      {% set columns = [('needs_maintenance', 'Needs maintenance'), ('in_maintenance', 'In maintenance'), ('returned', 'Returned')] %}
+      {% for column, title in columns %}
+      <div class="kanban-col" data-column="{{ column }}">
+        <div class="kanban-col-head">
+          <h2 class="kanban-title">{{ title }}</h2>
+          <span class="kanban-count mono">{{ rows|selectattr('maintenance_state', 'equalto', column)|list|length }}</span>
+        </div>
+        <div class="kanban-cards">
+          {% for row in rows if (row.maintenance_state or 'needs_maintenance') == column %}
+          <article class="case-card" data-case-card>
+            <div class="case-card-top">
+              <span class="mono case-serial">{{ row.serial }}</span>
+              {% if row.extra.vendor_level == 'overdue' %}<span class="badge badge-destructive">Overdue</span>
+              {% elif row.extra.vendor_level == 'warn' %}<span class="badge badge-warning">Slow</span>{% endif %}
+            </div>
+            {% if row.extra.issue %}<p class="case-issue">{{ row.extra.issue }}</p>{% endif %}
+            <div class="case-card-meta">
+              {% if row.extra.vendor %}
+              <a href="/maintenance?vendor={{ row.extra.vendor|urlencode }}" class="badge badge-accent" title="Filter by vendor">{{ row.extra.vendor }}</a>
+              {% else %}<span class="badge badge-outline">No vendor</span>{% endif %}
+              {% if row.extra.days_at_vendor is not none %}
+              <span class="days-clock days-{{ row.extra.vendor_level }}" title="Days at vendor vs the vendor average turnaround and the expected return date">
+                ⏱ {{ row.extra.days_at_vendor }}d
+              </span>
+              {% endif %}
+            </div>
+            {{ opstrip(row.states) }}
+            <div class="case-card-foot">
+              <span class="muted">{{ row.age_days }}d old</span>
+              {% if column == 'needs_maintenance' %}
+              <button type="button" class="btn btn-default btn-sm" data-step="send" data-case="{{ row.id }}" data-primary-action>Send to vendor</button>
+              {% elif column == 'in_maintenance' %}
+              <button type="button" class="btn btn-default btn-sm" data-step="receive" data-case="{{ row.id }}" data-primary-action>Receive back</button>
+              {% else %}
+              <a href="/maintenance/{{ row.id }}" class="btn btn-outline btn-sm">Open</a>
+              {% endif %}
+            </div>
+          </article>
+          {% endfor %}
+          {% if not (rows|selectattr('maintenance_state', 'equalto', column)|list|length) %}
+          <div class="kanban-empty muted">None</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      {% if not rows %}
+      <div class="empty wide" data-empty>
+        <span>No maintenance cases yet.</span>
+        <button type="button" class="btn btn-default btn-sm" data-new-shortcut="maintenance">New maintenance</button>
+      </div>
+      {% endif %}
+    </section>
+
+    {# -- At vendors table -- #}
+    <section id="maint-atvendors" class="card hidden" aria-label="Devices at vendors">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="table-head">Serial</th>
+              <th class="table-head">Vendor</th>
+              <th class="table-head">Sent</th>
+              <th class="table-head">Expected back</th>
+              <th class="table-head">Days</th>
+              <th class="table-head">Reference</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows if row.maintenance_state == 'in_maintenance' %}
+            <tr class="table-row">
+              <td class="table-cell"><a class="row-link mono" href="/maintenance/{{ row.id }}">{{ row.serial }}</a></td>
+              <td class="table-cell">{{ row.extra.vendor or "—" }}</td>
+              <td class="table-cell mono">{{ row.extra.sent_date or "—" }}</td>
+              <td class="table-cell mono">{{ row.extra.expected_return_date or "—" }}</td>
+              <td class="table-cell"><span class="days-clock days-{{ row.extra.vendor_level }}">{{ row.extra.days_at_vendor }}d</span></td>
+              <td class="table-cell mono">{{ row.extra.reference or "—" }}</td>
+            </tr>
+            {% endfor %}
+            {% set at_vendor_count = rows|selectattr('maintenance_state', 'equalto', 'in_maintenance')|list|length %}
+            {% if not at_vendor_count %}
+            <tr><td class="table-cell" colspan="6"><div class="empty" data-empty><span>No device is at a vendor.</span></div></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  {# -- vendor panel -- #}
+  <aside id="vendor-panel" class="vendor-panel card" data-collapsible>
+    <button type="button" class="vendor-panel-head" data-panel-toggle aria-expanded="true" aria-controls="vendor-panel-body">
+      <h2 class="card-title">Vendors</h2>
+      <span class="muted">▾</span>
+    </button>
+    <div id="vendor-panel-body" class="vendor-panel-body">
+      {% for stat in vendor_stats %}
+      <a href="/maintenance?vendor={{ stat.name|urlencode }}" class="vendor-row {% if active_vendor == stat.name %}vendor-row-active{% endif %}">
+        <span class="vendor-name">{{ stat.name }}</span>
+        <span class="vendor-figures mono">
+          {{ stat.at_vendor }} here
+          {% if stat.avg_turnaround is not none %} · {{ stat.avg_turnaround }}d avg{% endif %}
+          {% if stat.overdue %} · <span class="overdue-text">{{ stat.overdue }} overdue</span>{% endif %}
+        </span>
+      </a>
+      {% endfor %}
+      {% if not vendor_stats %}
+      <p class="muted empty" data-empty><span>No vendor used yet.</span></p>
+      {% endif %}
+      {% if active_vendor %}
+      <a href="/maintenance" class="btn btn-outline btn-sm vendor-clear">Clear vendor filter</a>
+      {% endif %}
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/maintenance.js" defer></script>{% endblock %}

@@ -447,6 +447,29 @@ class SnipeItClient:
         row = _single_row(data)
         return _user_from_json(row) if row else SnipeItUser(id=0)
 
+    async def list_status_labels(self) -> list[tuple[int, str]]:
+        """The (id, name) pairs of every Snipe-IT status label."""
+        data = await self._get_json("/api/v1/statuslabels")
+        labels: list[tuple[int, str]] = []
+        for row in _rows(data):
+            if row.get("id") is None:
+                continue
+            name = row.get("name")
+            if isinstance(name, dict):
+                name = _nested_name(name)
+            labels.append((int(row["id"]), str(name) if name is not None else ""))
+        return labels
+
+    async def update_asset_status(
+        self, asset_id: int, status_label_id: int
+    ) -> SnipeItActionResult:
+        """Move an asset to another status label (maintenance transit)."""
+        data, status_code = await self._patch_json(
+            f"/api/v1/hardware/{asset_id}",
+            json={"status_id": status_label_id},
+        )
+        return _action_result(data, status_code=status_code)
+
     # -- transport --------------------------------------------------------
     def _client(self) -> httpx.AsyncClient:
         if self._http_client is None:
@@ -484,6 +507,14 @@ class SnipeItClient:
             return {}, response.status_code
         return self._json(response), response.status_code
 
+    async def _patch_json(
+        self, path: str, *, json: dict[str, Any] | None = None
+    ) -> tuple[Any, int]:
+        response = await self._request("PATCH", path, json=json, write=True)
+        if response.status_code == 204 or not getattr(response, "content", b""):
+            return {}, response.status_code
+        return self._json(response), response.status_code
+
     async def _request(
         self,
         method: str,
@@ -508,6 +539,11 @@ class SnipeItClient:
                     response = await client.get(
                         url, headers=headers, params=params
                     )
+                elif method == "PATCH":
+                    kwargs: dict[str, Any] = {"headers": headers}
+                    if json is not None:
+                        kwargs["json"] = json
+                    response = await client.patch(url, **kwargs)
                 else:
                     kwargs: dict[str, Any] = {"headers": headers}
                     if json is not None:

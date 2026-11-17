@@ -34,6 +34,8 @@ _FIELD_NAMES: tuple[str, ...] = (
     "returned_date",
     "outcome",
     "outcome_note",
+    "cost",
+    "warranty",
 )
 
 DEFAULT_VENDORS: tuple[str, ...] = ("FixTech",)

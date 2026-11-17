@@ -1,0 +1,33 @@
+{#-
+  The one base layout for every page: left rail (desktop), top bar with the
+  omnibox, mobile bottom tab bar, toast region and drawer root. CSP forbids
+  inline scripts and styles; everything is external.
+-#}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ page_title }} · Handover Portal{% endblock %}</title>
+  <link rel="icon" href="/static/img/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/static/img/favicon-180.png">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="/static/js/theme-init.js"></script>
+</head>
+<body class="min-h-screen bg-background text-foreground antialiased"{% block body_attrs %}{% endblock %}>
+  <div class="flex min-h-screen">
+    {% include "partials/rail.html" %}
+    <div class="flex min-w-0 flex-1 flex-col">
+      {% include "partials/topbar.html" %}
+      <main id="main" class="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-28 pt-5 md:px-8 md:pb-10 md:pt-7">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  {% include "partials/bottom_nav.html" %}
+  <div id="toast-stack" class="toast-stack" data-toast-region aria-live="polite"></div>
+  <div id="drawer-root"></div>
+  <script src="/static/js/shell.js" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
