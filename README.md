@@ -54,9 +54,9 @@ app/
     documents.py           # printable report, safe scan storage, download, verified push
     dashboard.py           # database-side aggregates and page-sized rows
   routers/
-    pages.py               # dashboard, registration, cases, history, device check, /api/me
+    pages.py               # four screens, case pages/history, legacy 308s, /api/me
     agent.py               # /api/session/new, /data, /submit
-    handovers.py           # /api/handovers create/list/detail/stages/recipient/preview/checkin/checkout
+    handovers.py           # /api/handovers create/list/detail/operations/recipient/preview/checkin/checkout
     documents.py           # report page, document upload/download/push
     dashboard.py           # /api/dashboard/handovers/summary and /handovers
     snipeit.py             # /api/snipeit/device, /api/snipeit/health
@@ -66,27 +66,29 @@ app/
 alembic/                   # async migrations (alembic upgrade head)
 alembic.ini
 templates/
-  index.html               # device check (/ and /device-check)
-  dashboard.html           # overview: figures, recent and stalled cases
-  new_case.html            # registration form
-  cases.html               # case list with search and filters
-  handover_detail.html     # case board
-  case_history.html        # append-only audit trail
+  base.html                # the one shell: rail, topbar, bottom nav, toasts
+  dashboard.html           # GET / — tiles, attention, bar panels
+  handovers.html           # GET /handovers — kanban board, filters
+  maintenance.html         # GET /maintenance — three lanes, vendors, at-vendors
+  sync.html                # GET /sync — device check flow
+  case.html                # GET /handovers/{id} and /maintenance/{id}
+  case_history.html        # GET /…/{id}/history — append-only audit trail
+  error.html               # friendly HTML error page with request id
   handover_report.html     # printable report
   diag_clipboard.html      # clipboard diagnostics
-  partials/                # logo, page head, topbar, labels
+  partials/                # rail, topbar, bottom nav, logo, opstrip, labels
 static/
   css/app.css              # built stylesheet (generated — do not edit)
   css/report.css           # printable report styles (self-hosted)
   js/clipboard.js          # shared copyText() utility (3 tiers)
   js/theme.js              # light / dark / system toggle
   js/theme-init.js         # pre-paint theme bootstrap (CSP-safe)
-  js/shell.js              # topbar, clock, CSRF token bridge
-  js/new_case.js           # registration POST and active-serial check
-  js/handover_detail.js    # case-page actions
-  js/software_check.js    # software override interaction
+  js/shell.js              # shell, drawers, toasts, omnibox, shortcuts, refresh
+  js/case.js               # operation drawers, cancel, sync
+  js/handovers.js          # board filter memory and registration trigger
+  js/maintenance.js        # tabs, vendor panel, send/receive drawers
+  js/sync.js               # device check, copy feedback, attach
   js/diag_clipboard.js     # diagnostics page logic
-  app.js                   # legacy landing-page UI (not extended for the dashboard)
   agent.ps1 / agent.sh     # device agent scripts
 styles/app.css             # Tailwind + shadcn design-system source
 tests/
@@ -140,18 +142,21 @@ The frontend is server-rendered (Jinja2 + vanilla JS) styled with
 
 ### Pages
 
-- `/` — the original agent landing page, with one **Start handover** link.
-- `/handovers` — KPI tiles (Completed, In progress, Stalled, Total), filters
-  (status, engineer, date range), and a table with status badge, serial,
-  recipient, engineer, stage progress and a **Missing** column.
-- `/handovers/{id}` — the case page: stage checklist with actions, recipient
-  reported vs confirmed, the recipient's Snipe-IT devices with Checkin, the
-  new device with Checkout, signed-sheet attach/push, dry-run preview and the
-  event timeline.
+- `/` — five operational KPI tiles, cases needing attention, and handover and
+  maintenance status bars.
+- `/handovers` — four-lane board, remembered status/engineer/date filters,
+  board/table views, and a registration drawer.
+- `/maintenance` — needs/in/returned lanes, governed vendors, overdue clocks,
+  at-vendors table, repair registration, and send/receive drawers.
+- `/sync` — authenticated short-code creation, copyable agent commands, live
+  results, and optional attachment to a case.
+- `/handovers/{id}` and `/maintenance/{id}` — device passport, independent
+  operation tiles with working drawers, and linked Sync; `/history` contains
+  the append-only event trail. Legacy page URLs redirect with HTTP 308.
 
-Every table has loading, empty and populated states. Every action gives a
-toast or alert. Dynamic data is inserted with `textContent` or Jinja
-autoescape, never `innerHTML`.
+Every list has loading, empty and populated states. Every action gives a
+toast, alert, navigation, drawer, or visible disabled reason. Dynamic data is
+inserted with `textContent` or Jinja autoescape, never `innerHTML`.
 
 ### Theme
 
@@ -253,19 +258,24 @@ change.
 # original compatibility contract (29 tests)
 python -m pytest tests/test_characterization.py tests/test_diag.py -q
 
-# everything that does not need a browser
-python -m pytest tests -q --ignore=tests/test_clipboard_playwright.py
-
-# browser matrix (needs Playwright browsers once)
+# full suite (browser tests require the browsers below)
 python -m playwright install chromium firefox webkit
+python -m pytest -q
+
+# focused real-browser UI checks; each starts uvicorn on a migrated temp SQLite DB
+python -m pytest tests/e2e/test_ui_flows.py -q
+python -m pytest tests/e2e/test_clickthrough.py -q -s
+python -m pytest tests/e2e/test_capture_screens.py -q
+
+# clipboard matrix only
 python -m pytest tests/test_clipboard_playwright.py -q
 ```
 
-Final verification on 2026-10-31: **345 passed, 6 skipped** for the fast suite
-with PostgreSQL enabled; **23 passed, 2 skipped, 2 xfailed** for the browser
-suite; **93% app coverage**. The six skipped fast-suite tests are the opt-in
-live Snipe-IT checks, run separately against the local v8.8.3 instance (6
-passed).
+`docs/review/` contains the final 60-image light/dark desktop/mobile matrix,
+including registration drawers, Sync waiting/result, tables, case history and
+404 states. Four `squint-*.png` contact sheets show every image at 400 px wide
+for hierarchy review. `docs/ui/verification.md` records exact results and the
+real Snipe-IT limitation; `HANDOFF.md` is the delivery starting point.
 
 ## Local Snipe-IT
 

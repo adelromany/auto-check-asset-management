@@ -55,7 +55,7 @@
           <span class="badge badge-accent">Repair</span>
           {% endif %}
           <span class="opstrip-inline">{% for stage, st in item.states %}<span class="opdot opdot-{{ st }} opdot-sm" data-opdot data-state="{{ st }}" title="{{ stage.replace('_',' ')|title }} — {{ state_word(st) }}"><span class="opdot-glyph" aria-hidden="true">{% if st == 'passed' %}✓{% elif st == 'failed' %}✕{% elif st == 'not_done' %}⊘{% else %}○{% endif %}</span></span>{% endfor %}</span>
-          <span class="attention-age muted">{{ item.age_days }}d</span>
+          {% if item.age_days %}<span class="attention-age muted">{{ item.age_days }}d</span>{% endif %}
           <a href="{% if item.kind == 'maintenance' %}/maintenance/{% else %}/handovers/{% endif %}{{ item.id }}" class="btn btn-outline btn-sm attention-open">Open</a>
         </li>
         {% endfor %}
@@ -74,16 +74,16 @@
       <div class="card-header"><h2 class="card-title">Handovers by status</h2></div>
       <div class="card-content">
         <ul class="bar-list">
-          {% for status, count in handover_status.items() %}
-          {% if count %}
+          {% for bar in handover_bars %}
+          {% if bar.count %}
           <li class="bar-row">
-            <span class="bar-label">{{ status.replace('_', ' ')|title }}</span>
-            <span class="bar-track"><span class="bar-fill bar-{{ status }}" data-bar style="width: {{ (count * 100 / max(1, handover_status.values()|sum))|round(0, 'floor')|int }}%"></span></span>
-            <span class="bar-count mono">{{ count }}</span>
+            <span class="bar-label">{{ bar.key.replace('_', ' ')|title }}</span>
+            <span class="bar-track"><span class="bar-fill bar-{{ bar.key }}" data-bar data-pct="{{ bar.pct }}"></span></span>
+            <span class="bar-count mono">{{ bar.count }}</span>
           </li>
           {% endif %}
           {% endfor %}
-          {% if not handover_status.values()|sum %}<li class="empty" data-empty><span>No handovers yet.</span></li>{% endif %}
+          {% if not handover_bars|sum(attribute='count') %}<li class="empty" data-empty><span>No handovers yet.</span></li>{% endif %}
         </ul>
       </div>
     </div>
@@ -91,16 +91,16 @@
       <div class="card-header"><h2 class="card-title">Maintenance by state</h2></div>
       <div class="card-content">
         <ul class="bar-list">
-          {% for state, count in maint_states.items() %}
-          {% if count %}
+          {% for bar in maint_bars %}
+          {% if bar.count %}
           <li class="bar-row">
-            <span class="bar-label">{{ state.replace('_', ' ')|title }}</span>
-            <span class="bar-track"><span class="bar-fill bar-maint-{{ state }}" data-bar style="width: {{ count * 100 / max(1, maint_states.values()|sum) }}%"></span></span>
-            <span class="bar-count mono">{{ count }}</span>
+            <span class="bar-label">{{ bar.key.replace('_', ' ')|title }}</span>
+            <span class="bar-track"><span class="bar-fill bar-maint-{{ bar.key }}" data-bar data-pct="{{ bar.pct }}"></span></span>
+            <span class="bar-count mono">{{ bar.count }}</span>
           </li>
           {% endif %}
           {% endfor %}
-          {% if not maint_states.values()|sum %}<li class="empty" data-empty><span>No maintenance cases yet.</span></li>{% endif %}
+          {% if not maint_bars|sum(attribute='count') %}<li class="empty" data-empty><span>No maintenance cases yet.</span></li>{% endif %}
         </ul>
       </div>
     </div>

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -46,7 +47,9 @@ from app.services.dashboard import DashboardService
 from app.services.handovers import HandoverService, stage_states
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(
+    directory=Path(__file__).resolve().parents[2] / "templates"
+)
 
 ROWS_PAGE_SIZE = 100
 ACTIVE_STATUSES = (
@@ -69,7 +72,13 @@ def _redirect308(path: str, query: str = "") -> RedirectResponse:
 
 
 def _common_ctx(request: Request, title: str, nav: str) -> dict:
-    return {"page_title": title, "active_nav": nav, "request": request}
+    return {
+        "page_title": title,
+        "active_nav": nav,
+        "request": request,
+        "app_host": config.APP_HOST
+        or f"http://{request.headers.get('host', 'localhost:8080')}",
+    }
 
 
 def _now() -> datetime:
@@ -130,7 +139,7 @@ def _row_context(handover) -> dict:
         for stage, row in rows_by_stage.items()
         if row.reason
     }
-    return {
+    ctx = {
         "id": handover.id,
         "kind": handover.kind or CaseKind.HANDOVER.value,
         "serial": handover.device_serial,
@@ -152,6 +161,10 @@ def _row_context(handover) -> dict:
         "age_days": _age_days(handover.created_at),
         "maintenance": handover.maintenance,
         "vendor": _vendor_name(handover.maintenance),
+        # D5: the "all passed" chip is honest only when every operation passed
+        # and there is at least one operation.
+        "all_passed": bool(states)
+        and all(status == StageStatus.PASSED.value for _, status in states),
     }
     if ctx["kind"] == CaseKind.HANDOVER.value:
         ctx["column"] = _handover_column(ctx)
@@ -210,11 +223,18 @@ def _attention_from_rows(rows: list[dict]) -> list[dict]:
             reason = f"{OPERATION_TITLES.get(Operation(failed[0]), failed[0])} failed"
             urgency = 0
         elif overdue and row["maintenance_state"] == MaintenanceState.IN_MAINTENANCE.value:
-            days = turnaround_days(
-                sent_date=maintenance.sent_date,
-                returned_date=maintenance.returned_date,
+            # An in-flight device has no returned date: days at the vendor run
+            # from the send date to today.
+            days = (
+                (_now().date() - maintenance.sent_date).days
+                if maintenance.sent_date is not None
+                else None
             )
-            reason = f"At vendor {days if days is not None else '?'} days, overdue"
+            reason = (
+                f"At vendor {days} days, overdue"
+                if days is not None
+                else "At vendor, overdue"
+            )
             urgency = 1
         elif not_done:
             reason = f"{OPERATION_TITLES.get(Operation(not_done[0]), not_done[0])} not done"
@@ -269,6 +289,19 @@ def _tile_counts(rows: list[dict]) -> dict:
     }
 
 
+def _bar_rows(counts: dict[str, int]) -> list[dict]:
+    """Bar rows with the width already computed (no math in the template)."""
+    total = sum(counts.values())
+    return [
+        {
+            "key": key,
+            "count": count,
+            "pct": round(count * 100 / total) if total else 0,
+        }
+        for key, count in counts.items()
+    ]
+
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_page(
     request: Request,
@@ -307,8 +340,8 @@ async def dashboard_page(
     ctx.update(
         attention=attention,
         tiles=tiles,
-        handover_status=handover_status,
-        maint_states=maint_states,
+        handover_bars=_bar_rows(handover_status),
+        maint_bars=_bar_rows(maint_states),
         summary=summary,
         stall_hours=config.STALL_HOURS,
     )
@@ -329,6 +362,7 @@ async def handovers_page(
     status: str | None = None,
     engineer: str | None = None,
     q: str | None = None,
+    range: str | None = None,
     new: str | None = None,
     session: AsyncSession = Depends(get_session),
 ):
@@ -341,6 +375,15 @@ async def handovers_page(
         session, kind=CaseKind.HANDOVER.value, status=status, engineer=engineer,
         q=query or None,
     )
+    active_range = range if range in ("today", "week", "month") else ""
+    if active_range:
+        days = {"today": 1, "week": 7, "month": 30}[active_range]
+        cutoff = _now() - timedelta(days=days)
+        rows = [
+            row for row in rows
+            if row["created_at"].replace(tzinfo=row["created_at"].tzinfo or timezone.utc)
+            >= cutoff
+        ]
     engineers = sorted({r["engineer_name"] for r in rows if r["engineer_name"]})
     ctx = _common_ctx(request, "Handovers", "handovers")
     ctx.update(
@@ -348,6 +391,7 @@ async def handovers_page(
         engineers=engineers,
         active_status=status or "",
         active_engineer=engineer or "",
+        active_range=active_range,
         query=query,
         open_new=new == "1",
         stall_hours=config.STALL_HOURS,
@@ -406,7 +450,7 @@ def _vendor_averages(rows: list[dict]) -> dict[str, int]:
         if days is not None:
             sums.setdefault(vendor, []).append(days)
     return {
-        vendor: round(total / len(days_list))
+        vendor: round(sum(days_list) / len(days_list))
         for vendor, days_list in sums.items()
         if days_list
     }
@@ -462,9 +506,24 @@ async def maintenance_page(
     if redirect is not None:
         return redirect
     query = (q or "").strip()[:100]
-    rows = await _list_rows(session, kind=CaseKind.MAINTENANCE.value, q=query or None)
+    all_rows = await _list_rows(
+        session, kind=CaseKind.MAINTENANCE.value, q=query or None
+    )
+    averages = _vendor_averages(all_rows)
+    for row in all_rows:
+        row["extra"] = _maintenance_row_extra(
+            row,
+            vendor_warn_days=averages.get(
+                _vendor_name(row["maintenance"]), MAINTENANCE_OVERDUE_DAYS
+            ),
+        )
+    rows = all_rows
     if vendor:
         rows = [r for r in rows if _vendor_name(r["maintenance"]) == vendor]
+    at_vendor_rows = [
+        row for row in rows
+        if row["maintenance_state"] == MaintenanceState.IN_MAINTENANCE.value
+    ]
     if state:
         wanted = {
             "needs": (MaintenanceState.NEEDS_MAINTENANCE.value, None),
@@ -473,17 +532,14 @@ async def maintenance_page(
         }.get(state)
         if wanted:
             rows = [r for r in rows if r["maintenance_state"] in wanted]
-    averages = _vendor_averages(rows)
-    for row in rows:
-        row["extra"] = _maintenance_row_extra(
-            row, vendor_warn_days=averages.get(_vendor_name(row["maintenance"]), MAINTENANCE_OVERDUE_DAYS)
-        )
-    vendor_stats = _vendor_stats(rows)
+    vendor_stats = _vendor_stats(all_rows)
     vendors = await MaintenanceRepository(session).list_destinations()
     ctx = _common_ctx(request, "Maintenance", "maintenance")
     ctx.update(
         rows=rows,
+        at_vendor_rows=at_vendor_rows,
         vendors=vendors,
+        vendor_stats=vendor_stats,
         active_vendor=vendor or "",
         active_state=state or "",
         query=query,
@@ -498,14 +554,39 @@ async def maintenance_page(
 
 
 @router.get("/sync", response_class=HTMLResponse)
-async def sync_page(request: Request):
+async def sync_page(
+    request: Request,
+    handover_id: str | None = None,
+    session: AsyncSession = Depends(get_session),
+):
     redirect = _login_redirect(request)
     if redirect is not None:
         return redirect
     host = config.APP_HOST or f"http://{request.headers.get('host', 'localhost:8080')}"
     ctx = _common_ctx(request, "Sync", "sync")
-    ctx.update(app_host=host)
+    ctx.update(app_host=host, back_to_case=await _back_to_case(session, handover_id))
     return templates.TemplateResponse(request=request, name="sync.html", context=ctx)
+
+
+async def _back_to_case(session: AsyncSession, raw_id: str | None) -> dict | None:
+    """The case a device check was opened from (/device-check?handover_id=)."""
+    if not raw_id:
+        return None
+    try:
+        case_id = uuid.UUID(raw_id)
+    except (ValueError, AttributeError):
+        return None
+    from app.repositories.handovers import HandoverRepository
+
+    try:
+        handover = await HandoverRepository(session).get(case_id)
+    except Exception:
+        return None
+    base = "maintenance" if (handover.kind or "") == CaseKind.MAINTENANCE.value else "handovers"
+    return {
+        "url": f"/{base}/{handover.id}",
+        "serial": handover.device_serial,
+    }
 
 
 @router.get("/device-check", response_class=HTMLResponse)

@@ -77,6 +77,30 @@ async def test_update_maintenance_info_and_vendors(api: ApiHarness) -> None:
     assert any(c["name"] == "Keyboard" for c in categories)
 
 
+async def test_registration_details_include_priority_and_return_costs(
+    api: ApiHarness,
+) -> None:
+    created = await _create(api, serial="SN-MAINT-DETAILS", kind="maintenance")
+    response = await api.client.post(
+        f"/api/handovers/{created['id']}/maintenance",
+        json={
+            "reported_issue": "Battery drains while asleep",
+            "diagnosis_category": "Battery",
+            "diagnosis_note": "Employee observed this after the last update.",
+            "priority": "high",
+            "cost": "180",
+            "warranty": "no",
+        },
+    )
+    assert response.status_code == 200, response.text
+    maintenance = response.json()["maintenance"]
+    assert maintenance["reported_issue"] == "Battery drains while asleep"
+    assert maintenance["priority"] == "high"
+    assert maintenance["diagnosis_note"].startswith("Employee observed")
+    assert maintenance["cost"] == "180"
+    assert maintenance["warranty"] == "no"
+
+
 async def test_transit_operations_derive_maintenance_states(api: ApiHarness) -> None:
     created = await api.client.post(
         "/api/handovers",

@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>07 — UI/UX Principles</title><link rel="stylesheet" href="assets/visual.css"><script defer src="assets/visual.js"></script></head><body data-page="principle"><header class="site-header"><a href="index.html">Principles</a><strong>H-Caliper Principles</strong><label class="search-label">Search this principle <input data-search type="search" aria-label="Search principle"></label><button type="button" data-theme>Theme</button><button type="button" data-toggle-rail aria-expanded="true">Hide contents</button></header><div class="layout"><nav class="toc-rail" aria-label="Contents"><strong>On this page</strong><a class="toc-level-2" href="#consistency">Consistency</a><a class="toc-level-2" href="#vocabulary">Vocabulary</a><a class="toc-level-2" href="#hierarchy-and-flow">Hierarchy and flow</a><a class="toc-level-2" href="#states-and-feedback">States and feedback</a><a class="toc-level-2" href="#accessibility">Accessibility</a><a class="toc-level-2" href="#safety">Safety</a></nav><main class="principle-main"><p class="generated">Generated from <code>07-ui-ux-principles.md</code> · SHA-256 b2ea44cd9c53</p><h1 id="07-uiux-principles" dir="auto">07 — UI/UX Principles</h1>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>07 — UI/UX Principles</title><link rel="stylesheet" href="assets/visual.css"><script defer src="assets/visual.js"></script></head><body data-page="principle"><header class="site-header"><a href="index.html">Principles</a><strong>H-Caliper Principles</strong><label class="search-label">Search this principle <input data-search type="search" aria-label="Search principle"></label><button type="button" data-theme>Theme</button><button type="button" data-toggle-rail aria-expanded="true">Hide contents</button></header><div class="layout"><nav class="toc-rail" aria-label="Contents"><strong>On this page</strong><a class="toc-level-2" href="#consistency">Consistency</a><a class="toc-level-2" href="#vocabulary">Vocabulary</a><a class="toc-level-2" href="#hierarchy-and-flow">Hierarchy and flow</a><a class="toc-level-2" href="#states-and-feedback">States and feedback</a><a class="toc-level-2" href="#accessibility">Accessibility</a><a class="toc-level-2" href="#safety">Safety</a><a class="toc-level-2" href="#shell-keyboard-and-honesty">Shell, keyboard and honesty</a></nav><main class="principle-main"><p class="generated">Generated from <code>07-ui-ux-principles.md</code> · SHA-256 787d49b80cac</p><h1 id="07-uiux-principles" dir="auto">07 — UI/UX Principles</h1>
 <p dir="auto">The UI is server-rendered Jinja + vanilla JS, styled by Tailwind v4 with the shadcn token architecture already in <code>styles/app.css</code>. It must stay one consistent system.</p>
 <h2 id="consistency" dir="auto">Consistency</h2>
 <ul>
@@ -10,7 +10,7 @@
 </li><li>
 <li dir="auto">UIX-04 No external fonts, scripts, icons or CDNs. The app must work on an offline LAN. This is enforced by the self-only Content-Security-Policy in <code>app/security/headers.py</code>; do not add <code>unsafe-inline</code> or an external host.
 </li><li>
-<li dir="auto">UIX-05 Do not grow <code>static/app.js</code>. New behavior goes in new ES modules (<code>static/js/*.js</code>), each with one responsibility. The legacy landing page only gained one "Start handover" link; the dashboard and case pages live in <code>static/js/handovers.js</code>, <code>static/js/handover_detail.js</code> and <code>static/js/shell.js</code>.
+<li dir="auto">UIX-05 Keep UI scripts small and single-purpose under <code>static/js/</code>: <code>shell.js</code> (shell, drawers, toasts, omnibox, auto-refresh), <code>case.js</code>, <code>handovers.js</code>, <code>maintenance.js</code>, <code>sync.js</code>, <code>theme.js</code>, <code>theme-init.js</code>, <code>clipboard.js</code>, <code>diag_clipboard.js</code>. The retired <code>static/app.js</code> and <code>static/js/handover_detail.js</code> must not come back.
 </li><li>
 <li dir="auto">UIX-19 The theme bootstrap is <code>static/js/theme-init.js</code>, loaded synchronously in <code>&lt;head&gt;</code>; it must stay external so the CSP can remain inline-free. The toggle itself remains <code>static/js/theme.js</code>.
 </ul>
@@ -28,7 +28,7 @@
 </li><li>
 <li dir="auto">UIX-10 Forms are a single column. Group fields with whitespace rather than nested boxes.
 </li><li>
-<li dir="auto">UIX-20 <code>/dashboard</code> is the KPI overview; <code>/cases</code> shows the filters and one row per case; <code>/new</code> is the registration form; <code>/cases/{id}</code> is the case board with the operation checklist, recipient, Snipe-IT devices, signed sheet and event timeline; <code>/cases/{id}/history</code> is the full audit trail; <code>/device-check</code> is the agent device check.
+<li dir="auto">UIX-20 The product has four destinations: <code>/</code> (Dashboard KPIs and attention), <code>/handovers</code> (kanban board, filters, registration drawer), <code>/maintenance</code> (needs / in / returned board, vendor panel, at-vendors table) and <code>/sync</code> (agent device check). Case pages are <code>/handovers/{id}</code> and <code>/maintenance/{id}</code>, each with <code>/history</code>. Older URLs (<code>/dashboard</code>, <code>/cases</code>, <code>/new</code>, <code>/device-check</code>) answer <code>308</code> and keep their query string.
 </li><li>
 <li dir="auto">UIX-21 The printable report includes an explicit <code>[Company legal text goes here]</code> placeholder until the owner supplies approved wording; it must not invent legal claims.
 </li><li>
@@ -36,7 +36,7 @@
 </li><li>
 <li dir="auto">UIX-23 The accent is the <code>b_labs</code> teal and the neutrals are charcoal in both themes. Status colours (success, warning, destructive) stay semantic and always carry text, never colour alone.
 </li><li>
-<li dir="auto">UIX-24 Maintenance case boards dynamically present 3 lanes (Intake, Status, Transit) with 5 tiles, displaying transit states, vendor assignment, and turnaround/overdue indicators clearly in both list and board views.
+<li dir="auto">UIX-24 Maintenance presents the three derived states (Needs maintenance, In maintenance, Returned) as lanes, a vendor panel with "here / avg / overdue", days-at-vendor clocks, and an at-vendors table (sent, expected return, reference). A vendor ("المورد") is a company that repairs devices.
 </ul>
 <h2 id="states-and-feedback" dir="auto">States and feedback</h2>
 <ul>
@@ -59,4 +59,18 @@
 <h2 id="safety" dir="auto">Safety</h2>
 <ul>
 <li dir="auto">UIX-18 Dynamic data is inserted with <code>textContent</code> or Jinja autoescape, never <code>innerHTML</code>.
+</ul>
+<h2 id="shell-keyboard-and-honesty" dir="auto">Shell, keyboard and honesty</h2>
+<ul>
+<li dir="auto">UIX-25 Every screen uses <code>base.html</code>: the fixed 220 px rail with visible labels, the sticky top bar and the mobile bottom bar. Content is offset by the rail width so nothing sits underneath it.
+</li><li>
+<li dir="auto">UIX-26 Keyboard: <code>/</code> focuses search, <code>n</code> opens the registration drawer, <code>Esc</code> closes drawers and the user menu, <code>Enter</code> submits. Hit targets are at least 40 px in both themes.
+</li><li>
+<li dir="auto">UIX-27 No dead controls. Every button either acts and shows feedback (toast, label change, drawer, navigation) or is disabled with a visible reason. Lists auto-refresh every 15 s by replacing <code>[data-refresh-region]</code> and say "Updated just now"; an open drawer or a form being filled is never reset.
+</li><li>
+<li dir="auto">UIX-28 The "All operations passed" chip appears only when every operation passed and there is at least one operation.
+</li><li>
+<li dir="auto">UIX-29 Self-host the Inter and JetBrains Mono variable fonts and their OFL licenses under <code>static/fonts/</code>; do not fetch fonts from a CDN.
+</li><li>
+<li dir="auto">UIX-30 Maintenance registration records reported issue, governed diagnosis category, priority and notes. Fresh and upgraded Alembic databases contain the default governed vendor/category lists; the UI must not depend on test-only seed hooks.
 </ul></main></div></body></html>

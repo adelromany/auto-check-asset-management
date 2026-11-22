@@ -24,6 +24,8 @@ class KeyValueFormatter(logging.Formatter):
             f"ts={timestamp} level={record.levelname} logger={record.name} "
             f"request_id={getattr(record, 'request_id', '-')} message={message}"
         )
+        if record.exc_info:
+            line += "\n" + self.formatException(record.exc_info)
         return line
 
 

@@ -318,17 +318,70 @@
     });
 
     var ticket = portal.textInput("ticket_ref", "Ticket (optional)", { maxlength: 100 });
+    var issue = null;
+    var category = null;
+    var priority = null;
+    var notes = null;
+    var engineer = null;
     var actions = portal.formActions("Register");
     form.appendChild(portal.field("Serial", serial, isMaintenance ? "The device that needs repair" : "The device leaving or returning"));
     form.appendChild(match);
-    form.appendChild(portal.field("Ticket", ticket));
+    if (isMaintenance) {
+      issue = portal.el("textarea", "input");
+      issue.name = "reported_issue";
+      issue.required = true;
+      issue.maxLength = 1000;
+      issue.rows = 2;
+      category = portal.selectInput("diagnosis_category", ["Other"]);
+      priority = portal.selectInput("priority", [
+        { value: "normal", label: "Normal" },
+        { value: "low", label: "Low" },
+        { value: "high", label: "High" },
+        { value: "urgent", label: "Urgent" },
+      ], "normal");
+      notes = portal.el("textarea", "input");
+      notes.name = "diagnosis_note";
+      notes.maxLength = 1000;
+      notes.rows = 2;
+      form.appendChild(portal.field("Reported issue", issue));
+      form.appendChild(portal.field("Category", category));
+      form.appendChild(portal.field("Priority", priority));
+      form.appendChild(portal.field("Notes", notes));
+      portal.request("/api/handovers/maintenance/categories").then(function (items) {
+        var names = (items || []).filter(function (item) { return item.active; })
+          .map(function (item) { return item.name; });
+        if (!names.length) names = ["Other"];
+        while (category.firstChild) category.removeChild(category.firstChild);
+        portal.selectInput("diagnosis_category", names, "Other")
+          .querySelectorAll("option").forEach(function (option) { category.appendChild(option); });
+      }).catch(function () { /* the default category remains usable */ });
+    } else {
+      engineer = portal.textInput("engineer", "", { value: "Current user" });
+      engineer.readOnly = true;
+      engineer.setAttribute("aria-label", "Assigned engineer");
+      form.appendChild(portal.field("Engineer", engineer));
+      portal.fetchMe().then(function (user) {
+        if (user) engineer.value = user.email || user.name || "Current user";
+      });
+      form.appendChild(portal.field("Ticket", ticket));
+    }
     form.appendChild(actions);
+    var createdCase = null;
 
     form.addEventListener("submit", function (event) {
       event.preventDefault();
       var serialValue = serial.value.trim();
       if (!serialValue) {
         portal.toast("Enter a serial first.", "error");
+        return;
+      }
+      if (createdCase) {
+        portal.toast("This case is already registered.", "info");
+        return;
+      }
+      if (isMaintenance && issue.value.trim().length < 3) {
+        portal.toast("Describe the reported issue first.", "error");
+        issue.focus();
         return;
       }
       portal.setBusy(actions, true);
@@ -339,10 +392,33 @@
       if (ticket.value.trim()) payload.ticket_ref = ticket.value.trim();
       portal.apiJson("/api/handovers", { method: "POST", body: JSON.stringify(payload) })
         .then(function (created) {
+          createdCase = created;
+          if (!isMaintenance) return created;
+          var details = {
+            reported_issue: issue.value.trim(),
+            diagnosis_category: category.value || "Other",
+            priority: priority.value || "normal",
+          };
+          if (notes.value.trim()) details.diagnosis_note = notes.value.trim();
+          return portal.apiJson("/api/handovers/" + created.id + "/maintenance", {
+            method: "POST",
+            body: JSON.stringify(details),
+          }).then(function () { return created; });
+        })
+        .then(function (created) {
           window.location.href = (kind === "maintenance" ? "/maintenance/" : "/handovers/") + created.id;
         })
         .catch(function (error) {
-          portal.setBusy(actions, false);
+          portal.setBusy(actions, !createdCase);
+          if (createdCase) {
+            actions.__primary.disabled = true;
+            actions.__primary.title = "Case registered; open it to finish the details";
+            var retry = portal.el("a", "btn btn-outline", "Open case");
+            retry.href = "/maintenance/" + createdCase.id;
+            actions.appendChild(retry);
+            portal.toast("Case registered; repair details were not saved. " + error.message, "error");
+            return;
+          }
           portal.toast(error.message, "error");
           var existing = $("#snipe-active", form);
           if (error.status === 409) {
@@ -572,6 +648,18 @@
     setInterval(tick, seconds * 1000);
   }
 
+  // -- bar widths ---------------------------------------------------------------------
+  // The percentage travels as data-pct and is applied here: the CSP forbids
+  // inline styles, and the width is re-applied after every auto-refresh.
+  function applyBarWidths(root) {
+    $all("[data-pct]", root).forEach(function (bar) {
+      var pct = parseFloat(bar.getAttribute("data-pct") || "");
+      if (isNaN(pct)) return;
+      bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
+    });
+  }
+  portal.applyBarWidths = applyBarWidths;
+
   // -- count-up ----------------------------------------------------------------------
   function setupCountUp() {
     var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -593,6 +681,44 @@
     });
   }
 
+  // -- keyboard movement between dashboard tiles, cards and operations --------
+  function setupTileKeyboard() {
+    $all("article[data-case-card]").forEach(function (card) { card.tabIndex = 0; });
+    document.addEventListener("keydown", function (event) {
+      var current = event.target.closest
+        ? event.target.closest("[data-case-card], [data-op-tile], a.tile")
+        : null;
+      if (!current) return;
+      if (event.key === "Enter" && current.tagName === "ARTICLE") {
+        var action = current.querySelector("[data-primary-action], a.row-link");
+        if (action) { event.preventDefault(); action.click(); }
+        return;
+      }
+      var directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+      var vector = directions[event.key];
+      if (!vector) return;
+      var candidates = $all("[data-case-card], [data-op-tile], a.tile").filter(function (node) {
+        return node.getClientRects().length && node !== current;
+      });
+      var origin = current.getBoundingClientRect();
+      var ox = origin.left + origin.width / 2;
+      var oy = origin.top + origin.height / 2;
+      var best = null;
+      var bestScore = Infinity;
+      candidates.forEach(function (node) {
+        var rect = node.getBoundingClientRect();
+        var dx = rect.left + rect.width / 2 - ox;
+        var dy = rect.top + rect.height / 2 - oy;
+        var forward = dx * vector[0] + dy * vector[1];
+        if (forward <= 4) return;
+        var cross = Math.abs(dx * vector[1] - dy * vector[0]);
+        var score = forward + cross * 3;
+        if (score < bestScore) { best = node; bestScore = score; }
+      });
+      if (best) { event.preventDefault(); best.focus(); }
+    });
+  }
+
   // -- boot ---------------------------------------------------------------------------
   function boot() {
     setupOmnibox();
@@ -600,6 +726,12 @@
     hydrateUser();
     setupAutoRefresh();
     setupCountUp();
+    setupTileKeyboard();
+    applyBarWidths();
+    document.addEventListener("portal:refreshed", function () {
+      applyBarWidths();
+      $all("article[data-case-card]").forEach(function (card) { card.tabIndex = 0; });
+    });
     var openNew = document.body.getAttribute("data-open-new");
     if (openNew) portal.openNewCase(openNew);
     portal.$all("[data-new-shortcut]").forEach(function (trigger) {

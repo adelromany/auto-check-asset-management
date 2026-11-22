@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 
 import httpx
 import pytest
@@ -20,6 +21,7 @@ from app.db.base import Base
 from app.services.sessions import SessionStore
 
 ENGINEER = {"name": "Engineer One", "email": "engineer@example.com"}
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 @dataclass
@@ -120,20 +122,90 @@ async def test_case_page_links_device_check_and_explains_manual_confirmations(
     handover_id = created["id"]
     monkeypatch.setattr(config, "SSO_ENABLED", False)
 
-    case_page = await api.client.get(f"/cases/{handover_id}")
+    case_page = await api.client.get(f"/handovers/{handover_id}")
     assert case_page.status_code == 200
-    assert f'href="/device-check?handover_id={handover_id}"' in case_page.text
-    # Review C shortened the help copy but kept the meaning: this is a manual
-    # confirmation, and no device evidence is collected for it.
-    assert "Manual confirmation. The system does not collect evidence for this operation." in case_page.text
-    assert 'data-action="confirm-stage"' in case_page.text
-    assert 'data-stage="report_printed"' in case_page.text
-    assert "Print and review the report, then confirm this operation." in case_page.text
+    # The device-check entry point is the Sync button; the old /device-check
+    # URL still moves to /sync and keeps the case.
+    assert "data-sync-open" in case_page.text
+    assert 'data-op-tile="report_printed"' in case_page.text
+    assert 'data-op-tile="agent_report"' in case_page.text
 
-    device_check = await api.client.get(f"/device-check?handover_id={handover_id}")
+    device_check = await api.client.get(
+        f"/device-check?handover_id={handover_id}", follow_redirects=True
+    )
     assert device_check.status_code == 200
-    assert f'data-handover-id="{handover_id}"' in device_check.text
-    assert "The agent report will be attached to this case" in device_check.text
+    assert "Return to case" in device_check.text
+    assert f'href="/handovers/{handover_id}"' in device_check.text
+
+    # The drawer copy lives in case.js now (drawers are built client-side).
+    case_js = (REPO_ROOT / "static" / "js" / "case.js").read_text(encoding="utf-8")
+    assert "Manual confirmation" in case_js
+    assert "does not collect evidence" in case_js
+
+
+async def test_maintenance_page_lists_vendors_used_by_cases(
+    api: ApiHarness, monkeypatch,
+) -> None:
+    """The vendor panel is built from the cases, not from the seed list."""
+    created = await _create(api, serial="SN-VENDOR-PANEL", kind="maintenance")
+    handover_id = created["id"]
+    monkeypatch.setattr(config, "SSO_ENABLED", False)
+
+    response = await api.client.post(
+        f"/api/handovers/{handover_id}/maintenance",
+        json={
+            "vendor": "FixTech",
+            "sent_date": "2026-11-02",
+            "reference": "RMA-4471",
+        },
+    )
+    assert response.status_code == 200, response.text
+    confirmed = await api.client.post(
+        f"/api/handovers/{handover_id}/operations/sent_out/confirm"
+    )
+    assert confirmed.status_code == 200, confirmed.text
+
+    page = await api.client.get("/maintenance")
+    assert page.status_code == 200
+    assert "No vendor used yet." not in page.text
+    assert "FixTech" in page.text
+    assert "1 here" in page.text
+    # The at-vendors table carries the same case.
+    assert "SN-VENDOR-PANEL" in page.text
+    assert "RMA-4471" in page.text
+
+
+async def test_dashboard_attention_reason_counts_days_at_vendor(
+    api: ApiHarness, monkeypatch,
+) -> None:
+    """An overdue repair shows how long the device has actually been away."""
+    from datetime import date, timedelta
+
+    sent = date.today() - timedelta(days=30)
+    expected = date.today() - timedelta(days=16)
+    created = await _create(api, serial="SN-OVERDUE-VENDOR", kind="maintenance")
+    handover_id = created["id"]
+    monkeypatch.setattr(config, "SSO_ENABLED", False)
+
+    response = await api.client.post(
+        f"/api/handovers/{handover_id}/maintenance",
+        json={
+            "vendor": "FixTech",
+            "sent_date": sent.isoformat(),
+            "expected_return_date": expected.isoformat(),
+        },
+    )
+    assert response.status_code == 200, response.text
+    confirmed = await api.client.post(
+        f"/api/handovers/{handover_id}/operations/sent_out/confirm"
+    )
+    assert confirmed.status_code == 200, confirmed.text
+
+    page = await api.client.get("/")
+    assert page.status_code == 200
+    # Never a "?" — the days run from the send date to today.
+    assert "At vendor ? days" not in page.text
+    assert "At vendor 30 days, overdue" in page.text
 
 
 async def test_unauthorized_access_returns_401(
@@ -439,11 +511,11 @@ async def test_agent_flow_with_matching_serial_passes_stage_three(
     assert all(event["detail"]["outcome"] == "passed" for event in recorded)
 
     monkeypatch.setattr(config, "SSO_ENABLED", False)
-    case_page = await api.client.get(f"/cases/{created['id']}")
-    assert "Values received from this device" in case_page.text
-    assert "Intel Core i7" in case_page.text
-    assert "forticlient — Installed" in case_page.text
-    assert "ABCDE" not in case_page.text
+    case_page = await api.client.get(f"/handovers/{created['id']}")
+    assert "Agent report" in case_page.text
+    assert "Intel Core i7" in case_page.text  # the CPU fact from the report
+    assert "forticlient" in case_page.text  # software check listed by name
+    assert "ABCDE" not in case_page.text  # the partial key is never shown
 
 
 async def test_agent_flow_with_mismatched_serial_fails_stage_three(

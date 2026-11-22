@@ -6,15 +6,16 @@
   <div class="topbar-inner">
     <a href="/" class="topbar-brand md:hidden" aria-label="Handover Portal home">
       {% from "partials/logo.html" import logo %}
-      {{ logo(32, 8) }}
+      {{ logo(32) }}
     </a>
 
     <div class="omnibox" id="omnibox">
       <form id="omnibox-form" role="search" autocomplete="off">
-        <label class="sr-only" for="omnibox-input">Search cases and devices</label>
+        <label class="sr-only" for="omnibox-input">Search</label>
         <svg class="omnibox-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="omnibox-input" name="q" type="search" maxlength="100"
                placeholder="Search serial, person, ticket, vendor"
+               aria-label="Search cases and devices"
                aria-describedby="omnibox-hint">
         <span class="omnibox-caret" aria-hidden="true"></span>
         <kbd class="omnibox-kbd" id="omnibox-hint">/</kbd>
@@ -24,7 +25,7 @@
 
     <div class="topbar-actions">
       <div class="user-menu" id="user-menu">
-        <button type="button" id="user-menu-button" class="btn btn-ghost h-9 gap-2 px-2"
+        <button type="button" id="user-menu-button" class="btn btn-ghost h-10 gap-2 px-2"
                 aria-haspopup="true" aria-expanded="false" aria-label="User menu">
           <span class="avatar" data-user-avatar>?</span>
           <span class="hidden text-sm lg:inline" data-user-name>Engineer</span>

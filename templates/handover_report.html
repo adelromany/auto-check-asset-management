@@ -7,11 +7,11 @@
   <link rel="stylesheet" href="/static/css/report.css?v=1">
 </head>
 <body>
-  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-    <img src="/static/img/b_labs.jpeg" alt="b_labs" width="36" height="36" style="border-radius: 8px; background: var(--logo-bg, #1A1A1A); padding: 2px;">
+  <div class="report-head">
+    <img src="/static/img/b_labs.jpeg" alt="b_labs" width="36" height="36" class="report-logo">
     <div>
-      <h1 style="margin: 0;">Handover report</h1>
-      <p class="meta" style="margin: 2px 0 0 0;">Case {{ handover.id }} · Date {{ handover.created_at }}</p>
+      <h1>Handover report</h1>
+      <p class="meta">Case {{ handover.id }} · Date {{ handover.created_at }}</p>
     </div>
   </div>
 
@@ -74,10 +74,6 @@
     <div class="signature">Engineer signature and date</div>
   </div>
 
-  <section class="legal-text" aria-label="Company legal text">
-    <h2>Company legal text</h2>
-    <p>[Company legal text goes here]</p>
-  </section>
   <p class="note">Case {{ handover.id }}.</p>
 </body>
 </html>

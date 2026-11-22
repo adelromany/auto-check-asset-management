@@ -4,6 +4,7 @@
   sortable table view. The primary button opens the registration drawer.
 -#}
 {% from "partials/opstrip.html" import opstrip, state_word %}
+{% block body_attrs %}{% if open_new %} data-open-new="handover"{% endif %}{% endblock %}
 {% block content %}
 <h1 class="sr-only">Handovers</h1>
 <div class="page-head">
@@ -31,6 +32,11 @@
         {% endfor %}
       </select>
       {% endif %}
+      <select name="range" class="input input-inline" aria-label="Filter by date">
+        {% for value, label in [('', 'Date: all'), ('today', 'Today'), ('week', 'Last 7 days'), ('month', 'Last 30 days')] %}
+        <option value="{{ value }}" {% if active_range == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
       {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
     </form>
     <div class="row-actions">
@@ -47,7 +53,7 @@
 <div data-refresh-region data-refresh="15">
   {# -- board view -- #}
   <section id="handover-board" class="kanban {% if view_is_table is defined and view_is_table %}hidden{% endif %}" aria-label="Handover board">
-    {% set columns = [('preparing', 'Preparing'), ('assigned', 'Assigned'), ('paperwork', 'Paperwork'), ('done', 'Done')] %}
+    {% set columns = [('preparing', 'Preparing'), ('assigned', 'Assigned'), ('paperwork', 'Paperwork'), ('done', 'Done / with gaps')] %}
     {% for column, title in columns %}
     <div class="kanban-col" data-column="{{ column }}">
       <div class="kanban-col-head">

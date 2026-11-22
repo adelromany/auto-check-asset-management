@@ -117,7 +117,7 @@ def case_board(tmp_path_factory: pytest.TempPathFactory):
     try:
         for _ in range(60):
             try:
-                urllib.request.urlopen(base + "/dashboard", timeout=2)
+                urllib.request.urlopen(base + "/", timeout=2)
                 break
             except Exception:
                 time.sleep(0.25)
@@ -160,7 +160,7 @@ def test_case_board_meets_the_visible_word_budgets(headless_chrome, case_board) 
         page = headless_chrome.new_page(viewport={"width": width, "height": height})
         try:
             page.goto(
-                f"{base}/cases/{handover_id}", wait_until="networkidle"
+                f"{base}/handovers/{handover_id}", wait_until="networkidle"
             )
             words = _words(page)
             assert len(words) <= budget, (
@@ -179,21 +179,23 @@ def test_case_board_has_ten_operation_tiles_and_drawer(headless_chrome, case_boa
     base, handover_id = case_board
     page = headless_chrome.new_page(viewport={"width": 1440, "height": 900})
     try:
-        page.goto(f"{base}/cases/{handover_id}", wait_until="networkidle")
-        tiles = page.locator("[data-tile]")
+        page.goto(f"{base}/handovers/{handover_id}", wait_until="networkidle")
+        tiles = page.locator("[data-op-tile]")
         assert tiles.count() == 10
 
-        # Drawer is closed initially
-        drawer = page.locator("#operation-drawer")
-        assert "hidden" in (drawer.get_attribute("class") or "")
+        # No drawer is rendered until a tile is opened.
+        drawer = page.locator('[data-drawer][data-open="true"]')
+        assert drawer.count() == 0
 
-        # Clicking a tile opens the drawer
-        page.locator('[data-tile="agent_report"]').click()
-        assert "hidden" not in (drawer.get_attribute("class") or "")
+        # Clicking a tile opens the side-sheet drawer.
+        page.locator('[data-op-tile="agent_report"]').click()
+        drawer = page.locator('[data-drawer][data-open="true"]')
+        assert drawer.count() == 1
 
-        # Pressing Escape closes the drawer
+        # Pressing Escape closes it.
         page.keyboard.press("Escape")
-        assert "hidden" in (drawer.get_attribute("class") or "")
+        page.wait_for_timeout(200)
+        assert page.locator('[data-drawer][data-open="true"]').count() == 0
     finally:
         page.close()
 
@@ -206,8 +208,14 @@ def test_dashboard_and_registration_meet_word_budgets(headless_chrome, case_boar
         dashboard_words = len(_words(page))
         assert dashboard_words <= 160, f"Dashboard shows {dashboard_words} words, budget 160"
 
-        page.goto(f"{base}/new", wait_until="networkidle")
-        new_case_words = len(_words(page))
-        assert new_case_words <= 80, f"New case registration shows {new_case_words} words, budget 80"
+        # The registration form is a drawer over the handovers board; measure
+        # the drawer itself (the form the engineer reads and fills).
+        page.goto(f"{base}/handovers?new=1", wait_until="networkidle")
+        drawer = page.locator('[data-drawer][data-open="true"]')
+        assert drawer.count() == 1
+        drawer_words = len(drawer.first.inner_text().split())
+        assert drawer_words <= 80, (
+            f"New case registration shows {drawer_words} words, budget 80"
+        )
     finally:
         page.close()

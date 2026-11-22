@@ -1,6 +1,6 @@
 /**
- * handovers.js — board/table switch (remembered), sortable table,
- * filter chips submitted as navigation.
+ * handovers.js — remembered board/table view, filters and table sorting.
+ * Delegated listeners survive the 15-second partial refresh.
  */
 "use strict";
 
@@ -15,59 +15,105 @@
     return null;
   }
 
-  // view switch
-  var toggle = document.getElementById("view-toggle");
-  var board = document.getElementById("handover-board");
-  var table = document.getElementById("handover-table");
   function applyView(useTable) {
+    var board = document.getElementById("handover-board");
+    var table = document.getElementById("handover-table");
     if (!board || !table) return;
-    if (useTable) {
-      board.classList.add("hidden");
-      table.classList.remove("hidden");
-    } else {
-      board.classList.remove("hidden");
-      table.classList.add("hidden");
+    board.classList.toggle("hidden", useTable);
+    table.classList.toggle("hidden", !useTable);
+    var toggle = document.getElementById("view-toggle");
+    if (toggle) toggle.checked = useTable;
+  }
+
+  function rememberedView() {
+    return tryStorage("get", "handovers-view") === "table";
+  }
+
+  function sortTable(header, direction, remember) {
+    var tableEl = document.getElementById("handover-table-el");
+    var tbody = tableEl && tableEl.querySelector("tbody");
+    if (!tbody) return;
+    var key = header.getAttribute("data-sort");
+    tableEl.querySelectorAll("th.th-sort").forEach(function (other) {
+      other.removeAttribute("data-dir");
+    });
+    header.setAttribute("data-dir", direction);
+    var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr[data-row]"));
+    rows.sort(function (a, b) {
+      var av = a.getAttribute("data-" + key) || "";
+      var bv = b.getAttribute("data-" + key) || "";
+      var cmp = av.localeCompare(bv, undefined, { numeric: true });
+      return direction === "asc" ? cmp : -cmp;
+    });
+    rows.forEach(function (row) { tbody.appendChild(row); });
+    if (remember) {
+      tryStorage("set", "handovers-sort", JSON.stringify({ key: key, direction: direction }));
     }
   }
-  if (toggle) {
-    var stored = tryStorage("get", "handovers-view");
-    var useTable = stored === "table";
-    toggle.checked = useTable;
-    applyView(useTable);
-    toggle.addEventListener("change", function () {
-      tryStorage("set", "handovers-view", toggle.checked ? "table" : "board");
-      applyView(toggle.checked);
-    });
+
+  function restoreSort() {
+    var saved = null;
+    try { saved = JSON.parse(tryStorage("get", "handovers-sort") || "null"); } catch (e) { saved = null; }
+    if (!saved || !saved.key || ["asc", "desc"].indexOf(saved.direction) < 0) return;
+    var header = document.querySelector('#handover-table-el th[data-sort="' + saved.key + '"]');
+    if (header) sortTable(header, saved.direction, false);
   }
 
-  // sortable table
-  var tableEl = document.getElementById("handover-table-el");
-  if (tableEl) {
-    var headers = tableEl.querySelectorAll("th.th-sort");
-    headers.forEach(function (th) {
-      th.addEventListener("click", function () {
-        var key = th.getAttribute("data-sort");
-        var tbody = tableEl.querySelector("tbody");
-        var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr[data-row]"));
-        var asc = th.getAttribute("data-dir") !== "asc";
-        headers.forEach(function (other) { other.removeAttribute("data-dir"); });
-        th.setAttribute("data-dir", asc ? "asc" : "desc");
-        rows.sort(function (a, b) {
-          var av = a.getAttribute("data-" + key) || "";
-          var bv = b.getAttribute("data-" + key) || "";
-          var cmp = av.localeCompare(bv, undefined, { numeric: true });
-          return asc ? cmp : -cmp;
-        });
-        rows.forEach(function (row) { tbody.appendChild(row); });
-      });
-    });
+  function rememberFilter(control) {
+    if (!control.name) return;
+    tryStorage("set", "handover-filter-" + control.name, control.value);
   }
 
-  // filter chips submit on change
-  var form = document.getElementById("filter-form");
-  if (form) {
-    form.querySelectorAll("input, select").forEach(function (control) {
-      control.addEventListener("change", function () { form.submit(); });
+  function restoreFilters() {
+    var params = new URLSearchParams(window.location.search);
+    if (["status", "engineer", "range"].some(function (key) { return params.has(key); })) return;
+    if (params.has("new")) return;
+    var form = document.getElementById("filter-form");
+    if (!form) return;
+    var shouldSubmit = false;
+    ["status", "engineer", "range"].forEach(function (name) {
+      var value = tryStorage("get", "handover-filter-" + name);
+      if (!value) return;
+      var control = form.querySelector('[name="' + name + '"][value="' + CSS.escape(value) + '"]');
+      if (!control) control = form.querySelector('[name="' + name + '"]');
+      if (!control || !control.value) return;
+      if (control.type === "radio") control.checked = true;
+      else control.value = value;
+      shouldSubmit = true;
     });
+    if (shouldSubmit) form.submit();
   }
+
+  document.addEventListener("change", function (event) {
+    var control = event.target;
+    if (!control || !control.closest) return;
+    if (control.closest("#view-toggle")) {
+      tryStorage("set", "handovers-view", control.checked ? "table" : "board");
+      applyView(control.checked);
+      return;
+    }
+    if (control.closest("#filter-form")) {
+      rememberFilter(control);
+      var form = document.getElementById("filter-form");
+      if (form) form.submit();
+    }
+  });
+
+  document.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!target || !target.closest) return;
+    var header = target.closest("#handover-table-el th.th-sort");
+    if (!header) return;
+    var direction = header.getAttribute("data-dir") === "asc" ? "desc" : "asc";
+    sortTable(header, direction, true);
+  });
+
+  document.addEventListener("portal:refreshed", function () {
+    applyView(rememberedView());
+    restoreSort();
+  });
+
+  applyView(rememberedView());
+  restoreSort();
+  restoreFilters();
 })();

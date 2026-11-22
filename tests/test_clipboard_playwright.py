@@ -96,20 +96,35 @@ def browser(target_browser):
         launched.close()
 
 
+def start_sync(page):
+    """Start the device check on /sync so the commands (and copy buttons) exist."""
+    page.click("#sync-start-button")
+    page.wait_for_selector("#sync-waiting", state="visible", timeout=15000)
+    page.wait_for_function(
+        "() => { var el = document.getElementById('sync-cmd-windows');"
+        " return !!el && el.textContent.trim().length > 0; }",
+        timeout=15000,
+    )
+
+
 def open_portal(browser, url, **context_kwargs):
     ctx = browser.new_context(**context_kwargs)
     page = ctx.new_page()
-    page.goto(url, wait_until="networkidle")
-    page.wait_for_selector(".copy-btn", timeout=15000)
+    page.goto(url + "/sync", wait_until="networkidle")
+    start_sync(page)
     return ctx, page
 
 
 def first_command(page):
-    return page.text_content(".cmd-body.active .cmd-pre")
+    return page.text_content("#sync-cmd-windows")
+
+
+def copy_button(page):
+    return page.locator('[data-copy-target="sync-cmd-windows"]')
 
 
 def click_first_copy(page):
-    page.click(".cmd-body.active .copy-btn")
+    page.click('[data-copy-target="sync-cmd-windows"]')
 
 
 def paste_into_fresh_textarea(page):
@@ -155,7 +170,7 @@ def test_copy_never_silent_on_insecure_origin(portal, browser, target_browser):
     try:
         click_first_copy(page)
         page.wait_for_timeout(800)
-        label = page.text_content(".cmd-body.active .copy-btn")
+        label = copy_button(page).text_content()
         assert label != "Copy", "no visible feedback after click (silent failure)"
         modal = page.query_selector("#copy-manual-modal")
         if modal:
@@ -217,8 +232,8 @@ def test_total_failure_shows_preselected_modal(portal, browser, target_browser):
     """)
     page = ctx.new_page()
     try:
-        page.goto(portal["insecure"], wait_until="networkidle")
-        page.wait_for_selector(".copy-btn", timeout=15000)
+        page.goto(portal["insecure"] + "/sync", wait_until="networkidle")
+        start_sync(page)
         expected = first_command(page)
         click_first_copy(page)
         page.wait_for_selector("#copy-manual-modal", timeout=8000)
@@ -247,11 +262,14 @@ def test_secure_origin_copies_via_clipboard_api(portal, browser, target_browser)
         expected = first_command(page)
         click_first_copy(page)
         page.wait_for_timeout(800)
-        label = page.text_content(".cmd-body.active .copy-btn")
+        label = copy_button(page).text_content()
         assert "copied" in label.lower(), f"unexpected feedback: {label!r}"
         assert str(len(expected)) in label  # character count shown
         if target_browser == "chromium":
-            assert page.evaluate("navigator.clipboard.readText()") == expected
+            # Windows stores CRLF on the clipboard (Chromium normalises on
+            # write), so compare the command line-by-line, not byte-for-byte.
+            pasted = page.evaluate("navigator.clipboard.readText()")
+            assert pasted.replace("\r\n", "\n") == expected.replace("\r\n", "\n")
         else:
             if target_browser == "webkit":
                 pytest.xfail("webkit headless paste is best-effort")

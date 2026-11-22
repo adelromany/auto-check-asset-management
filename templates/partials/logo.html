@@ -1,10 +1,25 @@
 {#-
   Logo: the b_labs mark, shown whole (object-fit: contain, no crop) on an
-  ink chip so its dark background blends in light mode.
+  ink chip so its dark background blends in light mode. Sizes are CSS
+  classes (no inline styles: the CSP forbids them).
 -#}
-{% macro logo(size=40, radius=10) -%}
-<span class="logo-chip" style="width: {{ size }}px; height: {{ size }}px; border-radius: {{ radius }}px;">
+{% macro logo(size=40) -%}
+<span class="logo-chip logo-chip-{{ size }}">
   <img src="/static/img/b_labs.jpeg" alt="b_labs" width="{{ size }}" height="{{ size }}"
-       class="logo-img" style="border-radius: {{ radius - 2 }}px;" data-logo>
+       class="logo-img" data-logo>
+</span>
+{%- endmacro %}
+
+{#-
+  Lockup: the mark plus a title and a one-line subtitle, for standalone
+  pages that carry their own header (diagnostics).
+-#}
+{% macro logo_lockup(size=24, title="", subtitle="") -%}
+<span class="flex items-center gap-2">
+  {{ logo(size) }}
+  <span class="flex flex-col leading-tight">
+    <span class="text-sm font-semibold">{{ title }}</span>
+    {% if subtitle %}<span class="text-xs text-muted-foreground">{{ subtitle }}</span>{% endif %}
+  </span>
 </span>
 {%- endmacro %}

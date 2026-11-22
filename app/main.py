@@ -1,6 +1,7 @@
 """Application factory. No business logic lives here."""
 
 import logging
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
@@ -40,7 +41,8 @@ def create_app() -> FastAPI:
     application.add_exception_handler(Exception, _internal_error)
     application.add_exception_handler(StarletteHTTPException, _http_error)
     application.add_exception_handler(RequestValidationError, _validation_error)
-    application.mount("/static", StaticFiles(directory="static"), name="static")
+    static_dir = Path(__file__).resolve().parents[1] / "static"
+    application.mount("/static", StaticFiles(directory=static_dir), name="static")
     # Added inner-to-outer: the session must exist before CSRF reads it, and
     # the header middleware must wrap every response, including errors.
     application.add_middleware(RateLimitMiddleware)
@@ -52,9 +54,10 @@ def create_app() -> FastAPI:
         same_site="lax",
         max_age=3600,
     )
-    application.add_middleware(SecurityHeadersMiddleware)
-    # Added last so the server-generated id wraps every other middleware.
+    # Added last so the security headers wrap every response, including the
+    # error responses the request-id middleware renders for crashed requests.
     application.add_middleware(RequestIdMiddleware)
+    application.add_middleware(SecurityHeadersMiddleware)
     application.include_router(auth.router)
     application.include_router(pages.router)
     application.include_router(agent.router)
@@ -81,7 +84,7 @@ def create_app() -> FastAPI:
 
 
 async def _internal_error(request: Request, exc: Exception) -> Response:
-    logger.error("unhandled_request_error exception_type=%s", type(exc).__name__)
+    logger.exception("unhandled_request_error exception_type=%s", type(exc).__name__)
     if _wants_html(request):
         return _html_error(request, status=500, headline="Something went wrong")
     return JSONResponse(

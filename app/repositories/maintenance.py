@@ -23,6 +23,7 @@ from app.db.models.maintenance import (
 
 _FIELD_NAMES: tuple[str, ...] = (
     "reported_issue",
+    "priority",
     "condition_notes",
     "accessories",
     "diagnosis_category",

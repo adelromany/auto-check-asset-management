@@ -105,6 +105,7 @@ class MaintenanceInfoOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
     reported_issue: str | None = None
+    priority: str | None = None
     condition_notes: str | None = None
     accessories: str | None = None
     diagnosis_category: str | None = None
@@ -158,6 +159,7 @@ class MaintenanceInfoOut(BaseModel):
             vendor_name = dest.name if dest is not None else None
             return {
                 "reported_issue": getattr(data, "reported_issue", None),
+                "priority": getattr(data, "priority", None),
                 "condition_notes": getattr(data, "condition_notes", None),
                 "accessories": getattr(data, "accessories", None),
                 "diagnosis_category": getattr(data, "diagnosis_category", None),
@@ -178,12 +180,15 @@ class MaintenanceInfoOut(BaseModel):
                 ),
                 "outcome": getattr(data, "outcome", None),
                 "outcome_note": getattr(data, "outcome_note", None),
+                "cost": getattr(data, "cost", None),
+                "warranty": getattr(data, "warranty", None),
             }
         return data
 
 
 class MaintenanceUpdate(BaseModel):
     reported_issue: str | None = None
+    priority: str | None = Field(default=None, pattern="^(low|normal|high|urgent)$")
     condition_notes: str | None = None
     accessories: str | None = None
     diagnosis_category: str | None = None

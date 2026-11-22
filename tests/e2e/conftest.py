@@ -66,8 +66,9 @@ def portal():
         SESSION_SECRET="clickthrough-test",
         HTTPS_ONLY="false",
         APP_HOST=f"http://127.0.0.1:{port}",
-        SNIPEIT_URL="http://snipeit.test",
+        SNIPEIT_URL="http://127.0.0.1:9",
         SNIPEIT_TOKEN="",
+        SNIPEIT_TIMEOUT_SECONDS="1",
         DOCUMENTS_DIR=str(Path(db_dir) / "documents"),
     )
     # The app relies on migrations; create the schema in the temp database.
@@ -79,13 +80,14 @@ def portal():
         capture_output=True,
     )
 
+    server_log = log_path.open("wb")
     process = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.main:app",
          "--host", "127.0.0.1", "--port", str(port)],
         cwd=REPO_ROOT,
         env=environment,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        stdout=server_log,
+        stderr=subprocess.STDOUT,
     )
 
     portal_handle = Portal(f"http://127.0.0.1:{port}")
@@ -136,10 +138,9 @@ def portal():
 
         yield portal_handle
     finally:
-        if log_path.exists():
-            pass
         process.terminate()
         try:
             process.wait(timeout=10)
         except subprocess.TimeoutExpired:
             process.kill()
+        server_log.close()

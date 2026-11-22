@@ -131,7 +131,8 @@ def test_index_200_when_sso_off(sso_off_client):
     r = sso_off_client.get("/")
     assert r.status_code == 200
     assert "text/html" in r.headers["content-type"]
-    assert "agent-slot" in r.text  # page shell marker
+    assert "data-topbar" in r.text  # page shell marker
+    assert "data-rail" in r.text
 
 
 def test_index_redirects_when_sso_on(make_client):

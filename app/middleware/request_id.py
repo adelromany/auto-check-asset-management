@@ -5,7 +5,7 @@ from __future__ import annotations
 import secrets
 import logging
 
-from starlette.responses import JSONResponse
+from starlette.requests import Request
 
 from app.request_context import request_id_var
 
@@ -34,13 +34,16 @@ class RequestIdMiddleware:
         try:
             await self.app(scope, receive, send_with_request_id)
         except Exception as exc:
-            logger.error(
+            # Delegate to the app's error rendering (HTML for browsers, JSON
+            # for APIs) so 500s look like every other error; this middleware
+            # only adds the id header and the server-side traceback log.
+            logger.exception(
                 "unhandled_request_error exception_type=%s", type(exc).__name__
             )
-            response = JSONResponse(
-                {"detail": "Internal server error", "request_id": request_id},
-                status_code=500,
-            )
+            from app.main import _internal_error
+
+            request = Request(scope, receive=receive)
+            response = await _internal_error(request, exc)
             await response(scope, receive, send_with_request_id)
         finally:
             request_id_var.reset(token)

@@ -77,10 +77,11 @@ Owner: platform/operations owner.
 
 ## Q-6 — When should the two oversized files be split? (OPEN)
 
-Context: principle 11 asks for files ≤ 400 lines. At final sync
-`app/services/snipeit_ops.py` is 640 lines and `static/js/handover_detail.js`
-is 461 lines. Both are cohesive, and splitting them now would mix refactoring
-with the documentation sync.
+Context: principle 11 asks for files ≤ 400 lines. At the UI recovery commit
+`app/routers/pages.py` is 848 lines, `app/services/snipeit_ops.py` is 806
+lines, and the UI scripts `static/js/case.js` / `shell.js` are also above the
+limit. All are cohesive, and splitting them now would mix refactoring with the
+UI recovery.
 
 Conservative option taken: record the exception in file 11 and defer the split
 to a dedicated `refactor/` branch with its own tests.
@@ -275,5 +276,33 @@ always on `/cases/{id}/history`.
 
 Conservative option taken: keep the board quiet and keep the evidence in the
 history page. The owner may want the actor/time visible on every operation.
+
+Owner: product/UI owner.
+
+## Q-23 — Who owns the Snipe-IT maintenance status label names? (OPEN)
+
+Context: recording the maintenance state in Snipe-IT needs the exact label
+names configured in that instance. They are deployment data, not code, so the
+portal reads `SNIPEIT_STATUS_NEEDS_MAINTENANCE`, `SNIPEIT_STATUS_IN_MAINTENANCE`
+and `SNIPEIT_STATUS_RETURNED`.
+
+Conservative option taken: if a name is missing the write is skipped and the
+case shows "Snipe-IT status not updated" while the `snipeit_status` operation is
+recorded as `not_done`. The portal never guesses a label. The Snipe-IT
+administrator must set the three values before go-live.
+
+Owner: Snipe-IT administrator.
+
+## Q-24 — Which URLs are canonical after the UI recovery? (RESOLVED)
+
+Context: the old UI used `/dashboard`, `/cases`, `/new` and `/device-check`,
+sometimes with `?kind=` to mean maintenance. The recovery collapses the product
+to four destinations plus case pages.
+
+Resolution (2026-11-18): `/` (Dashboard), `/handovers` (board), `/maintenance`
+(repairs) and `/sync` (device check) are canonical. Case pages are
+`/handovers/{id}` and `/maintenance/{id}`, each with `/history`. The old URLs
+answer `308` and preserve the query string; `/device-check?handover_id=` lands on
+`/sync?handover_id=` and offers "Return to case".
 
 Owner: product/UI owner.

@@ -18,48 +18,99 @@
     return null;
   }
 
-  // -- tabs -------------------------------------------------------------------
-  var tabs = portal.$all("[data-maint-tab]");
-  var board = document.getElementById("maint-board");
-  var atVendors = document.getElementById("maint-atvendors");
+  // -- tabs and panels ---------------------------------------------------------
+  // All controls are reached through delegated listeners so the 15 s
+  // auto-refresh can replace the board without leaving dead buttons behind.
+  var currentTab = tryStorage("get", "maintenance-tab") || "board";
+  var collapsed = tryStorage("get", "vendor-panel") === "collapsed";
+
+  function tabNodes() {
+    return portal.$all("[data-maint-tab]");
+  }
+
   function showTab(name) {
-    tabs.forEach(function (tab) {
+    currentTab = name;
+    tabNodes().forEach(function (tab) {
       tab.setAttribute("aria-selected", tab.getAttribute("data-maint-tab") === name ? "true" : "false");
     });
+    var board = document.getElementById("maint-board");
+    var atVendors = document.getElementById("maint-atvendors");
     if (board) board.classList.toggle("hidden", name !== "board");
     if (atVendors) atVendors.classList.toggle("hidden", name !== "atvendors");
     tryStorage("set", "maintenance-tab", name);
   }
-  tabs.forEach(function (tab) {
-    tab.addEventListener("click", function () { showTab(tab.getAttribute("data-maint-tab")); });
-  });
-  if (tabs.length) showTab(tryStorage("get", "maintenance-tab") || "board");
 
-  // -- vendor panel collapse (remembered) --------------------------------------
-  var panelToggle = portal.$("[data-panel-toggle]");
-  var panelBody = document.getElementById("vendor-panel-body");
-  if (panelToggle && panelBody) {
-    var collapsed = tryStorage("get", "vendor-panel") === "collapsed";
-    function applyPanel() {
-      panelBody.classList.toggle("hidden", collapsed);
-      panelToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-      panelToggle.querySelector("span.muted").textContent = collapsed ? "▸" : "▾";
+  function applyPanel() {
+    var panelToggle = portal.$("[data-panel-toggle]");
+    var panelBody = document.getElementById("vendor-panel-body");
+    if (!panelToggle || !panelBody) return;
+    panelBody.classList.toggle("hidden", collapsed);
+    panelToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    var arrow = panelToggle.querySelector("span.muted");
+    if (arrow) arrow.textContent = collapsed ? "▸" : "▾";
+  }
+
+  document.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!target || !target.closest) return;
+    var tab = target.closest("[data-maint-tab]");
+    if (tab) {
+      showTab(tab.getAttribute("data-maint-tab"));
+      return;
     }
-    applyPanel();
-    panelToggle.addEventListener("click", function () {
+    var toggle = target.closest("[data-panel-toggle]");
+    if (toggle) {
       collapsed = !collapsed;
       tryStorage("set", "vendor-panel", collapsed ? "collapsed" : "open");
       applyPanel();
+      return;
+    }
+    var step = target.closest("[data-step]");
+    if (step) {
+      var caseId = step.getAttribute("data-case");
+      if (step.getAttribute("data-step") === "send") openSendDrawer(caseId);
+      else openReceiveDrawer(caseId);
+    }
+  });
+
+  document.addEventListener("change", function (event) {
+    var control = event.target;
+    if (control && control.closest && control.closest("#maint-filter-form")) {
+      if (control.name) tryStorage("set", "maintenance-filter-" + control.name, control.value);
+      var form = document.getElementById("maint-filter-form");
+      if (form) form.submit();
+    }
+  });
+
+  function restoreFilters() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.has("state") || params.has("vendor") || params.has("new")) return;
+    var form = document.getElementById("maint-filter-form");
+    if (!form) return;
+    var shouldSubmit = false;
+    ["state", "vendor"].forEach(function (name) {
+      var value = tryStorage("get", "maintenance-filter-" + name);
+      if (!value) return;
+      var control = form.querySelector('[name="' + name + '"][value="' + CSS.escape(value) + '"]');
+      if (!control) control = form.querySelector('[name="' + name + '"]');
+      if (!control || !control.value) return;
+      if (control.type === "radio") control.checked = true;
+      else control.value = value;
+      shouldSubmit = true;
     });
+    if (shouldSubmit) form.submit();
   }
 
-  // -- filter chips --------------------------------------------------------------
-  var filterForm = document.getElementById("maint-filter-form");
-  if (filterForm) {
-    filterForm.querySelectorAll("input").forEach(function (control) {
-      control.addEventListener("change", function () { filterForm.submit(); });
-    });
-  }
+  // The refreshed markup carries the server defaults: restore what the user
+  // had chosen, without touching an open drawer or a half-filled form.
+  document.addEventListener("portal:refreshed", function () {
+    showTab(currentTab);
+    applyPanel();
+  });
+
+  if (tabNodes().length) showTab(currentTab);
+  applyPanel();
+  restoreFilters();
 
   // -- transit step drawers -------------------------------------------------------
   function maintenanceFields(caseId, payload) {
@@ -106,6 +157,31 @@
     });
   }
 
+  function appendNotDone(form, caseId, operation) {
+    var section = portal.el("section", "stack-sm notdone-section");
+    section.appendChild(portal.el("h3", "drawer-sub", "Or mark not done"));
+    var reason = portal.textInput("not_done_reason", "Reason (3–300 characters)", { maxlength: 300 });
+    section.appendChild(reason);
+    var button = portal.actionButton("Not done", "btn-outline");
+    button.addEventListener("click", function () {
+      if (reason.value.trim().length < 3) {
+        portal.toast("Give a reason of at least 3 characters.", "error");
+        reason.focus();
+        return;
+      }
+      button.disabled = true;
+      markNotDone(caseId, operation, reason.value.trim()).then(function () {
+        portal.toast("Marked as not done.", "success");
+        window.location.reload();
+      }).catch(function (error) {
+        button.disabled = false;
+        portal.toast(error.message, "error");
+      });
+    });
+    section.appendChild(button);
+    form.appendChild(section);
+  }
+
   function openSendDrawer(caseId) {
     var drawer = portal.drawerForm("Send to vendor", {});
     var form = drawer.__form;
@@ -138,6 +214,7 @@
       vendorSelect.appendChild(empty);
     });
 
+    appendNotDone(form, caseId, "sent_out");
     form.addEventListener("submit", function (event) {
       event.preventDefault();
       portal.setBusy(actions, true);
@@ -188,6 +265,7 @@
     var actions = portal.formActions("Receive");
     form.appendChild(actions);
 
+    appendNotDone(form, caseId, "returned");
     form.addEventListener("submit", function (event) {
       event.preventDefault();
       portal.setBusy(actions, true);
@@ -210,11 +288,4 @@
     });
   }
 
-  portal.$all("[data-step]").forEach(function (button) {
-    button.addEventListener("click", function () {
-      var caseId = button.getAttribute("data-case");
-      if (button.getAttribute("data-step") === "send") openSendDrawer(caseId);
-      else openReceiveDrawer(caseId);
-    });
-  });
 })();

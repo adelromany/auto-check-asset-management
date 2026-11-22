@@ -4,11 +4,28 @@
   runs one short command. Start sync shows the code and commands; the
   result arrives live; then it can be attached to a case.
 -#}
-{% block body_attrs %} data-app-host="{{ app_host }}"{% endblock %}
+{% block body_attrs %}{% endblock %}
 {% block content %}
 <h1 class="sr-only">Sync</h1>
 <div class="stack-lg sync-page">
+  {% if back_to_case %}
+  <div class="alert alert-info" role="status">
+    <div class="alert-body">
+      <span class="alert-icon" aria-hidden="true">↩</span>
+      <span class="alert-message">Device check for this handover · <span class="mono">{{ back_to_case.serial }}</span></span>
+    </div>
+    <span class="alert-actions">
+      <a href="{{ back_to_case.url }}" class="btn btn-outline btn-sm">Return to case</a>
+    </span>
+  </div>
+  {% endif %}
   <p class="page-intro">Check a device without opening the portal on it</p>
+
+  <ol class="sync-steps" aria-label="How sync works">
+    <li class="sync-step"><span class="sync-step-no mono">1</span><span>Start sync — a short code appears.</span></li>
+    <li class="sync-step"><span class="sync-step-no mono">2</span><span>Run the one-line command on the employee's PC.</span></li>
+    <li class="sync-step"><span class="sync-step-no mono">3</span><span>The report lands here; attach it to the case.</span></li>
+  </ol>
 
   <section id="sync-start" class="card sync-card">
     <div class="card-content sync-center">

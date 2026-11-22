@@ -63,7 +63,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/services/documents.py | service | printable report, safe scan storage, download and verified push |
 | module | app/services/dashboard.py | service | database-side dashboard aggregates and page-sized handover rows |
 | module | app/services/sessions.py | service | in-memory short-code session store |
-| module | app/routers/pages.py | router | dashboard, registration, case list/board/history, device check, legacy redirects, /api/me |
+| module | app/routers/pages.py | router | four-screen shell (dashboard, handovers, maintenance, sync), case pages/history, legacy 308 redirects, /api/me |
 | module | app/routers/agent.py | router | session code create/poll/submit |
 | module | app/routers/handovers.py | router | /api/handovers create, list, detail, confirm, cancel, recipient, preview, checkin, checkout |
 | module | app/routers/documents.py | router | report page, document upload/download and push |
@@ -80,14 +80,19 @@ The project graph is a map of what depends on what, so any change can be assesse
 | kind | method path | exposed by |
 |---|---|---|
 | route | GET / | app/routers/pages.py |
-| route | GET /device-check | app/routers/pages.py |
-| route | GET /dashboard | app/routers/pages.py |
-| route | GET /new | app/routers/pages.py |
-| route | GET /cases | app/routers/pages.py |
-| route | GET /cases/{id} | app/routers/pages.py |
-| route | GET /cases/{id}/history | app/routers/pages.py |
 | route | GET /handovers | app/routers/pages.py |
+| route | GET /maintenance | app/routers/pages.py |
+| route | GET /sync | app/routers/pages.py |
 | route | GET /handovers/{id} | app/routers/pages.py |
+| route | GET /maintenance/{id} | app/routers/pages.py |
+| route | GET /handovers/{id}/history | app/routers/pages.py |
+| route | GET /maintenance/{id}/history | app/routers/pages.py |
+| route | GET /device-check (308 → /sync) | app/routers/pages.py |
+| route | GET /dashboard (308 → /) | app/routers/pages.py |
+| route | GET /new (308 → /handovers?new=1) | app/routers/pages.py |
+| route | GET /cases (308 → /handovers or /maintenance) | app/routers/pages.py |
+| route | GET /cases/{id} (308 → case page) | app/routers/pages.py |
+| route | GET /cases/{id}/history (308 → case history) | app/routers/pages.py |
 | route | GET /api/me | app/routers/pages.py |
 | route | GET /api/session/new | app/routers/agent.py |
 | route | GET /api/session/{code}/data | app/routers/agent.py |
@@ -100,6 +105,8 @@ The project graph is a map of what depends on what, so any change can be assesse
 | route | GET /api/handovers/maintenance/categories | app/routers/handovers.py |
 | route | GET /api/handovers/{id} | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/maintenance | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/maintenance/status-label | app/routers/handovers.py |
+| route | POST /api/handovers/{id}/attach-report | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/operations/{stage}/confirm | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/stages/{stage}/confirm | app/routers/handovers.py |
 | route | POST /api/handovers/{id}/cancel | app/routers/handovers.py |
@@ -159,26 +166,32 @@ The project graph is a map of what depends on what, so any change can be assesse
 ### Nodes — assets (templates / static JS)
 | kind | path | used by | purpose |
 |---|---|---|---|
-| asset | templates/index.html | GET /, GET /device-check | device-check page and agent report prompt |
-| asset | templates/dashboard.html | GET /dashboard | server-rendered overview: figures, recent and stalled cases |
-| asset | templates/new_case.html | GET /new | server-rendered registration form |
-| asset | templates/cases.html | GET /cases | server-rendered case list with search/status/kind filters |
-| asset | templates/handover_detail.html | GET /cases/{id} | server-rendered case board, operations and latest events |
-| asset | templates/case_history.html | GET /cases/{id}/history | server-rendered append-only audit trail |
+| asset | templates/base.html | every page | the one shell: rail, topbar, bottom nav, toasts, drawer root |
+| asset | templates/dashboard.html | GET / | overview tiles, attention list, bar panels |
+| asset | templates/handovers.html | GET /handovers | kanban board, filters, registration trigger |
+| asset | templates/maintenance.html | GET /maintenance | three-state board, vendor panel, at-vendors table |
+| asset | templates/sync.html | GET /sync | device check start, commands, result, attach |
+| asset | templates/case.html | GET /handovers/{id}, GET /maintenance/{id} | passport, 10 operation tiles, cancel/sync |
+| asset | templates/case_history.html | GET /…/{id}/history | append-only audit trail |
+| asset | templates/error.html | every HTML error | friendly error page with request id and Back |
 | asset | templates/diag_clipboard.html | GET /diag/clipboard | clipboard diagnostics page |
 | asset | templates/handover_report.html | GET /api/handovers/{id}/report | printable report |
 | asset | static/css/report.css | handover_report.html | printable report styles, external for CSP |
-| asset | templates/partials/page_head.html | dashboard.html, new_case.html, cases.html, handover_detail.html, case_history.html | shared head, CSS and theme bootstrap |
-| asset | templates/partials/topbar.html | dashboard.html, new_case.html, cases.html, handover_detail.html, case_history.html, index.html | shared navigation, omnibox and SSO identity |
-| asset | templates/partials/labels.html | dashboard.html, cases.html, handover_detail.html, case_history.html | escaping macros for status/operation labels |
-| asset | static/js/shell.js | dashboard.html, new_case.html, cases.html, handover_detail.html, case_history.html | shared topbar/theme/toast helpers |
-| asset | static/js/new_case.js | new_case.html | registration POST, CSRF and active-serial check via textContent |
-| asset | static/js/handover_detail.js | handover_detail.html | operation actions, recipient, preview, upload, push, not-done, close/reopen |
+| asset | templates/partials/rail.html | base.html | desktop destination rail with visible labels |
+| asset | templates/partials/topbar.html | base.html | omnibox, theme toggle and user menu |
+| asset | templates/partials/bottom_nav.html | base.html | mobile destination bar |
+| asset | templates/partials/logo.html | rail.html, topbar.html, error.html | b_labs mark, size classes, no inline styles |
+| asset | templates/partials/opstrip.html | dashboard.html, handovers.html, maintenance.html | 10/4-dot operation strip and state words |
+| asset | templates/partials/labels.html | case.html, case_history.html | escaping macros for status/operation labels |
+| asset | static/js/shell.js | every page | shell, drawers, toasts, omnibox, shortcuts, refresh |
+| asset | static/js/theme.js | every page | light/dark/system toggle |
+| asset | static/js/theme-init.js | every page | pre-paint theme, external for CSP |
+| asset | static/js/handovers.js | handovers.html | board filter memory and registration trigger |
+| asset | static/js/maintenance.js | maintenance.html | tabs, vendor panel, send/receive drawers |
+| asset | static/js/sync.js | sync.html, case.html | device-check flow and copy feedback |
+| asset | static/js/case.js | case.html | operation drawers, cancel, sync, maintenance |
+| asset | static/js/clipboard.js | sync.html, diag_clipboard.html | shared copyText utility (3 tiers) |
 | asset | static/js/diag_clipboard.js | diag_clipboard.html | clipboard diagnostics, external for CSP |
-| asset | static/js/theme-init.js | page_head.html, index.html, diag_clipboard.html | pre-paint theme, external for CSP |
-| asset | static/js/theme.js | every server-rendered page, diag_clipboard.html | theme toggle |
-| asset | static/js/clipboard.js | index.html | shared copyText utility |
-| asset | static/app.js | index.html | device-check UI |
 
 ### Edges (selected, source of truth for impact)
 | from | edge | to |
@@ -253,13 +266,18 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/routers/pages.py | imports | app/services/dashboard.py |
 | app/routers/pages.py | imports | app/services/handovers.py |
 | app/routers/pages.py | renders | templates/dashboard.html |
-| app/routers/pages.py | renders | templates/new_case.html |
-| app/routers/pages.py | renders | templates/cases.html |
-| app/routers/pages.py | renders | templates/handover_detail.html |
+| app/routers/pages.py | renders | templates/handovers.html |
+| app/routers/pages.py | renders | templates/maintenance.html |
+| app/routers/pages.py | renders | templates/sync.html |
+| app/routers/pages.py | renders | templates/case.html |
 | app/routers/pages.py | renders | templates/case_history.html |
-| app/routers/pages.py | renders | templates/index.html |
-| templates/new_case.html | uses | static/js/new_case.js |
-| templates/handover_detail.html | uses | static/js/handover_detail.js |
+| app/routers/pages.py | renders | templates/error.html |
+| templates/base.html | uses | static/js/shell.js |
+| templates/base.html | uses | static/js/theme.js |
+| templates/case.html | uses | static/js/case.js |
+| templates/handovers.html | uses | static/js/handovers.js |
+| templates/maintenance.html | uses | static/js/maintenance.js |
+| templates/sync.html | uses | static/js/sync.js |
 | app/routers/http_errors.py | imports | app/services/handovers.py |
 | app/routers/http_errors.py | imports | app/clients/snipeit.py |
 | app/routers/http_errors.py | imports | app/domain/errors.py |
@@ -289,6 +307,9 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/services/handovers.py | app/routers/handovers.py; app/routers/agent.py; tests/test_handover_service.py; tests/test_handovers_api.py |
 | app/services/snipeit_ops.py | app/routers/handovers.py; tests/test_snipeit_write_ops.py; tests/fakes/snipeit_fake.py |
 | app/services/documents.py | app/routers/documents.py; templates/handover_report.html; tests/test_documents.py |
+| app/db/models/maintenance.py | migration 0006; maintenance DTO/API; registration and send/receive drawers; tests/test_maintenance_api.py; tests/e2e/test_ui_flows.py |
+| static/js/maintenance.js | maintenance registration/vendor/category loading; send/receive transitions; focused persistence flow and click-through |
+| static/js/sync.js | /sync and case drawer; clipboard matrix; linked-agent persistence flow |
 | app/repositories/documents.py | app/services/documents.py; documents table |
 | app/routers/http_errors.py | app/routers/handovers.py; app/routers/documents.py; every error-status test |
 | app/dependencies.py get_snipeit_client | app/routers/handovers.py; tests/test_snipeit_write_ops.py |

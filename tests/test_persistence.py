@@ -58,6 +58,13 @@ def _handover(serial: str, status: str) -> Handover:
     )
 
 
+def test_legacy_print_attempts_revision_upgrades_to_head(sqlite_url: str) -> None:
+    config = _alembic_config(sqlite_url)
+    command.upgrade(config, "0003_print_attempts")
+
+    command.upgrade(config, "head")
+
+
 def test_migration_creates_all_tables(sqlite_url: str) -> None:
     _upgrade(sqlite_url)
 

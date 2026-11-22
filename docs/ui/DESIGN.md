@@ -1,39 +1,61 @@
 # UI Architecture & Design System
 
-## Identity & Tokens
-Derived directly from `static/img/b_labs.jpeg`:
-- **Dark Surface / Ink**: `#1A1A1A` (`oklch(0.20 0.005 180)`).
-- **Brand Accent / Mint**: `#71E3D9` (`oklch(0.84 0.13 183)`) for dark surfaces; deep mint `#0D766E` (`oklch(0.48 0.10 183)`) for light surfaces to guarantee 4.5:1 text contrast.
-- **Light Surface**: Warm off-white `#F8F9FA`.
-- **Brand Motif**: The mint underscore `_` from `b_labs` underlines active nav links, active tabs, and omnibox focus state.
-- **Logo**: 32px rounded chip with `b_labs.jpeg`, accompanied by "Handover Portal".
+## Four destinations, one shell
 
-## Shell Structure
-- **Left Rail (Desktop)**: Slim icon+label navigation bar (`w-16` expandable to `w-52`):
-  1. Dashboard (`/`)
-  2. New Case (`/new`)
-  3. Cases (`/cases`)
-  4. Maintenance (`/cases?kind=maintenance`)
-  5. Device Check (`/device-check`)
-- **Bottom Navigation (Mobile < 768px)**: Fixed 5-tab bar.
-- **Top Bar**: Search Omnibox with command-palette overlay (`/` hotkey), theme toggle, and current user avatar.
-- **Zero Nav Duplication**: No page repeats header navigation or duplicate breadcrumb cards.
+| URL | Screen | Purpose |
+| --- | --- | --- |
+| `/` | Dashboard | Open work, needs attention, stat tiles |
+| `/handovers` | Handovers | Kanban board + filters + registration drawer |
+| `/maintenance` | Maintenance | Three-state board, vendors, at-vendors table |
+| `/sync` | Sync | Device check (agent command, result, attach) |
 
-## Signature Interactions
-1. **Operation Strip**: Cases render an inline dot matrix (`stage-dots`) representing the 10 handover stages or 4 maintenance stages, color-coded with state tooltips.
-2. **Command Palette**: Omnibox triggers instant search across Cases, Devices, People, and Vendors.
-3. **Calm Density**: Zero paragraphs on operation tiles. Each card represents exactly one concept with concise stats and badges.
+Case pages keep a child URL: `/handovers/{id}` (handover) or
+`/maintenance/{id}` (repair), each with `/history`. Legacy URLs
+(`/cases`, `/cases/{id}`, `/new`, `/dashboard`, `/device-check`) answer `308`
+and preserve the query string.
 
-## Case Board (`/cases/{id}`)
-Three-zone responsive grid:
-1. **Device Passport (Left, Sticky `w-72`)**: Device serial in monospace, model chip, asset tag, recipient avatar + name, engineer, ticket, SVG progress ring (`n/m done`), gaps counter, primary **Next action** button, and secondary action menu (`⋯`).
-2. **Operations Board (Center)**: Grouped into three visual lanes:
-   - **Prepare**: Device prepared, User signed in, Agent report, Software.
-   - **Assign**: Recipient, Checkout.
-   - **Paperwork**: Print form, Signed paper, Scan, Push.
-   Each tile contains: icon, ≤3-word title, status badge, ≤60-character result summary, primary verb, and `⋯` secondary menu.
-3. **Operation Drawer (Right Side Sheet)**: Slide-over drawer focused exclusively on the active operation's interactive controls, with standard footer ("Mark not done", "Retry").
+Every page uses `base.html`: a fixed 220 px left rail with visible labels
+(Dashboard, Handovers, Maintenance, Sync), a sticky top bar (omnibox, theme
+toggle, user menu), and a mobile bottom bar with the same four destinations.
+Content is offset by `md:pl-[220px]` so nothing slides under the fixed rail.
 
-## History & Maintenance
-- **History (`/cases/{id}/history`)**: Chronological day-grouped timeline with human sentences, 2s actor event coalescing, and hidden collapsible raw JSON.
-- **Maintenance Lanes**: Kanban board organized by `Needs maintenance`, `In maintenance`, and `Returned from maintenance`.
+## Identity & tokens
+
+Derived from `static/img/b_labs.jpeg`:
+
+- **Ink**: `#1A1A1A` (`--brand-ink`, logo chip).
+- **Mint accent**: `#71E3D9` (dark surfaces), deep mint `#0D766E` (light
+  surfaces) — the underscore motif marks active nav and tabs.
+- **Light surface**: warm off-white `#F6F7F5`; dark theme is first-class.
+- **Logo**: `logo-chip-32/40/48` classes, `object-fit: contain`, never cropped;
+  no inline styles (CSP `style-src 'self'`).
+
+## Screen patterns
+
+- **Dashboard**: five stat tiles (open handovers, stalled/with gaps, needs
+  maintenance, at vendor, returned this week), an attention list, and two bar
+  panels. `data-count` animates once.
+- **Handovers**: a four-column kanban (`preparing`, `assigned`, `paperwork`,
+  `done`) of compact cards with a 10-dot operation strip. Filters are radio
+  chips remembered in `localStorage`; registration is a client-side drawer,
+  never a server-rendered form.
+- **Case page**: device passport (left) + three operation lanes (10 tiles).
+  Every tile opens a side-sheet drawer whose controls act or are disabled with
+  a visible reason. "All operations passed" appears only when every operation
+  passed and there is at least one.
+- **Maintenance**: needs / in / returned lanes, a collapsible vendor panel,
+  days-at-vendor clocks, and an "At vendors" table with sent, expected return
+  and reference.
+- **Sync**: start → short code + copyable Windows/Unix commands → live result →
+  attach to a case. Copy always gives visible feedback.
+
+## Behaviour
+
+- Keyboard: `/` focuses search, `n` opens the registration drawer, `Esc` closes
+  drawers and the user menu, `Enter` submits.
+- Lists refresh every 15 s by replacing `[data-refresh-region]`; the label says
+  "Updated just now". Open drawers and forms are never reset.
+- Buttons and links are never dead: each acts with feedback or is disabled with
+  a visible reason. APIs answer JSON; browser navigations get a friendly HTML
+  error page with the request id.
+- No inline scripts/styles; external files only. `textContent` for all data.

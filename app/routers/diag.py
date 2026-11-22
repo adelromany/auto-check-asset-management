@@ -5,6 +5,8 @@ browser user-agent string, which the engineer submits voluntarily via
 "Copy report" / the optional report endpoint.
 """
 
+from pathlib import Path
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -12,7 +14,9 @@ from fastapi.templating import Jinja2Templates
 from app import config
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(
+    directory=Path(__file__).resolve().parents[2] / "templates"
+)
 
 
 @router.get("/diag/clipboard", response_class=HTMLResponse)

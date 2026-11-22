@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import httpx
 import pytest_asyncio
@@ -206,6 +207,30 @@ async def _id_for(harness: DashboardHarness, serial: str) -> uuid.UUID:
 # -- summary ----------------------------------------------------------------
 
 
+def test_vendor_averages_include_returned_devices() -> None:
+    from app.routers.pages import _vendor_averages
+
+    rows = [
+        {
+            "maintenance_state": "returned",
+            "maintenance": SimpleNamespace(
+                sent_date=date(2026, 11, 1),
+                returned_date=date(2026, 11, 11),
+                vendor=SimpleNamespace(name="FixTech"),
+            ),
+        },
+        {
+            "maintenance_state": "returned",
+            "maintenance": SimpleNamespace(
+                sent_date=date(2026, 11, 1),
+                returned_date=date(2026, 11, 21),
+                vendor=SimpleNamespace(name="FixTech"),
+            ),
+        },
+    ]
+    assert _vendor_averages(rows) == {"FixTech": 15}
+
+
 async def test_summary_counts_every_status(dashboard: DashboardHarness) -> None:
     response = await dashboard.client.get("/api/dashboard/handovers/summary")
 
@@ -395,63 +420,81 @@ async def test_rows_filter_by_engineer_and_range(
 async def test_dashboard_page_renders_seeded_data(
     dashboard: DashboardHarness,
 ) -> None:
-    response = await dashboard.client.get("/dashboard")
+    stalled_id = await _id_for(dashboard, "SN-STALLED")
+
+    response = await dashboard.client.get("/")
 
     assert response.status_code == 200, response.text
     body = response.text
     assert "Dashboard" in body
     assert "Needs attention" in body
-    assert "SN-COMP-1" in body
-    assert "SN-STALLED" in body
-    assert 'href="/new"' in body
-    assert 'href="/cases"' in body
+    # The stalled case is the one that needs an engineer now.
+    assert f'href="/handovers/{stalled_id}"' in body
+    assert 'href="/handovers"' in body
+    assert 'data-rail' in body and 'data-topbar' in body and 'data-bottomnav' in body
 
 
-async def test_cases_page_renders_and_filters(
+async def test_dashboard_tiles_count_open_and_attention_cases(
     dashboard: DashboardHarness,
 ) -> None:
-    response = await dashboard.client.get("/cases")
+    response = await dashboard.client.get("/")
 
     assert response.status_code == 200, response.text
     body = response.text
-    assert "Cases" in body
+    assert "Handovers" in body and "open" in body
+    assert "Stalled" in body
+    # Three open handovers (in progress, stalled, draft) plus one stalled badge.
+    assert 'data-value="3"' in body
+    assert 'data-value="1"' in body
+
+
+async def test_handovers_page_renders_and_filters(
+    dashboard: DashboardHarness,
+) -> None:
+    response = await dashboard.client.get("/handovers")
+
+    assert response.status_code == 200, response.text
+    body = response.text
+    assert "Handovers" in body
     assert "SN-COMP-1" in body
     assert "SN-STALLED" in body
-    assert "Recipient check" in body
-    assert "6 cases" in body
+    assert "Recipient Check" in body  # the operation strip labels every dot
+    assert 'data-column="preparing"' in body
+    assert 'data-column="done"' in body
 
-    searched = await dashboard.client.get("/cases?q=STALLED")
+    searched = await dashboard.client.get("/handovers?q=STALLED")
     assert searched.status_code == 200
     assert "SN-STALLED" in searched.text
     assert "SN-COMP-1" not in searched.text
-    assert "matching your filters" in searched.text
 
-    completed = await dashboard.client.get("/cases?status=completed")
+    completed = await dashboard.client.get("/handovers?status=completed")
     assert completed.status_code == 200
     assert "SN-COMP-1" in completed.text
     assert "SN-COMP-2" in completed.text
     assert "SN-DRAFT" not in completed.text
 
-    empty = await dashboard.client.get("/cases?q=does-not-exist")
+    empty = await dashboard.client.get("/handovers?q=does-not-exist")
     assert empty.status_code == 200
-    assert "No case matches these filters" in empty.text
+    assert "No handovers yet." in empty.text
+    assert "New handover" in empty.text  # the empty state is not a dead end
 
-    invalid = await dashboard.client.get("/cases?status=nonsense&kind=other")
+    invalid = await dashboard.client.get("/handovers?status=nonsense&kind=other")
     assert invalid.status_code == 200
-    assert "All statuses" in invalid.text
+    assert 'name="status" value="" class="sr-only" checked' in invalid.text
 
 
-async def test_new_case_page_renders_the_registration_form(
+async def test_new_case_shortcut_opens_the_registration_drawer(
     dashboard: DashboardHarness,
 ) -> None:
-    response = await dashboard.client.get("/new")
+    response = await dashboard.client.get("/handovers?new=1")
 
     assert response.status_code == 200, response.text
     body = response.text
-    assert 'id="new-case-form"' in body
-    assert 'name="device_serial"' in body
-    assert 'name="ticket_ref"' in body
-    assert "Register case" in body
+    # The registration form is a drawer drawn by shell.js; the page only has
+    # to carry the trigger and the marker that opens it.
+    assert 'data-new-shortcut="handover"' in body
+    assert 'data-open-new="handover"' in body
+    assert "New handover" in body
 
 
 async def test_case_page_renders_the_case(
@@ -459,23 +502,23 @@ async def test_case_page_renders_the_case(
 ) -> None:
     handover_id = await _id_for(dashboard, "SN-STALLED")
 
-    response = await dashboard.client.get(f"/cases/{handover_id}")
+    response = await dashboard.client.get(f"/handovers/{handover_id}")
 
     assert response.status_code == 200, response.text
     body = response.text
     assert "SN-STALLED" in body
-    assert "Recipient check" in body
+    assert "Recipient" in body
     assert "Not done" in body
-    assert "Events" in body
-    assert "alice" in body
-    assert f'href="/cases/{handover_id}/history"' in body
-    assert 'data-action="close-case"' in body
+    assert f'href="/handovers/{handover_id}/history"' in body
+    assert 'data-case-cancel' in body
+    assert f'data-case-id="{handover_id}"' in body
 
     draft_id = await _id_for(dashboard, "SN-DRAFT")
-    draft = await dashboard.client.get(f"/cases/{draft_id}")
+    draft = await dashboard.client.get(f"/handovers/{draft_id}")
     assert draft.status_code == 200
-    assert f'href="/device-check?handover_id={draft_id}"' in draft.text
-    assert 'data-action="not-done"' in draft.text
+    # A draft case still offers the agent report tile (the sync entry point).
+    assert 'data-op-tile="agent_report"' in draft.text
+    assert 'data-active="true"' in draft.text
 
 
 async def test_case_board_keeps_secondary_information_collapsed(
@@ -483,14 +526,46 @@ async def test_case_board_keeps_secondary_information_collapsed(
 ) -> None:
     handover_id = await _id_for(dashboard, "SN-DRAFT")
 
-    response = await dashboard.client.get(f"/cases/{handover_id}")
+    response = await dashboard.client.get(f"/handovers/{handover_id}")
 
     assert response.status_code == 200, response.text
     body = response.text
-    # 10 operation tiles across 3 lanes; secondary information is kept in the side-sheet drawer
-    assert body.count("data-operation-tile") == 10
-    assert 'id="operation-drawer"' in body
-    assert f'href="/cases/{handover_id}/history"' in body
+    # 10 operation tiles across 3 lanes; secondary information is kept in the
+    # side-sheet drawer that shell.js builds on demand.
+    assert body.count("data-op-tile=") == 10
+    assert 'data-drawer-root' not in body  # drawers are never server-rendered
+    assert f'href="/handovers/{handover_id}/history"' in body
+
+
+async def test_pages_carry_no_inline_scripts_or_styles(
+    dashboard: DashboardHarness,
+) -> None:
+    """`script-src 'self'` and `style-src 'self'` block inline code outright."""
+    for path in ("/", "/handovers", "/maintenance", "/sync"):
+        response = await dashboard.client.get(path, follow_redirects=True)
+        assert response.status_code == 200, path
+        html = response.text
+        assert "style=" not in html, f"{path} has an inline style attribute"
+        assert "<script>" not in html, f"{path} has an inline script element"
+        assert "javascript:" not in html, f"{path} has a javascript: URL"
+
+
+async def test_case_board_shows_all_passed_only_when_every_operation_passed(
+    dashboard: DashboardHarness,
+) -> None:
+    complete_id = await _id_for(dashboard, "SN-COMP-1")
+    complete = await dashboard.client.get(f"/handovers/{complete_id}")
+    assert complete.status_code == 200
+    assert "All operations passed" in complete.text
+
+    # A case with a not_done operation or with no operations never claims it.
+    stalled_id = await _id_for(dashboard, "SN-STALLED")
+    stalled = await dashboard.client.get(f"/handovers/{stalled_id}")
+    assert "All operations passed" not in stalled.text
+
+    draft_id = await _id_for(dashboard, "SN-DRAFT")
+    draft = await dashboard.client.get(f"/handovers/{draft_id}")
+    assert "All operations passed" not in draft.text
 
 
 async def test_case_history_page_renders_the_audit_trail(
@@ -498,13 +573,13 @@ async def test_case_history_page_renders_the_audit_trail(
 ) -> None:
     handover_id = await _id_for(dashboard, "SN-STALLED")
 
-    response = await dashboard.client.get(f"/cases/{handover_id}/history")
+    response = await dashboard.client.get(f"/handovers/{handover_id}/history")
 
     assert response.status_code == 200, response.text
     body = response.text
-    assert "Audit trail" in body
+    assert "History" in body
     assert "SN-STALLED" in body
-    assert f'href="/cases/{handover_id}"' in body
+    assert f'href="/handovers/{handover_id}"' in body
 
 
 async def test_legacy_case_urls_redirect_permanently(
@@ -512,27 +587,43 @@ async def test_legacy_case_urls_redirect_permanently(
 ) -> None:
     handover_id = await _id_for(dashboard, "SN-STALLED")
 
-    listing = await dashboard.client.get("/handovers?status=stalled")
+    listing = await dashboard.client.get("/cases?status=stalled")
     assert listing.status_code == 308
-    assert listing.headers["location"] == "/cases?status=stalled"
+    assert listing.headers["location"] == "/handovers?status=stalled"
 
-    detail = await dashboard.client.get(f"/handovers/{handover_id}")
+    detail = await dashboard.client.get(f"/cases/{handover_id}")
     assert detail.status_code == 308
-    assert detail.headers["location"] == f"/cases/{handover_id}"
+    assert detail.headers["location"] == f"/handovers/{handover_id}"
+
+    history = await dashboard.client.get(f"/cases/{handover_id}/history")
+    assert history.status_code == 308
+    assert history.headers["location"] == f"/handovers/{handover_id}/history"
+
+    dashboard_url = await dashboard.client.get("/dashboard")
+    assert dashboard_url.status_code == 308
+    assert dashboard_url.headers["location"] == "/"
+
+    new_case = await dashboard.client.get("/new?ticket_ref=LAB-7")
+    assert new_case.status_code == 308
+    assert new_case.headers["location"] == "/handovers?ticket_ref=LAB-7&new=1"
 
 
-async def test_device_check_page_is_available_under_both_urls(
+async def test_device_check_url_moves_to_sync_and_keeps_the_case(
     dashboard: DashboardHarness,
 ) -> None:
     handover_id = await _id_for(dashboard, "SN-STALLED")
 
-    named = await dashboard.client.get(f"/device-check?handover_id={handover_id}")
-    assert named.status_code == 200
-    assert f'data-handover-id="{handover_id}"' in named.text
+    legacy = await dashboard.client.get(f"/device-check?handover_id={handover_id}")
+    assert legacy.status_code == 308
+    assert (
+        legacy.headers["location"]
+        == f"/sync?handover_id={handover_id}"
+    )
 
-    legacy = await dashboard.client.get(f"/?handover_id={handover_id}")
-    assert legacy.status_code == 307
-    assert legacy.headers["location"] == f"/device-check?handover_id={handover_id}"
+    sync_page = await dashboard.client.get(f"/sync?handover_id={handover_id}")
+    assert sync_page.status_code == 200
+    assert f'href="/handovers/{handover_id}"' in sync_page.text
+    assert "Return to case" in sync_page.text
 
 
 async def test_pages_escape_recipient_names(
@@ -550,7 +641,7 @@ async def test_pages_escape_recipient_names(
     )
     handover_id = await _id_for(dashboard, "SN-XSS")
 
-    response = await dashboard.client.get(f"/cases/{handover_id}")
+    response = await dashboard.client.get(f"/handovers/{handover_id}")
 
     assert response.status_code == 200
     assert payload not in response.text
@@ -562,10 +653,10 @@ async def test_pages_require_login(
 ) -> None:
     monkeypatch.setattr(config, "SSO_ENABLED", True)
 
-    listing = await dashboard.client.get("/cases")
-    detail = await dashboard.client.get(f"/cases/{uuid.uuid4()}")
-    dashboard_page = await dashboard.client.get("/dashboard")
-    new_case = await dashboard.client.get("/new")
+    listing = await dashboard.client.get("/handovers")
+    detail = await dashboard.client.get(f"/handovers/{uuid.uuid4()}")
+    dashboard_page = await dashboard.client.get("/")
+    sync_page = await dashboard.client.get("/sync")
 
     assert listing.status_code == 307
     assert listing.headers["location"] == "/login"
@@ -573,14 +664,14 @@ async def test_pages_require_login(
     assert detail.headers["location"] == "/login"
     assert dashboard_page.status_code == 307
     assert dashboard_page.headers["location"] == "/login"
-    assert new_case.status_code == 307
-    assert new_case.headers["location"] == "/login"
+    assert sync_page.status_code == 307
+    assert sync_page.headers["location"] == "/login"
 
 
 async def test_unknown_case_page_is_404(
     dashboard: DashboardHarness,
 ) -> None:
-    response = await dashboard.client.get(f"/cases/{uuid.uuid4()}")
+    response = await dashboard.client.get(f"/handovers/{uuid.uuid4()}")
 
     assert response.status_code == 404
 
@@ -588,6 +679,24 @@ async def test_unknown_case_page_is_404(
 async def test_unknown_case_history_page_is_404(
     dashboard: DashboardHarness,
 ) -> None:
-    response = await dashboard.client.get(f"/cases/{uuid.uuid4()}/history")
+    response = await dashboard.client.get(f"/handovers/{uuid.uuid4()}/history")
 
     assert response.status_code == 404
+
+
+def test_pages_and_static_assets_work_outside_the_repository_cwd(
+    make_client, monkeypatch, tmp_path
+) -> None:
+    """Uvicorn may be launched from any directory without TemplateNotFound."""
+    monkeypatch.chdir(tmp_path)
+    client, _ = make_client(ENABLE_DIAG="true")
+
+    page = client.get("/", headers={"Accept": "text/html"})
+    error = client.get("/missing", headers={"Accept": "text/html"})
+    diagnostic = client.get("/diag/clipboard", headers={"Accept": "text/html"})
+    static = client.get("/static/css/app.css")
+
+    assert page.status_code == 200 and "Dashboard" in page.text
+    assert error.status_code == 404 and "Page not found" in error.text
+    assert diagnostic.status_code == 200
+    assert static.status_code == 200

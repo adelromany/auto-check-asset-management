@@ -5,6 +5,7 @@
   maintenance company that repairs devices.
 -#}
 {% from "partials/opstrip.html" import opstrip, state_word %}
+{% block body_attrs %}{% if open_new %} data-open-new="maintenance"{% endif %}{% endblock %}
 {% block content %}
 <h1 class="sr-only">Maintenance</h1>
 <div class="page-head">
@@ -14,6 +15,12 @@
   </div>
   <div class="row-between wrap">
     <form id="maint-filter-form" class="filters" method="get">
+      <select name="vendor" class="input input-inline" aria-label="Filter by vendor">
+        <option value="">Vendor: all</option>
+        {% for item in vendors %}
+        <option value="{{ item.name }}" {% if active_vendor == item.name %}selected{% endif %}>{{ item.name }}</option>
+        {% endfor %}
+      </select>
       {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
       {% for chip in [('needs', 'Needs maintenance'), ('in', 'In maintenance'), ('returned', 'Returned')] %}
       <label class="chip {% if active_state == chip[0] %}chip-active{% endif %}">
@@ -52,7 +59,7 @@
           {% for row in rows if (row.maintenance_state or 'needs_maintenance') == column %}
           <article class="case-card" data-case-card>
             <div class="case-card-top">
-              <span class="mono case-serial">{{ row.serial }}</span>
+              <a href="/maintenance/{{ row.id }}" class="mono case-serial row-link">{{ row.serial }}</a>
               {% if row.extra.vendor_level == 'overdue' %}<span class="badge badge-destructive">Overdue</span>
               {% elif row.extra.vendor_level == 'warn' %}<span class="badge badge-warning">Slow</span>{% endif %}
             </div>
@@ -69,7 +76,7 @@
             </div>
             {{ opstrip(row.states) }}
             <div class="case-card-foot">
-              <span class="muted">{{ row.age_days }}d old</span>
+              <span class="muted">{% if row.age_days %}{{ row.age_days }}d old{% else %}Today{% endif %}</span>
               {% if column == 'needs_maintenance' %}
               <button type="button" class="btn btn-default btn-sm" data-step="send" data-case="{{ row.id }}" data-primary-action>Send to vendor</button>
               {% elif column == 'in_maintenance' %}
@@ -109,17 +116,17 @@
             </tr>
           </thead>
           <tbody>
-            {% for row in rows if row.maintenance_state == 'in_maintenance' %}
+            {% for row in at_vendor_rows %}
             <tr class="table-row">
               <td class="table-cell"><a class="row-link mono" href="/maintenance/{{ row.id }}">{{ row.serial }}</a></td>
               <td class="table-cell">{{ row.extra.vendor or "—" }}</td>
               <td class="table-cell mono">{{ row.extra.sent_date or "—" }}</td>
               <td class="table-cell mono">{{ row.extra.expected_return_date or "—" }}</td>
-              <td class="table-cell"><span class="days-clock days-{{ row.extra.vendor_level }}">{{ row.extra.days_at_vendor }}d</span></td>
+              <td class="table-cell"><span class="days-clock days-{{ row.extra.vendor_level }}">{% if row.extra.days_at_vendor is not none %}{{ row.extra.days_at_vendor }}d{% else %}—{% endif %}</span></td>
               <td class="table-cell mono">{{ row.extra.reference or "—" }}</td>
             </tr>
             {% endfor %}
-            {% set at_vendor_count = rows|selectattr('maintenance_state', 'equalto', 'in_maintenance')|list|length %}
+            {% set at_vendor_count = at_vendor_rows|length %}
             {% if not at_vendor_count %}
             <tr><td class="table-cell" colspan="6"><div class="empty" data-empty><span>No device is at a vendor.</span></div></td></tr>
             {% endif %}

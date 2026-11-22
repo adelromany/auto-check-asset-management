@@ -32,6 +32,9 @@
 
   var PRESETS = ["Not applicable", "Device not available", "Will do later"];
 
+  // Steps the engineer confirms by eye: no device evidence is collected.
+  var MANUAL_STEPS = { report_printed: true, user_signed: true };
+
   function casePath() {
     return "/api/handovers/" + caseId;
   }
@@ -79,11 +82,21 @@
     wrap.appendChild(heading);
     var input = portal.textInput("reason", "Reason (3–300 characters)", { maxlength: 300 });
     var chips = portal.el("div", "chip-row");
+    var chipNodes = [];
     PRESETS.forEach(function (preset) {
       var chip = portal.el("button", "chip chip-plain", preset);
       chip.type = "button";
+      chip.setAttribute("aria-pressed", "false");
+      chipNodes.push(chip);
       chip.addEventListener("click", function () {
+        chipNodes.forEach(function (node) {
+          node.classList.remove("chip-active");
+          node.setAttribute("aria-pressed", "false");
+        });
+        chip.classList.add("chip-active");
+        chip.setAttribute("aria-pressed", "true");
         input.value = preset;
+        input.focus();
       });
       chips.appendChild(chip);
     });
@@ -176,7 +189,11 @@
     return drawerFor(operation, status, function (form, state) {
       if (state === "pending") {
         var actions = portal.formActions("Confirm");
-        form.appendChild(note("One click records this step."));
+        form.appendChild(note(
+          MANUAL_STEPS[operation]
+            ? "Manual confirmation. The system does not collect evidence for this step."
+            : "One click records this step."
+        ));
         form.appendChild(actions);
         actions.__primary.addEventListener("click", function (event) {
           event.preventDefault();
@@ -201,7 +218,10 @@
         sync.__primary.addEventListener("click", function (event) {
           event.preventDefault();
           portal.closeDrawer();
-          if (window.syncFlow) window.syncFlow.open({ handoverId: caseId });
+          if (window.syncFlow) window.syncFlow.open({
+            handoverId: caseId,
+            expectedSerial: document.body.getAttribute("data-case-serial") || "",
+          });
           else portal.toast("Sync is not available on this page.", "error");
         });
         var printWrap = portal.disabledButton(
@@ -239,7 +259,10 @@
         sync.__primary.addEventListener("click", function (event) {
           event.preventDefault();
           portal.closeDrawer();
-          if (window.syncFlow) window.syncFlow.open({ handoverId: caseId });
+          if (window.syncFlow) window.syncFlow.open({
+            handoverId: caseId,
+            expectedSerial: document.body.getAttribute("data-case-serial") || "",
+          });
           else portal.toast("Sync is not available on this page.", "error");
         });
       } else if (state === "failed") {
@@ -621,7 +644,10 @@
   // -- sync drawer ---------------------------------------------------------------
   function openSync() {
     if (window.syncFlow) {
-      window.syncFlow.open({ handoverId: caseId });
+      window.syncFlow.open({
+            handoverId: caseId,
+            expectedSerial: document.body.getAttribute("data-case-serial") || "",
+          });
     } else {
       portal.toast("Sync is not available.", "error");
     }

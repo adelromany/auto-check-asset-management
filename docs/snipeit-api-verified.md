@@ -9,10 +9,16 @@ such. Where the implementation the fake implies differs from the real API, the
 difference is listed under "Real vs fake" and fixed together in the client and
 the fake on branch `fix/snipeit-live-verification`.
 
-Live-test result on the current branch: **6 passed** (one deprecation warning).
-The file-listing limitation and owner-approved basename-suffix behavior are
-documented below under "Verified Snipe-IT filename behavior and Stage 9
-decision".
+Historical live-test result on `fix/snipeit-live-verification` (2026-10-31):
+**6 passed** (one deprecation warning). The file-listing limitation and
+owner-approved basename-suffix behavior are documented below under "Verified
+Snipe-IT filename behavior and Stage 9 decision".
+
+Current `fix/ui-recovery` verification (2026-11-22): **6 passed** against the
+running Snipe-IT v8.8.3 development instance at `http://localhost:8081`, using
+`TEST-recipient` and `TEST-SN-0001`. The portal health check returned
+`connected=true`. Credentials were read from the ignored local `.env` and were
+not printed or committed.
 
 ## Common envelope
 

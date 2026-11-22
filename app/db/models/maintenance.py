@@ -90,6 +90,7 @@ class MaintenanceInfo(Base):
         primary_key=True,
     )
     reported_issue: Mapped[str | None] = mapped_column(Text)
+    priority: Mapped[str | None] = mapped_column(String(20))
     condition_notes: Mapped[str | None] = mapped_column(Text)
     accessories: Mapped[str | None] = mapped_column(Text)
     diagnosis_category: Mapped[str | None] = mapped_column(String(120))

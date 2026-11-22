@@ -13,9 +13,10 @@
   <link rel="apple-touch-icon" href="/static/img/favicon-180.png">
   <link rel="stylesheet" href="/static/css/app.css">
   <script src="/static/js/theme-init.js"></script>
+  <script src="/static/js/theme.js" defer></script>
 </head>
-<body class="min-h-screen bg-background text-foreground antialiased"{% block body_attrs %}{% endblock %}>
-  <div class="flex min-h-screen">
+<body class="min-h-screen bg-background text-foreground antialiased" data-app-host="{{ app_host }}"{% block body_attrs %}{% endblock %}>
+  <div class="flex min-h-screen md:pl-[220px]">
     {% include "partials/rail.html" %}
     <div class="flex min-w-0 flex-1 flex-col">
       {% include "partials/topbar.html" %}

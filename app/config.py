@@ -6,10 +6,13 @@ or tests may need fresh after a reload).
 """
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
+from sqlalchemy.engine import make_url
 
-load_dotenv()
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(PROJECT_ROOT / ".env")
 
 APP_NAME = os.getenv("APP_NAME", "Handover Portal")
 SNIPEIT_URL = os.getenv("SNIPEIT_URL", "http://localhost:8081")
@@ -40,7 +43,19 @@ ENABLE_DIAG = os.getenv("ENABLE_DIAG", "false").strip().lower() == "true"
 DATABASE_URL = os.getenv(
     "DATABASE_URL", "sqlite+aiosqlite:///./data/handover.db"
 )
+_database_url = make_url(DATABASE_URL)
+if (
+    _database_url.get_backend_name() == "sqlite"
+    and _database_url.database
+    and _database_url.database != ":memory:"
+    and not Path(_database_url.database).is_absolute()
+):
+    DATABASE_URL = str(_database_url.set(
+        database=str((PROJECT_ROOT / _database_url.database).resolve())
+    ))
 DOCUMENTS_DIR = os.getenv("DOCUMENTS_DIR", "./data/documents")
+if not Path(DOCUMENTS_DIR).is_absolute():
+    DOCUMENTS_DIR = str((PROJECT_ROOT / DOCUMENTS_DIR).resolve())
 DOCUMENT_MAX_BYTES = int(os.getenv("DOCUMENT_MAX_BYTES", "10485760"))
 SNIPEIT_TIMEOUT_SECONDS = float(os.getenv("SNIPEIT_TIMEOUT_SECONDS", "10"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

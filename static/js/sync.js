@@ -26,6 +26,49 @@
     onDone: null,
   };
 
+  // Copy with visible feedback. The button says what happened (copied / use the
+  // manual dialog) and the toast covers the "no clipboard here" case, so a copy
+  // never fails silently. copyText() itself falls back to a preselected modal.
+  function copyWithFeedback(button, text) {
+    var label = button.getAttribute("data-copy-label") || button.textContent;
+    button.setAttribute("data-copy-label", label);
+    function restore() {
+      button.textContent = label;
+    }
+    if (!window.copyText || !text) {
+      portal.toast("Copy is not available here.", "error");
+      return;
+    }
+    function settle(result) {
+      if (result && result.ok) {
+        button.textContent = "Copied " + String(text.length) + " chars";
+        setTimeout(restore, 2500);
+      } else if (result && result.method === "manual") {
+        button.textContent = "Copy manually";
+        setTimeout(restore, 2500);
+      } else {
+        restore();
+        portal.toast("Copy failed — use the manual dialog.", "error");
+      }
+    }
+    var pending;
+    try {
+      pending = window.copyText(text);
+    } catch (err) {
+      restore();
+      portal.toast("Copy failed — use the manual dialog.", "error");
+      return;
+    }
+    if (pending && typeof pending.then === "function") {
+      pending.then(settle, function () {
+        restore();
+        portal.toast("Copy failed — use the manual dialog.", "error");
+      });
+    } else {
+      settle(pending);
+    }
+  }
+
   function base() {
     var host = document.body.getAttribute("data-app-host");
     if (host) {
@@ -63,9 +106,10 @@
     if (node) node.classList.add("hidden");
   }
 
-  function startSync(handoverId, onDone) {
+  function startSync(handoverId, onDone, expectedSerial) {
     state.handoverId = handoverId || null;
     state.onDone = onDone || null;
+    state.expectedSerial = expectedSerial || null;
     var query = handoverId ? "?handover_id=" + encodeURIComponent(handoverId) : "";
     return portal.request("/api/session/new" + query)
       .then(function (session) {
@@ -199,6 +243,17 @@
   // -- attach to case -----------------------------------------------------------
   function suggestDefaultCase(payload) {
     if (!payload || !payload.serial) return;
+    if (state.handoverId) {
+      // A case-linked code is persisted by the existing agent submit route.
+      // Do not attach it a second time, and leave the report visible until the
+      // engineer chooses Done.
+      var linked = document.getElementById("attach-results");
+      if (linked) {
+        linked.textContent = "";
+        linked.appendChild(portal.el("p", "state-ok", "Report attached to this case."));
+      }
+      return;
+    }
     portal.request("/api/handovers/active?serial=" + encodeURIComponent(payload.serial))
       .then(function (active) {
         var results = document.getElementById("attach-results");
@@ -214,7 +269,6 @@
           row.appendChild(attach);
           results.appendChild(row);
           if (window.syncFlow) state.expectedSerial = active.device_serial;
-          if (state.onDone) state.onDone(active);
         }
       }).catch(function () { /* no open case; the search below works */ });
   }
@@ -359,7 +413,7 @@
       button.addEventListener("click", function () {
         var target = document.getElementById(button.getAttribute("data-copy-target"));
         if (target && window.copyText) {
-          window.copyText(target.textContent);
+          copyWithFeedback(button, target.textContent);
         } else {
           portal.toast("Copy is not available here.", "error");
         }
@@ -368,37 +422,85 @@
     renderRecent();
   }
 
-  // drawer/embedded API for the case page
+  // drawer/embedded API for the case page. It renders the same start, waiting
+  // and result states as /sync; the linked agent submit route records the
+  // report on this case, so no second attach request is needed.
   window.syncFlow = {
     open: function (options) {
       options = options || {};
       var host = options.appHost;
       if (host) document.body.setAttribute("data-app-host", host);
-      var drawer = portal.drawerForm("Sync this device", {});
+      stopPolling();
+      state.code = null;
+      state.payload = null;
+
       var body = portal.el("div", "drawer-body stack");
-      var intro = portal.el("p", "field-hint", "Run the command on the employee's PC; the report lands here and is recorded on this case.");
+      var intro = portal.el("p", "field-hint", "Run the command on the employee's PC. The report is attached here.");
       body.appendChild(intro);
+
+      var startSection = portal.el("section", "sync-center");
+      startSection.id = "sync-start";
       var startButton = portal.actionButton("Start sync", "btn-default");
-      body.appendChild(startButton);
+      startButton.id = "sync-drawer-start";
+      startSection.appendChild(startButton);
+      body.appendChild(startSection);
+
+      var waitingSection = portal.el("section", "sync-center hidden");
+      waitingSection.id = "sync-waiting";
       var codeNode = portal.el("p", "sync-code mono");
-      var cmdPre = portal.el("pre", "cmd-pre mono");
-      var copyButton = portal.actionButton("Copy command", "btn-outline btn-sm");
-      copyButton.classList.add("copy-btn");
-      var waiting = portal.el("p", "muted", "");
-      body.appendChild(codeNode);
-      body.appendChild(cmdPre);
-      body.appendChild(copyButton);
-      body.appendChild(waiting);
-      var drawerBody = drawer.querySelector(".drawer-body");
-      drawerBody.appendChild(body);
-      startButton.addEventListener("click", function () {
-        startSync(options.handoverId, function () {
-          portal.closeDrawer();
-          window.location.reload();
+      codeNode.id = "sync-code";
+      waitingSection.appendChild(codeNode);
+      var countdown = portal.el("p", "muted", "Expires in ");
+      var countdownValue = portal.el("span", "mono", "--:--");
+      countdownValue.id = "sync-countdown";
+      countdown.appendChild(countdownValue);
+      waitingSection.appendChild(countdown);
+      [
+        { id: "sync-cmd-windows", label: "Windows" },
+        { id: "sync-cmd-unix", label: "Linux / macOS" },
+      ].forEach(function (item) {
+        var block = portal.el("div", "cmd-block");
+        block.appendChild(portal.el("div", "cmd-label", item.label));
+        var pre = portal.el("pre", "cmd-pre mono");
+        pre.id = item.id;
+        var copy = portal.actionButton("Copy", "btn-outline btn-sm copy-btn");
+        copy.addEventListener("click", function () {
+          copyWithFeedback(copy, pre.textContent);
         });
+        block.appendChild(pre);
+        block.appendChild(copy);
+        waitingSection.appendChild(block);
       });
-      copyButton.addEventListener("click", function () {
-        if (cmdPre.textContent && window.copyText) window.copyText(cmdPre.textContent);
+      var waitingText = portal.el("p", "muted", "Waiting for the device…");
+      waitingText.setAttribute("data-waiting-text", "");
+      waitingSection.appendChild(waitingText);
+      body.appendChild(waitingSection);
+
+      var resultSection = portal.el("section", "stack hidden");
+      resultSection.id = "sync-result";
+      var serial = portal.el("span", "badge badge-secondary mono");
+      serial.id = "sync-result-serial";
+      resultSection.appendChild(serial);
+      var facts = portal.el("dl", "facts");
+      facts.id = "sync-result-facts";
+      resultSection.appendChild(facts);
+      var software = portal.el("ul", "software-list");
+      software.id = "sync-result-software";
+      resultSection.appendChild(software);
+      var attached = portal.el("div", "stack-sm");
+      attached.id = "attach-results";
+      resultSection.appendChild(attached);
+      var done = portal.actionButton("Done", "btn-default");
+      resultSection.appendChild(done);
+      body.appendChild(resultSection);
+
+      portal.openDrawer("Sync this device", body);
+      startButton.addEventListener("click", function () {
+        startSync(options.handoverId, null, options.expectedSerial).catch(function () {});
+      });
+      done.addEventListener("click", function () {
+        portal.closeDrawer();
+        window.location.reload();
       });
     },
   };
