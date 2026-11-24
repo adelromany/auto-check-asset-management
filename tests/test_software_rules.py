@@ -127,7 +127,9 @@ def test_not_done_software_never_completes_and_only_adds_advice() -> None:
     assert Stage.SOFTWARE_CHECK.value in missing
 
     # The recommended order is reported, but it is not a gate.
-    assert performed_before(Stage.CHECKOUT, states) == [
+    assert performed_before(Stage.RECIPIENT_CHECK, states) == [
         Stage.SOFTWARE_CHECK.value
     ]
-    assert "Usually done after Software" in advice(Stage.CHECKOUT, states)
+    assert "Usually done after Software" in advice(
+        Stage.RECIPIENT_CHECK, states
+    )

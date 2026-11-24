@@ -57,6 +57,12 @@ class SoftwareCheckOverride(BaseModel):
         return cleaned
 
 
+class DeviceStatusRequest(BaseModel):
+    """The Snipe-IT status label to set on the device (null = read only)."""
+
+    status_label_id: int | None = None
+
+
 class StageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

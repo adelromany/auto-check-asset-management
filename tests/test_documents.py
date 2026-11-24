@@ -172,11 +172,8 @@ async def _ready_for_scan(
     payload: dict | None = None,
 ) -> str:
     handover_id = await _create(api, serial)
-    await _confirm(api, handover_id, "device_prepared")
-    await _confirm(api, handover_id, "user_signed_in")
     await _agent_report(api, handover_id, serial, payload)
     await _confirm(api, handover_id, "report_printed")
-    await _confirm(api, handover_id, "user_signed")
     return handover_id
 
 
@@ -507,7 +504,9 @@ async def test_push_does_not_require_a_confirmed_recipient(
 async def test_push_fails_cleanly_when_the_asset_is_unknown_then_retries(
     docs: DocsHarness,
 ) -> None:
-    handover_id = await _ready_for_scan(docs, serial="SN-UNKNOWN")
+    docs.fake.fallback_asset_on_search = False
+    handover_id = await _ready_for_scan(docs, serial="SN-10")
+    docs.fake.assets.pop(10, None)
     await _upload(docs, handover_id)
 
     failed = await docs.client.post(
@@ -521,10 +520,10 @@ async def test_push_fails_cleanly_when_the_asset_is_unknown_then_retries(
     assert _post_paths(docs) == []
 
     docs.fake.assets[13] = {
-        **docs.fake.assets[10],
+        **docs.fake.assets[11],
         "id": 13,
         "asset_tag": "A-13",
-        "serial": "SN-UNKNOWN",
+        "serial": "SN-10",
     }
     docs.fake.files[13] = []
 

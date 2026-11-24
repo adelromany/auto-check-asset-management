@@ -78,7 +78,7 @@ class SnipeItFake:
             "asset_tag": asset_tag,
             "name": f"Laptop {asset_id}",
             "serial": serial,
-            "status_label": {"id": 1, "name": "Ready"},
+            "status_label": {"id": 1, "name": "Ready to deploy"},
             "model": {"name": "ThinkPad T14"},
             "category": {"name": "Laptops"},
             "manufacturer": {"name": "Lenovo"},
@@ -182,6 +182,29 @@ class SnipeItFake:
         if asset is None:
             return httpx.Response(404, json={"status": "error"})
         if len(parts) == 4:
+            if request.method == "PATCH":
+                body = json.loads(request.content or b"{}")
+                if "status_id" in body:
+                    status_id = int(body["status_id"])
+                    label = next(
+                        (
+                            item
+                            for item in self.status_labels
+                            if item["id"] == status_id
+                        ),
+                        None,
+                    )
+                    if label is None:
+                        return httpx.Response(
+                            422, json={"status": "error", "messages": "unknown label"}
+                        )
+                    asset["status_label"] = {
+                        "id": label["id"],
+                        "name": label["name"],
+                    }
+                return httpx.Response(
+                    200, json={"status": "success", "messages": "Updated"}
+                )
             return httpx.Response(200, json=asset)
 
         action = parts[4]

@@ -117,7 +117,7 @@ async def test_create_stores_the_device_facts_read_from_snipeit(
     assert body["device_company"] == "B.tech"
     assert body["device_model"] == "ThinkPad T14"
     assert body["device_category"] == "Laptops"
-    assert body["snipeit_status_name"] == "Ready"
+    assert body["snipeit_status_name"] == "Ready to deploy"
     assert body["snipeit_asset_id"] == 10
 
 
@@ -166,6 +166,69 @@ async def test_create_reports_an_unreachable_snipeit(api: ApiHarness) -> None:
     listed = await api.client.get("/api/handovers")
     assert listed.json()["total"] == 0
     await failing_http.aclose()
+
+
+async def test_device_status_passes_when_the_device_is_ready(
+    api: ApiHarness,
+) -> None:
+    created = await _create(api, serial="SN-DEVICE-STATUS")
+
+    response = await api.client.post(
+        f"/api/handovers/{created['id']}/device-status",
+        json={"status_label_id": 1},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    stage = next(
+        item for item in body["stages"] if item["stage"] == "device_status"
+    )
+    assert stage["status"] == "passed"
+    assert stage["reason"] is None
+    assert body["snipeit_status_name"] == "Ready to deploy"
+
+
+async def test_device_status_fails_for_any_other_label(
+    api: ApiHarness,
+) -> None:
+    created = await _create(api, serial="SN-DEVICE-MAINTENANCE")
+
+    response = await api.client.post(
+        f"/api/handovers/{created['id']}/device-status",
+        json={"status_label_id": 2},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    stage = next(
+        item for item in body["stages"] if item["stage"] == "device_status"
+    )
+    assert stage["status"] == "failed"
+    assert stage["reason"] == "Status is Maintenance"
+    assert body["snipeit_status_name"] == "Maintenance"
+
+
+async def test_device_status_can_be_changed_and_then_passes(
+    api: ApiHarness,
+) -> None:
+    created = await _create(api, serial="SN-DEVICE-CHANGE")
+
+    failed = await api.client.post(
+        f"/api/handovers/{created['id']}/device-status",
+        json={"status_label_id": 2},
+    )
+    assert failed.status_code == 200, failed.text
+
+    passed = await api.client.post(
+        f"/api/handovers/{created['id']}/device-status",
+        json={"status_label_id": 1},
+    )
+    assert passed.status_code == 200, passed.text
+    stage = next(
+        item for item in passed.json()["stages"]
+        if item["stage"] == "device_status"
+    )
+    assert stage["status"] == "passed"
 
 
 async def test_detail_includes_stages_missing_steps_and_timeline(
@@ -443,7 +506,7 @@ async def test_cancel_is_idempotent_and_blocks_further_work(
     assert second.json()["status"] == "cancelled"
 
     confirm = await api.client.post(
-        f"/api/handovers/{created['id']}/stages/device_prepared/confirm"
+        f"/api/handovers/{created['id']}/stages/report_printed/confirm"
     )
     assert confirm.status_code == 409
 

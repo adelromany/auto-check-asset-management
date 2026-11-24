@@ -65,6 +65,9 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 SNIPEIT_STATUS_NEEDS_MAINTENANCE = os.getenv("SNIPEIT_STATUS_NEEDS_MAINTENANCE", "")
 SNIPEIT_STATUS_IN_MAINTENANCE = os.getenv("SNIPEIT_STATUS_IN_MAINTENANCE", "")
 SNIPEIT_STATUS_RETURNED = os.getenv("SNIPEIT_STATUS_RETURNED", "")
+# The Snipe-IT status label a device must have for the handover device-status
+# part to pass. Compared case-insensitively.
+SNIPEIT_STATUS_READY = os.getenv("SNIPEIT_STATUS_READY", "Ready to deploy")
 STALL_HOURS = int(os.getenv("STALL_HOURS", "24"))
 REQUIRED_SOFTWARE_IDS = [
     item.strip().casefold()

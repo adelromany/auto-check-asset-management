@@ -19,3 +19,14 @@ No tokens or secrets are recorded here.
 | 9 | upload file and list it | PASS | probe-31444.png listed (4 files) |
 | 10 | cleanup checkin and Ready to deploy | PASS | checked in, Ready to deploy |
 | 11 | error shapes (not found, bad token) | PASS | SnipeItNotFound + SnipeItAuthError |
+
+## Phase 02
+
+| # | Check | Result | Detail |
+|---|---|---|---|
+| 1 | case created from the real device | PASS |  |
+| 2 | case stores company, model and category | PASS | company='B.tech' model='Latitude 5440' category='Laptop' |
+| 3 | status labels found (Maintenance, Ready to deploy) | PASS | maintenance=4 ready=2 |
+| 4 | Maintenance label fails the device-status part | PASS | status='failed' reason='Status is Maintenance' |
+| 5 | Ready to deploy passes the device-status part | PASS | status='passed' reason=None |
+| 6 | case cancelled (cleanup) | PASS |  |

@@ -70,6 +70,27 @@ async def lookup_device(serial: str, user=Depends(current_user)):
     })
 
 
+@router.get("/api/snipeit/status-labels")
+async def status_labels(user=Depends(current_user)):
+    """Every Snipe-IT status label as {id, name}."""
+    if not config.SNIPEIT_TOKEN:
+        raise HTTPException(status_code=503, detail="Snipe-IT token not configured.")
+
+    client = _client(user)
+    try:
+        labels = await client.list_status_labels()
+    except SnipeItUnavailable as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except SnipeItAuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    except SnipeItRejected as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    finally:
+        await client.aclose()
+
+    return [{"id": label_id, "name": name} for label_id, name in labels]
+
+
 @router.get("/api/snipeit/health")
 async def snipeit_health(user=Depends(current_user)):
     """Check whether the configured Snipe-IT API is reachable with the token."""

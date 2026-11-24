@@ -81,7 +81,7 @@ async def test_get_asset_by_serial_exact_match(
     asset = await client.get_asset_by_serial("SN-10")
     assert asset.id == 10
     assert asset.asset_tag == "A-10"
-    assert asset.status == "Ready"
+    assert asset.status == "Ready to deploy"
     assert asset.model == "ThinkPad T14"
     assert asset.category == "Laptops"
     assert asset.manufacturer == "Lenovo"

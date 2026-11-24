@@ -699,6 +699,82 @@ class SnipeItHandoverService:
 
     # -- maintenance status label ---------------------------------------------
 
+    # -- device status ----------------------------------------------------
+    async def set_device_status(
+        self,
+        handover_id: uuid.UUID,
+        *,
+        status_label_id: int | None,
+        actor: str,
+        client: SnipeItClient,
+    ) -> HandoverDetailView:
+        """Set the device's Snipe-IT status and record the device-status part.
+
+        The part passes when the device ends on the ready status label. A
+        Snipe-IT error is recorded as a failed part, never raised.
+        """
+        handover = await self._core.get(handover_id, with_details=True)
+
+        if status_label_id is not None:
+            try:
+                result = await client.update_asset_status(
+                    handover.snipeit_asset_id or 0, status_label_id
+                )
+            except SnipeItError as exc:
+                return await self._core.record_operation(
+                    handover_id,
+                    Operation.DEVICE_STATUS,
+                    status=StageStatus.FAILED,
+                    reason=snipeit_error_reason(exc),
+                    detail=snipeit_error_detail(exc),
+                    actor=actor,
+                )
+            if result.status != "success":
+                return await self._core.record_operation(
+                    handover_id,
+                    Operation.DEVICE_STATUS,
+                    status=StageStatus.FAILED,
+                    reason="Snipe-IT rejected the status change.",
+                    detail={"status_label_id": status_label_id},
+                    actor=actor,
+                )
+
+        try:
+            asset = await client.get_asset_by_serial(handover.device_serial)
+        except SnipeItError as exc:
+            return await self._core.record_operation(
+                handover_id,
+                Operation.DEVICE_STATUS,
+                status=StageStatus.FAILED,
+                reason=snipeit_error_reason(exc),
+                detail=snipeit_error_detail(exc),
+                actor=actor,
+            )
+
+        handover.snipeit_asset_id = asset.id
+        handover.snipeit_asset_tag = asset.asset_tag
+        handover.device_company = asset.company
+        handover.device_model = asset.model
+        handover.device_category = asset.category
+        handover.snipeit_status_name = asset.status
+        await self._session.flush()
+
+        ready = str(config.SNIPEIT_STATUS_READY or "").strip().casefold()
+        current = str(asset.status or "").strip().casefold()
+        passed = bool(ready) and current == ready
+        return await self._core.record_operation(
+            handover_id,
+            Operation.DEVICE_STATUS,
+            status=StageStatus.PASSED if passed else StageStatus.FAILED,
+            reason=None if passed else f"Status is {asset.status}",
+            detail={
+                "status": asset.status,
+                "status_label_id": status_label_id,
+                "company": asset.company,
+            },
+            actor=actor,
+        )
+
     async def update_maintenance_status(
         self,
         handover_id: uuid.UUID,

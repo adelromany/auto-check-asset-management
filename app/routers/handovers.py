@@ -23,6 +23,7 @@ from app.dto.handover import (
     CheckinResult,
     CloseCaseRequest,
     DestinationOut,
+    DeviceStatusRequest,
     HandoverCreate,
     HandoverDetail,
     HandoverList,
@@ -443,6 +444,28 @@ async def maintenance_status_label(
     return await service.update_maintenance_status(
         handover_id, actor=_actor(user), client=client
     )
+
+
+@router.post("/{handover_id}/device-status", response_model=HandoverDetail)
+async def set_device_status(
+    handover_id: uuid.UUID,
+    payload: DeviceStatusRequest,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> HandoverDetail:
+    """Set the device's Snipe-IT status and record the device-status part."""
+    service = SnipeItHandoverService(session)
+    try:
+        view = await service.set_device_status(
+            handover_id,
+            status_label_id=payload.status_label_id,
+            actor=_actor(user),
+            client=client,
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
 
 
 @router.post("/{handover_id}/attach-report", response_model=HandoverDetail)

@@ -37,7 +37,7 @@ def test_generated_svg_nodes_arrows_and_spacing_meet_minimums() -> None:
                         break
         if "stage-svg" in classes:
             rects = [g.find("s:rect", SVG_NS) for g in svg.findall(".//s:g[@class='stage-node']", SVG_NS)]
-            assert len(rects) == 10
+            assert len(rects) == len(STAGE_ORDER)
             nodes = [n.attrib["data-stage"] for n in svg.findall(".//s:g[@class='stage-node']", SVG_NS)]
             assert nodes == [stage.value for stage in STAGE_ORDER]
             edges = {(e.attrib["data-source"], e.attrib["data-target"]) for e in svg.findall(".//s:path[@class='edge']", SVG_NS)}

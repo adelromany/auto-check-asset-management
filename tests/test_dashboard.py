@@ -241,6 +241,7 @@ async def test_summary_counts_every_status(dashboard: DashboardHarness) -> None:
     assert body["by_status"] == {
         "draft": 1,
         "in_progress": 1,
+        "ready": 0,
         "stalled": 1,
         "completed": 2,
         "closed_with_gaps": 0,
@@ -254,7 +255,7 @@ async def test_summary_per_stage_matrix(dashboard: DashboardHarness) -> None:
     ).json()
 
     assert set(body["stages"]) == {stage.value for stage in STAGE_ORDER}
-    assert body["stages"]["device_prepared"] == {
+    assert body["stages"]["device_status"] == {
         "passed": 4,
         "pending": 2,
         "failed": 0,
@@ -363,10 +364,13 @@ async def test_rows_include_progress_and_missing_steps(
     assert body["total"] == 1
     row = body["items"][0]
     assert row["handover"]["device_serial"] == "SN-STALLED"
-    assert len(row["stages"]) == 10
+    assert len(row["stages"]) == 9
     assert [item["status"] for item in row["stages"]].count("not_done") == 1
-    assert row["missing_steps"][0]["stage"] == "recipient_check"
-    assert row["missing_steps"][0]["status"] == "not_done"
+    assert row["missing_steps"][0]["stage"] == "report_printed"
+    not_done = next(
+        item for item in row["missing_steps"] if item["status"] == "not_done"
+    )
+    assert not_done["stage"] == "recipient_check"
 
 
 async def test_rows_filter_by_kind_and_search(
@@ -532,7 +536,7 @@ async def test_case_board_keeps_secondary_information_collapsed(
     body = response.text
     # 10 operation tiles across 3 lanes; secondary information is kept in the
     # side-sheet drawer that shell.js builds on demand.
-    assert body.count("data-op-tile=") == 10
+    assert body.count("data-op-tile=") == 9
     assert 'data-drawer-root' not in body  # drawers are never server-rendered
     assert f'href="/handovers/{handover_id}/history"' in body
 

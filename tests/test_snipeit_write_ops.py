@@ -140,8 +140,6 @@ async def _ready(
     confirm_recipient: bool = True,
 ) -> str:
     handover_id = await _create(api, serial)
-    await _confirm(api, handover_id, "device_prepared")
-    await _confirm(api, handover_id, "user_signed_in")
     await _agent_report(api, handover_id, serial, reported)
     if confirm_recipient:
         response = await api.client.post(
@@ -217,8 +215,6 @@ async def test_recipient_confirmation_requires_engineer_identity_acknowledgement
 
 async def test_software_override_api_validates_reason_and_state(ops: OpsHarness) -> None:
     handover_id = await _create(ops)
-    await _confirm(ops, handover_id, "device_prepared")
-    await _confirm(ops, handover_id, "user_signed_in")
     session_response = await ops.client.get(
         f"/api/session/new?handover_id={handover_id}"
     )
@@ -368,7 +364,6 @@ async def test_confirm_recipient_without_an_agent_report(
     ops: OpsHarness,
 ) -> None:
     handover_id = await _create(ops)
-    await _confirm(ops, handover_id, "device_prepared")
 
     response = await ops.client.post(
         f"/api/handovers/{handover_id}/recipient/confirm",
@@ -426,7 +421,9 @@ async def test_preview_lists_calls_and_makes_no_writes(
 async def test_preview_warns_when_the_asset_is_missing(
     ops: OpsHarness,
 ) -> None:
-    handover_id = await _ready(ops, serial="SN-MISSING")
+    ops.fake.fallback_asset_on_search = False
+    handover_id = await _ready(ops, serial="SN-10")
+    ops.fake.assets.pop(10, None)
 
     response = await ops.client.get(
         f"/api/handovers/{handover_id}/preview"
@@ -505,7 +502,9 @@ async def test_checkout_refuses_when_the_asset_is_assigned_elsewhere(
 async def test_checkout_fails_cleanly_when_the_serial_is_unknown(
     ops: OpsHarness,
 ) -> None:
-    handover_id = await _ready(ops, serial="SN-MISSING")
+    ops.fake.fallback_asset_on_search = False
+    handover_id = await _ready(ops, serial="SN-10")
+    ops.fake.assets.pop(10, None)
 
     response = await ops.client.post(
         f"/api/handovers/{handover_id}/checkout"

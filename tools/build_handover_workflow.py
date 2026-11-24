@@ -21,51 +21,49 @@ from app.domain.stages import (
 
 OUT = ROOT / "docs/principles/visual/handover-workflow.html"
 TITLES = {
-    Stage.DEVICE_PREPARED: ("Prepare device", "Engineer", "Device is ready for handover."),
-    Stage.USER_SIGNED_IN: ("User signs in", "Employee", "The employee signs in on the device."),
+    Stage.DEVICE_STATUS: ("Set device status", "Snipe-IT", "The device is on Ready to deploy."),
     Stage.AGENT_REPORT: ("Collect agent report", "Local agent", "Serial and required hardware details pass validation."),
     Stage.SOFTWARE_CHECK: ("Check software", "Portal", "Required programs are installed and Windows is activated."),
+    Stage.REPORT_PRINTED: ("Print form", "Engineer", "The handover form is printed."),
     Stage.RECIPIENT_CHECK: ("Confirm recipient", "Engineer", "The selected employee exists in Snipe-IT."),
+    Stage.RECIPIENT_ITEMS: ("Review recipient items", "Engineer", "The recipient's current items are checked in."),
     Stage.CHECKOUT: ("Assign device", "Snipe-IT", "A re-read verifies the device assignment."),
-    Stage.REPORT_PRINTED: ("Print report", "Engineer", "The agent report is printed."),
-    Stage.USER_SIGNED: ("Collect signature", "Employee", "The printed sheet is signed."),
     Stage.DOCUMENT_SCANNED: ("Upload signed sheet", "Portal", "A supported scan is stored against the case."),
     Stage.DOCUMENT_PUSHED: ("Attach to asset", "Engineer", "Snipe-IT confirms the scan is attached to the device."),
 }
 DETAILS = {
-    Stage.DEVICE_PREPARED: ("Prepare and inspect the physical device.", "Engineer confirms the stage.", "Stage is pending.", "Confirm the device is prepared for handover.", "BIZ-01"),
-    Stage.USER_SIGNED_IN: ("Have the employee sign in on the device.", "Engineer confirms the stage.", "Nothing blocks it; Device prepared is only recommended first.", "Confirm the user signed in on the device.", "BIZ-01"),
+    Stage.DEVICE_STATUS: ("Set the device status in Snipe-IT.", "The status must be Ready to deploy.", "Any other status fails this operation.", "Set the Snipe-IT status to Ready to deploy.", "BIZ-01"),
     Stage.AGENT_REPORT: ("Run the local reporting agent.", "Serial must match; CPU, positive RAM, and a disk must be present.", "Missing or mismatched hardware fields fail the stage.", "Run the agent on the device; its serial must match.", "BIZ-07"),
     Stage.SOFTWARE_CHECK: ("Review reported software and activation.", "Every configured program must be installed and activation status code must equal 1.", "Missing software or unlicensed activation fails; the engineer can mark it not done with a reason.", "Verify required software and Windows activation.", "BIZ-18"),
+    Stage.REPORT_PRINTED: ("Print the handover form.", "Engineer confirms it was printed.", "Needs an agent report attached; no other operation blocks it.", "Print the handover form.", "BIZ-01"),
     Stage.RECIPIENT_CHECK: ("Search for and confirm the intended employee.", "The recipient must exist in Snipe-IT; the portal never creates users.", "Recipient not found in Snipe-IT fails this operation; other operations can still run.", "Search Snipe-IT for the recipient and confirm the match.", "BIZ-08"),
+    Stage.RECIPIENT_ITEMS: ("Show the items the recipient holds today.", "The engineer can check in any of them.", "Nothing blocks it; Confirm recipient is only recommended first.", "Review the recipient's current Snipe-IT items.", "BIZ-08"),
     Stage.CHECKOUT: ("Preview then confirm assignment.", "A re-read must show the expected asset assignment.", "A conflicting holder or verification mismatch prevents pass.", "Checkout the device to the confirmed recipient in Snipe-IT.", "BIZ-05"),
-    Stage.REPORT_PRINTED: ("Print the agent report page.", "Engineer confirms it was printed.", "Needs an agent report attached; no other operation blocks it.", "Print the agent report page.", "BIZ-01"),
-    Stage.USER_SIGNED: ("Collect the employee signature on paper.", "Engineer confirms the signed sheet.", "Nothing blocks it; Print form is only recommended first.", "Get the printed sheet signed on paper.", "BIZ-01"),
     Stage.DOCUMENT_SCANNED: ("Scan and upload the signed sheet.", "The uploaded file type and size must pass validation.", "Unsupported file type or size is rejected.", "Upload the scanned signed sheet.", "BIZ-09"),
     Stage.DOCUMENT_PUSHED: ("Attach the scan to the device asset.", "Snipe-IT must verify the uploaded attachment.", "Unknown asset or unverified push fails.", "Push the scan to the device's Snipe-IT asset.", "BIZ-09"),
 }
 FAILURES = {
-    Stage.DEVICE_PREPARED: ("Device is damaged or not ready", "Resolve the physical issue, then confirm preparation."),
-    Stage.USER_SIGNED_IN: ("Employee cannot sign in", "Check network/identity access and confirm the employee reaches the desktop."),
+    Stage.DEVICE_STATUS: ("Device status is not Ready to deploy", "Set the status in Snipe-IT, then record it again."),
     Stage.AGENT_REPORT: ("Agent report missing or serial/hardware invalid", "Run the agent again and resolve the reported mismatch."),
     Stage.SOFTWARE_CHECK: ("Required software missing or Windows not activated", "Install or activate, then re-evaluate; any override needs a reason."),
     Stage.RECIPIENT_CHECK: ("Recipient not found in Snipe-IT", "Check the identity and ask an asset administrator to correct Snipe-IT."),
+    Stage.RECIPIENT_ITEMS: ("Recipient items could not be read", "Check the recipient in Snipe-IT and retry."),
     Stage.CHECKOUT: ("Checkout verification does not match", "Refresh the asset state and resolve the current holder before retrying."),
     Stage.DOCUMENT_SCANNED: ("Wrong file type or upload exceeds the limit", "Rescan to a supported file type and upload again."),
     Stage.DOCUMENT_PUSHED: ("Push was not verified", "Check the asset exists and verify the attachment before retrying."),
-    Stage.REPORT_PRINTED: ("Report did not print", "Check the selected printer and print the report page again."),
-    Stage.USER_SIGNED: ("Signed sheet was not returned", "Ask the employee to sign the printed sheet before scanning."),
+    Stage.REPORT_PRINTED: ("Form did not print", "Check the selected printer and print the form again."),
 }
 LANES = ("Engineer", "Employee", "Local agent", "Portal", "Snipe-IT")
 STAGE_LANE = {
-    Stage.DEVICE_PREPARED: "Engineer", Stage.USER_SIGNED_IN: "Employee",
+    Stage.DEVICE_STATUS: "Snipe-IT",
     Stage.AGENT_REPORT: "Local agent", Stage.SOFTWARE_CHECK: "Portal",
-    Stage.RECIPIENT_CHECK: "Engineer", Stage.CHECKOUT: "Snipe-IT",
-    Stage.REPORT_PRINTED: "Engineer", Stage.USER_SIGNED: "Employee",
+    Stage.REPORT_PRINTED: "Engineer",
+    Stage.RECIPIENT_CHECK: "Engineer", Stage.RECIPIENT_ITEMS: "Engineer",
+    Stage.CHECKOUT: "Snipe-IT",
     Stage.DOCUMENT_SCANNED: "Portal", Stage.DOCUMENT_PUSHED: "Snipe-IT",
 }
 WRITES = {Stage.CHECKOUT, Stage.DOCUMENT_PUSHED}
-READS_SNIPE_IT = {Stage.RECIPIENT_CHECK}
+READS_SNIPE_IT = {Stage.RECIPIENT_CHECK, Stage.DEVICE_STATUS, Stage.RECIPIENT_ITEMS}
 
 
 def _escape(value: str) -> str:
@@ -173,14 +171,13 @@ def workflow_html() -> str:
         (HandoverStatus.CANCELLED, "Explicit cancellation; this status takes precedence."),
     ])
     evidence = {
-        Stage.DEVICE_PREPARED: "Engineer confirmation and event row.",
-        Stage.USER_SIGNED_IN: "Engineer confirmation and event row.",
+        Stage.DEVICE_STATUS: "Snipe-IT status re-read and event row.",
         Stage.AGENT_REPORT: "Validated report with TEST-SN-0001, CPU, RAM and disk evidence.",
         Stage.SOFTWARE_CHECK: "Software check result and activation status in the case record.",
-        Stage.RECIPIENT_CHECK: "Confirmed TEST-recipient identity and event row.",
-        Stage.CHECKOUT: "Snipe-IT checkout call followed by a verified re-read.",
         Stage.REPORT_PRINTED: "Engineer confirmation and event row.",
-        Stage.USER_SIGNED: "Engineer confirmation that the paper sheet is signed.",
+        Stage.RECIPIENT_CHECK: "Confirmed TEST-recipient identity and event row.",
+        Stage.RECIPIENT_ITEMS: "Listed recipient items and check-in results in the case record.",
+        Stage.CHECKOUT: "Snipe-IT checkout call followed by a verified re-read.",
         Stage.DOCUMENT_SCANNED: "Stored scan and fictional SHA-256 evidence hash: 9f2c7e6a4d1b83c5e7190a2d6c4f0b8e1a3d5c7f902b6e4a8d1c3f5b7e9a10d2.",
         Stage.DOCUMENT_PUSHED: "Snipe-IT attachment call and verified re-read.",
     }
