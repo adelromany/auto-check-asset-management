@@ -24,6 +24,8 @@ class Operation(StrEnum):
     """Every operation key, for both kinds. The key is stored in the database."""
 
     # Handover ------------------------------------------------------------
+    DEVICE_STATUS = "device_status"
+    RECIPIENT_ITEMS = "recipient_items"
     DEVICE_PREPARED = "device_prepared"
     USER_SIGNED_IN = "user_signed_in"
     AGENT_REPORT = "agent_report"
@@ -42,15 +44,16 @@ class Operation(StrEnum):
     RETURNED = "returned"
 
 
+# Screen order (V2). DEVICE_PREPARED / USER_SIGNED_IN / USER_SIGNED stay in the
+# enum only so old database rows still load.
 HANDOVER_OPERATIONS: tuple[Operation, ...] = (
-    Operation.DEVICE_PREPARED,
-    Operation.USER_SIGNED_IN,
+    Operation.DEVICE_STATUS,
     Operation.AGENT_REPORT,
     Operation.SOFTWARE_CHECK,
-    Operation.RECIPIENT_CHECK,
-    Operation.CHECKOUT,
     Operation.REPORT_PRINTED,
-    Operation.USER_SIGNED,
+    Operation.RECIPIENT_CHECK,
+    Operation.RECIPIENT_ITEMS,
+    Operation.CHECKOUT,
     Operation.DOCUMENT_SCANNED,
     Operation.DOCUMENT_PUSHED,
 )
@@ -71,6 +74,9 @@ OPERATIONS_BY_KIND: dict[CaseKind, tuple[Operation, ...]] = {
 
 # Short titles: a tile never carries more than three words.
 OPERATION_TITLES: dict[Operation, str] = {
+    Operation.DEVICE_STATUS: "Device status",
+    Operation.RECIPIENT_ITEMS: "Recipient items",
+    # Legacy keys kept for old rows.
     Operation.DEVICE_PREPARED: "Device prepared",
     Operation.USER_SIGNED_IN: "User signed in",
     Operation.AGENT_REPORT: "Agent report",
@@ -92,20 +98,25 @@ OPERATION_TITLES: dict[Operation, str] = {
 LANES: dict[CaseKind, tuple[tuple[str, tuple[Operation, ...]], ...]] = {
     CaseKind.HANDOVER: (
         (
-            "Prepare",
+            "Device",
             (
-                Operation.DEVICE_PREPARED,
-                Operation.USER_SIGNED_IN,
+                Operation.DEVICE_STATUS,
                 Operation.AGENT_REPORT,
                 Operation.SOFTWARE_CHECK,
             ),
         ),
-        ("Assign", (Operation.RECIPIENT_CHECK, Operation.CHECKOUT)),
+        ("Form", (Operation.REPORT_PRINTED,)),
         (
-            "Paperwork",
+            "Recipient",
             (
-                Operation.REPORT_PRINTED,
-                Operation.USER_SIGNED,
+                Operation.RECIPIENT_CHECK,
+                Operation.RECIPIENT_ITEMS,
+                Operation.CHECKOUT,
+            ),
+        ),
+        (
+            "Paper",
+            (
                 Operation.DOCUMENT_SCANNED,
                 Operation.DOCUMENT_PUSHED,
             ),
@@ -120,15 +131,14 @@ LANES: dict[CaseKind, tuple[tuple[str, tuple[Operation, ...]], ...]] = {
 
 # Pure hints: "Usually done after X". Never blocks, never returns 409.
 RECOMMENDED_AFTER: dict[Operation, tuple[Operation, ...]] = {
-    Operation.DEVICE_PREPARED: (),
-    Operation.USER_SIGNED_IN: (Operation.DEVICE_PREPARED,),
-    Operation.AGENT_REPORT: (Operation.DEVICE_PREPARED,),
+    Operation.DEVICE_STATUS: (),
+    Operation.AGENT_REPORT: (Operation.DEVICE_STATUS,),
     Operation.SOFTWARE_CHECK: (Operation.AGENT_REPORT,),
-    Operation.RECIPIENT_CHECK: (Operation.AGENT_REPORT,),
-    Operation.CHECKOUT: (Operation.RECIPIENT_CHECK, Operation.SOFTWARE_CHECK),
-    Operation.REPORT_PRINTED: (Operation.AGENT_REPORT,),
-    Operation.USER_SIGNED: (Operation.REPORT_PRINTED,),
-    Operation.DOCUMENT_SCANNED: (Operation.USER_SIGNED,),
+    Operation.REPORT_PRINTED: (Operation.SOFTWARE_CHECK,),
+    Operation.RECIPIENT_CHECK: (Operation.SOFTWARE_CHECK,),
+    Operation.RECIPIENT_ITEMS: (Operation.RECIPIENT_CHECK,),
+    Operation.CHECKOUT: (Operation.RECIPIENT_ITEMS,),
+    Operation.DOCUMENT_SCANNED: (Operation.CHECKOUT,),
     Operation.DOCUMENT_PUSHED: (Operation.DOCUMENT_SCANNED,),
     Operation.RECEIVED: (),
     Operation.DIAGNOSIS: (Operation.RECEIVED,),
@@ -140,10 +150,7 @@ RECOMMENDED_AFTER: dict[Operation, tuple[Operation, ...]] = {
 # Operations an engineer confirms with one click (no evidence payload).
 MANUAL_OPERATIONS: frozenset[Operation] = frozenset(
     {
-        Operation.DEVICE_PREPARED,
-        Operation.USER_SIGNED_IN,
         Operation.REPORT_PRINTED,
-        Operation.USER_SIGNED,
         Operation.RECEIVED,
         Operation.DIAGNOSIS,
         Operation.SNIPEIT_STATUS,

@@ -43,8 +43,13 @@ async def _create(factory, serial="SN-CONCURRENT"):
 async def _act(factory, handover_id, operation, actor):
     async with factory() as session:
         service = HandoverService(session)
-        view = await service.confirm_manual_stage(
-            handover_id, operation, actor=actor
+        view = await service.record_operation(
+            handover_id,
+            operation,
+            status=StageStatus.PASSED,
+            reason=None,
+            detail=None,
+            actor=actor,
         )
         await session.commit()
         return view
@@ -54,8 +59,8 @@ async def test_two_operations_of_one_case_run_concurrently(factory) -> None:
     handover_id = await _create(factory)
 
     await asyncio.gather(
-        _act(factory, handover_id, Stage.DEVICE_PREPARED, "a@example.com"),
-        _act(factory, handover_id, Stage.USER_SIGNED_IN, "b@example.com"),
+        _act(factory, handover_id, Stage.AGENT_REPORT, "a@example.com"),
+        _act(factory, handover_id, Stage.SOFTWARE_CHECK, "b@example.com"),
     )
 
     # Each request returned its own read snapshot; assert on the stored state.
@@ -63,9 +68,9 @@ async def test_two_operations_of_one_case_run_concurrently(factory) -> None:
         service = HandoverService(session)
         view = await service.get_detail(handover_id)
     statuses = {item.stage: item for item in view.stages}
-    assert statuses["device_prepared"].status == StageStatus.PASSED.value
-    assert statuses["user_signed_in"].status == StageStatus.PASSED.value
-    assert {statuses["device_prepared"].actor, statuses["user_signed_in"].actor} == {
+    assert statuses["agent_report"].status == StageStatus.PASSED.value
+    assert statuses["software_check"].status == StageStatus.PASSED.value
+    assert {statuses["agent_report"].actor, statuses["software_check"].actor} == {
         "a@example.com",
         "b@example.com",
     }
@@ -76,7 +81,7 @@ async def test_same_operation_twice_produces_one_write_and_one_event(factory) ->
 
     await asyncio.gather(
         *(
-            _act(factory, handover_id, Stage.DEVICE_PREPARED, "a@example.com")
+            _act(factory, handover_id, Stage.SOFTWARE_CHECK, "a@example.com")
             for _ in range(4)
         )
     )
@@ -96,7 +101,7 @@ async def test_same_operation_twice_produces_one_write_and_one_event(factory) ->
                 await session.execute(
                     select(HandoverStage).where(
                         HandoverStage.handover_id == handover_id,
-                        HandoverStage.stage == Stage.DEVICE_PREPARED.value,
+                        HandoverStage.stage == Stage.SOFTWARE_CHECK.value,
                     )
                 )
             )
@@ -108,7 +113,7 @@ async def test_same_operation_twice_produces_one_write_and_one_event(factory) ->
         event
         for event in events
         if event.type == "operation_recorded"
-        and event.detail.get("operation") == "device_prepared"
+        and event.detail.get("operation") == "software_check"
     ]
     assert len(recorded) == 1
 

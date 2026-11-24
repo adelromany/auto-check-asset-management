@@ -35,16 +35,15 @@ def _stages(**statuses: StageStatus) -> list[StageState]:
     ]
 
 
-def test_stage_order_is_the_ten_handover_operations() -> None:
+def test_stage_order_is_the_nine_handover_operations() -> None:
     assert [operation.value for operation in STAGE_ORDER] == [
-        "device_prepared",
-        "user_signed_in",
+        "device_status",
         "agent_report",
         "software_check",
-        "recipient_check",
-        "checkout",
         "report_printed",
-        "user_signed",
+        "recipient_check",
+        "recipient_items",
+        "checkout",
         "document_scanned",
         "document_pushed",
     ]
@@ -83,7 +82,7 @@ def test_recommended_order_is_known_operations_and_acyclic() -> None:
             HandoverStatus.COMPLETED,
         ),
         (
-            _stages(device_prepared=StageStatus.PASSED),
+            _stages(device_status=StageStatus.PASSED),
             False,
             False,
             HandoverStatus.IN_PROGRESS,
@@ -102,13 +101,13 @@ def test_recommended_order_is_known_operations_and_acyclic() -> None:
             HandoverStatus.IN_PROGRESS,
         ),
         (
-            _stages(device_prepared=StageStatus.FAILED),
+            _stages(device_status=StageStatus.FAILED),
             True,
             False,
             HandoverStatus.CANCELLED,
         ),
         (
-            _stages(device_prepared=StageStatus.PASSED),
+            _stages(device_status=StageStatus.PASSED),
             False,
             True,
             HandoverStatus.CLOSED_WITH_GAPS,
@@ -134,7 +133,7 @@ def test_age_is_the_only_stall_rule() -> None:
 
     now = datetime(2026, 11, 15, tzinfo=timezone.utc)
     old = now - timedelta(hours=30)
-    stages = _stages(device_prepared=StageStatus.FAILED)
+    stages = _stages(device_status=StageStatus.FAILED)
     assert (
         derive_status(stages, updated_at=old, now=now, stall_hours=24)
         is HandoverStatus.STALLED
@@ -151,14 +150,17 @@ def test_age_is_the_only_stall_rule() -> None:
 
 def test_advice_warns_without_blocking() -> None:
     stages = _stages()
-    warnings = advice(Operation.CHECKOUT, stages)
-    assert "Usually done after Recipient" in warnings
-    assert "Usually done after Software" in warnings
+    assert "Usually done after Recipient items" in advice(
+        Operation.CHECKOUT, stages
+    )
+    assert "Usually done after Agent report" in advice(
+        Operation.SOFTWARE_CHECK, stages
+    )
 
 
 def test_advice_is_empty_when_the_predecessor_passed() -> None:
     stages = _stages(
-        recipient_check=StageStatus.PASSED,
+        recipient_items=StageStatus.PASSED,
         software_check=StageStatus.PASSED,
     )
     assert advice(Operation.CHECKOUT, stages) == []
@@ -166,21 +168,21 @@ def test_advice_is_empty_when_the_predecessor_passed() -> None:
 
 
 def test_performed_before_lists_unpassed_predecessors() -> None:
-    stages = _stages(recipient_check=StageStatus.PASSED)
-    assert performed_before(Operation.CHECKOUT, stages) == ["software_check"]
+    stages = _stages(software_check=StageStatus.PASSED)
+    assert performed_before(Operation.SOFTWARE_CHECK, stages) == ["agent_report"]
 
 
 def test_missing_steps_excludes_only_passed() -> None:
     stages = _stages(
-        device_prepared=StageStatus.PASSED,
+        device_status=StageStatus.PASSED,
         agent_report=StageStatus.FAILED,
         software_check=StageStatus.NOT_DONE,
     )
     missing = {item["stage"]: item for item in missing_steps(stages)}
-    assert "device_prepared" not in missing
+    assert "device_status" not in missing
     assert missing["agent_report"]["status"] == "failed"
     assert missing["software_check"]["status"] == "not_done"
-    assert len(missing) == 9
+    assert len(missing) == 8
 
 
 def test_missing_steps_uses_stored_reason_and_actionable_hint() -> None:
@@ -188,7 +190,7 @@ def test_missing_steps_uses_stored_reason_and_actionable_hint() -> None:
         agent_report=StageStatus.FAILED,
         software_check=StageStatus.NOT_DONE,
     )
-    stages[2] = StageState(
+    stages[1] = StageState(
         Stage.AGENT_REPORT,
         StageStatus.FAILED,
         reason="Report serial does not match the handover device serial.",
@@ -199,16 +201,15 @@ def test_missing_steps_uses_stored_reason_and_actionable_hint() -> None:
 
 
 def test_gaps_lists_every_not_passed_operation() -> None:
-    stages = _stages(device_prepared=StageStatus.PASSED)
+    stages = _stages(device_status=StageStatus.PASSED)
     listed = gaps(stages)
-    assert len(listed) == 9
+    assert len(listed) == 8
     assert listed[-1]["operation"] == "document_pushed"
 
 
 def test_next_operation_is_the_first_unfinished_suggestion() -> None:
     stages = _stages(
-        device_prepared=StageStatus.PASSED,
-        user_signed_in=StageStatus.PASSED,
+        device_status=StageStatus.PASSED,
         agent_report=StageStatus.NOT_DONE,
     )
     assert next_operation(stages, HANDOVER_OPERATIONS) is Operation.AGENT_REPORT
@@ -255,3 +256,4 @@ def test_redaction_removes_partial_key_without_mutating_input() -> None:
 )
 def test_redaction_tolerates_payloads_without_activation(payload: dict) -> None:
     assert redact_agent_payload(payload) == payload
+

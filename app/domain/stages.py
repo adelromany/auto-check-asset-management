@@ -56,6 +56,7 @@ OperationStatus = StageStatus
 class HandoverStatus(StrEnum):
     DRAFT = "draft"
     IN_PROGRESS = "in_progress"
+    READY = "ready"
     STALLED = "stalled"
     COMPLETED = "completed"
     CLOSED_WITH_GAPS = "closed_with_gaps"

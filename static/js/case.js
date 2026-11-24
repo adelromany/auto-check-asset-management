@@ -13,14 +13,13 @@
   var kind = document.body.getAttribute("data-case-kind") || "handover";
 
   var STAGE_LABELS = {
-    device_prepared: "Device prepared",
-    user_signed_in: "User signed in",
+    device_status: "Device status",
     agent_report: "Agent report",
     software_check: "Software",
-    recipient_check: "Recipient",
-    checkout: "Checkout",
     report_printed: "Print form",
-    user_signed: "Signed paper",
+    recipient_check: "Recipient",
+    recipient_items: "Recipient items",
+    checkout: "Checkout",
     document_scanned: "Scan",
     document_pushed: "Push",
     received: "Received",
@@ -33,7 +32,7 @@
   var PRESETS = ["Not applicable", "Device not available", "Will do later"];
 
   // Steps the engineer confirms by eye: no device evidence is collected.
-  var MANUAL_STEPS = { report_printed: true, user_signed: true };
+  var MANUAL_STEPS = { report_printed: true };
 
   function casePath() {
     return "/api/handovers/" + caseId;

@@ -1,14 +1,13 @@
 {#- Shared on-screen vocabulary. Snipe-IT words: Checkout / Checkin. -#}
 
 {%- macro stage_label(key) -%}
-{%- if key == "device_prepared" -%}Device prepared
-{%- elif key == "user_signed_in" -%}User signed in
+{%- if key == "device_status" -%}Device status
 {%- elif key == "agent_report" -%}Agent report
   {%- elif key == "software_check" -%}Software check
 {%- elif key == "recipient_check" -%}Recipient check
+{%- elif key == "recipient_items" -%}Recipient items
 {%- elif key == "checkout" -%}Checkout
 {%- elif key == "report_printed" -%}Report printed
-{%- elif key == "user_signed" -%}User signed
 {%- elif key == "document_scanned" -%}Scan uploaded
 {%- elif key == "document_pushed" -%}Pushed to Snipe-IT
 {%- elif key == "received" -%}Received

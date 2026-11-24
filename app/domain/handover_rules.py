@@ -32,6 +32,8 @@ class StageState:
 
 
 _STAGE_HINTS: dict[Operation, str] = {
+    Operation.DEVICE_STATUS: "Set the Snipe-IT status to Ready to deploy.",
+    Operation.RECIPIENT_ITEMS: "Review the recipient's current Snipe-IT items.",
     Operation.DEVICE_PREPARED: "Confirm the device is prepared.",
     Operation.USER_SIGNED_IN: "Confirm the user signed in on the device.",
     Operation.AGENT_REPORT: "Run the agent on the device; its serial must match.",
