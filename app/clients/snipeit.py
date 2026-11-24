@@ -84,6 +84,8 @@ class SnipeItUser:
     username: str | None = None
     name: str | None = None
     email: str | None = None
+    company_id: int | None = None
+    company: str | None = None
 
 
 @dataclass(frozen=True)
@@ -103,6 +105,9 @@ class SnipeItAsset:
     purchase_date: str | None = None
     warranty_months: int | None = None
     notes: str | None = None
+    company_id: int | None = None
+    company: str | None = None
+    status_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -173,12 +178,14 @@ def _single_row(data: Any) -> dict[str, Any] | None:
 def _asset_from_json(row: dict[str, Any]) -> SnipeItAsset:
     assigned_to = row.get("assigned_to")
     purchase_date = row.get("purchase_date")
+    status_label = row.get("status_label")
+    company = row.get("company")
     return SnipeItAsset(
         id=_int_or_none(row.get("id")) or 0,
         asset_tag=row.get("asset_tag"),
         name=row.get("name"),
         serial=row.get("serial"),
-        status=_nested_name(row.get("status_label")),
+        status=_nested_name(status_label),
         model=_nested_name(row.get("model")),
         category=_nested_name(row.get("category")),
         manufacturer=_nested_name(row.get("manufacturer")),
@@ -197,15 +204,33 @@ def _asset_from_json(row: dict[str, Any]) -> SnipeItAsset:
         ),
         warranty_months=_int_or_none(row.get("warranty_months")),
         notes=row.get("notes"),
+        company_id=(
+            _int_or_none(company.get("id"))
+            if isinstance(company, dict)
+            else None
+        ),
+        company=_nested_name(company),
+        status_id=(
+            _int_or_none(status_label.get("id"))
+            if isinstance(status_label, dict)
+            else None
+        ),
     )
 
 
 def _user_from_json(row: dict[str, Any]) -> SnipeItUser:
+    company = row.get("company")
     return SnipeItUser(
         id=_int_or_none(row.get("id")) or 0,
         username=row.get("username"),
         name=row.get("name"),
         email=row.get("email"),
+        company_id=(
+            _int_or_none(company.get("id"))
+            if isinstance(company, dict)
+            else None
+        ),
+        company=_nested_name(company),
     )
 
 
@@ -377,17 +402,26 @@ class SnipeItClient:
         return _asset_from_json(row)
 
     async def checkout_asset_to_user(
-        self, asset_id: int, user_id: int, note: str
+        self,
+        asset_id: int,
+        user_id: int,
+        note: str,
+        *,
+        status_id: int | None = None,
     ) -> SnipeItActionResult:
+        payload: dict[str, Any] = {
+            "assigned_user": user_id,
+            "checkout_to_type": "user",
+            "note": note,
+        }
+        # Snipe-IT keeps the asset's current status unless status_id is given.
+        if status_id is not None:
+            payload["status_id"] = status_id
         data, status_code = await self._post_json(
             f"/api/v1/hardware/{asset_id}/checkout",
             # Snipe-IT rejects "assigned_to" on this endpoint (verified against
             # v8.8.3): the user target must be sent as "assigned_user".
-            json={
-                "assigned_user": user_id,
-                "checkout_to_type": "user",
-                "note": note,
-            },
+            json=payload,
         )
         return _action_result(data, status_code=status_code)
 
@@ -459,6 +493,14 @@ class SnipeItClient:
                 name = _nested_name(name)
             labels.append((int(row["id"]), str(name) if name is not None else ""))
         return labels
+
+    async def find_status_label_id(self, name: str) -> int | None:
+        """The id of a status label by name (case-insensitive), or None."""
+        needle = name.strip().casefold()
+        for label_id, label_name in await self.list_status_labels():
+            if label_name.strip().casefold() == needle:
+                return label_id
+        return None
 
     async def update_asset_status(
         self, asset_id: int, status_label_id: int

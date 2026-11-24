@@ -36,6 +36,7 @@ class SnipeItFake:
                 "username": "alice",
                 "name": "Alice",
                 "email": "alice@example.com",
+                "company": {"id": 3, "name": "B.tech"},
             },
             2: {
                 "id": 2,
@@ -44,6 +45,10 @@ class SnipeItFake:
                 "email": "bob@example.com",
             },
         }
+        self.status_labels: list[dict[str, Any]] = [
+            {"id": 1, "name": "Ready to deploy"},
+            {"id": 2, "name": "Maintenance"},
+        ]
         self.assets: dict[int, dict[str, Any]] = {
             10: self._asset(10, "A-10", "SN-10", assigned_to=None),
             11: self._asset(
@@ -69,11 +74,12 @@ class SnipeItFake:
             "asset_tag": asset_tag,
             "name": f"Laptop {asset_id}",
             "serial": serial,
-            "status_label": {"name": "Ready"},
+            "status_label": {"id": 1, "name": "Ready"},
             "model": {"name": "ThinkPad T14"},
             "category": {"name": "Laptops"},
             "manufacturer": {"name": "Lenovo"},
             "assigned_to": assigned_to,
+            "company": {"id": 3, "name": "B.tech"} if asset_id == 10 else None,
             "location": {"name": "HQ"},
             "last_checkout": None,
             "purchase_date": {"formatted": "2024-01-01"},
@@ -111,6 +117,8 @@ class SnipeItFake:
             return self._users(request, parts)
         if parts[:3] == ["api", "v1", "hardware"]:
             return self._hardware(request, parts)
+        if parts[:3] == ["api", "v1", "statuslabels"]:
+            return httpx.Response(200, json={"rows": self.status_labels})
         return httpx.Response(404, json={"status": "error"})
 
     # -- endpoints --------------------------------------------------------

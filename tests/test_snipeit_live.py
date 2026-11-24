@@ -1,8 +1,8 @@
 """Live tests against a real Snipe-IT development instance.
 
-Skipped unless ``SNIPEIT_LIVE_TEST=1``. These tests are the only place in the
-suite allowed to touch a real API. They refuse to modify anything whose name,
-username or serial does not start with ``TEST-``.
+Skipped unless ``SNIPEIT_LIVE_TEST=1`` (or ``SNIPEIT_LIVE=1``). These tests
+are the only place in the suite allowed to touch a real API. They refuse to
+modify anything whose name, username or serial does not start with ``TEST-``.
 
 Required environment:
 
@@ -19,17 +19,25 @@ Optional (defaults shown):
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import httpx
 import pytest
 
 import app.clients.snipeit as snipeit
 
+_LIVE = os.getenv("SNIPEIT_LIVE_TEST") == "1" or os.getenv("SNIPEIT_LIVE") == "1"
+if _LIVE:
+    # Live runs read the developer .env; normal test runs never do.
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
 pytestmark = [
     pytest.mark.live,
     pytest.mark.skipif(
-        os.getenv("SNIPEIT_LIVE_TEST") != "1",
-        reason="set SNIPEIT_LIVE_TEST=1 to run against a real Snipe-IT",
+        not _LIVE,
+        reason="set SNIPEIT_LIVE_TEST=1 (or SNIPEIT_LIVE=1) to run against a real Snipe-IT",
     ),
 ]
 
@@ -127,5 +135,70 @@ async def test_checkout_then_checkin_test_asset(
     finally:
         await client.checkin_asset(asset.id, "TEST- live checkin")
 
+    checked_in = await client.get_asset(asset.id)
+    assert checked_in.assigned_to_id is None
+
+
+# -- V2 live checks (Phase 01 step 1.6) ------------------------------------
+
+
+async def test_v2_asset_has_company_model_and_status(
+    client: snipeit.SnipeItClient,
+) -> None:
+    asset = await client.get_asset_by_serial("TEST-SN-0001")
+    assert asset.company == "B.tech"
+    assert asset.company_id is not None
+    assert asset.model
+    assert asset.category
+    assert asset.status
+    assert asset.status_id is not None
+
+
+async def test_v2_status_update_roundtrip(
+    client: snipeit.SnipeItClient,
+) -> None:
+    asset = await client.get_asset_by_serial("TEST-SN-0001")
+    maintenance = await client.find_status_label_id("Maintenance")
+    ready = await client.find_status_label_id("Ready to deploy")
+    assert maintenance is not None and ready is not None
+    try:
+        await client.update_asset_status(asset.id, maintenance)
+        changed = await client.get_asset(asset.id)
+        assert (changed.status or "").casefold() == "maintenance"
+    finally:
+        await client.update_asset_status(asset.id, ready)
+    restored = await client.get_asset(asset.id)
+    assert (restored.status or "").casefold() == "ready to deploy"
+
+
+async def test_v2_search_users_return_company(
+    client: snipeit.SnipeItClient,
+) -> None:
+    users = await client.search_users("test.btech")
+    assert users
+    assert all(user.company for user in users)
+
+
+async def test_v2_checkout_sets_deployed_then_checks_in(
+    client: snipeit.SnipeItClient,
+) -> None:
+    asset = await client.get_asset_by_serial("TEST-SN-0001")
+    user = await client.find_user("test.btech1")
+    deployed = await client.find_status_label_id("Deployed")
+    ready = await client.find_status_label_id("Ready to deploy")
+    assert user is not None and deployed is not None and ready is not None
+    if asset.assigned_to_id is not None:
+        await client.checkin_asset(asset.id, "TEST- live v2 precondition")
+    try:
+        result = await client.checkout_asset_to_user(
+            asset.id, user.id, "TEST- live v2 checkout", status_id=deployed
+        )
+        assert result.status == "success"
+        checked_out = await client.get_asset(asset.id)
+        assert checked_out.assigned_to_id == user.id
+        assert (checked_out.status or "").casefold() == "deployed"
+    finally:
+        await client.checkin_asset(asset.id, "TEST- live v2 checkin")
+        await client.update_asset_status(asset.id, ready)
     checked_in = await client.get_asset(asset.id)
     assert checked_in.assigned_to_id is None

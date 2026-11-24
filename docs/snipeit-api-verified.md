@@ -257,3 +257,14 @@ Documented in `deploy/snipeit-dev/README.md`:
    (`Setting::create` style), because several API endpoints return 500 without
    it. UNVERIFIED exactly which endpoints require the row in v8.8.3 — our
    instance had it from the wizard.
+
+
+## V2 additions
+
+The V2 build (handover/maintenance) verified the extended client against the
+same real instance: company fields on assets and users, status-label lookup,
+status updates, and checkout with an explicit `Deployed` status.
+
+See `docs/snipeit-integration-report.md` for the 11-check probe result.
+Notes: `assigned_user` (not `assigned_to`) is the checkout target key, and the
+checkout call keeps the old status unless `status_id` is sent.

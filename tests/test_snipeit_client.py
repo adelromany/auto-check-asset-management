@@ -295,3 +295,47 @@ async def test_invalid_json_is_rejected() -> None:
         )
         with pytest.raises(snipeit.SnipeItRejected):
             await client.whoami()
+
+
+def test_asset_from_json_reads_company_and_status_id() -> None:
+    asset = snipeit._asset_from_json(
+        {
+            "id": 5,
+            "serial": "SN-5",
+            "status_label": {"id": 2, "name": "Ready to deploy"},
+            "company": {"id": 3, "name": "B.tech"},
+        }
+    )
+    assert asset.company_id == 3
+    assert asset.company == "B.tech"
+    assert asset.status_id == 2
+    assert asset.status == "Ready to deploy"
+
+
+def test_asset_from_json_without_company_is_null_safe() -> None:
+    asset = snipeit._asset_from_json({"id": 6, "serial": "SN-6", "company": None})
+    assert asset.company_id is None
+    assert asset.company is None
+    assert asset.status_id is None
+
+
+def test_user_from_json_reads_company() -> None:
+    user = snipeit._user_from_json(
+        {"id": 7, "username": "u7", "company": {"id": 4, "name": "Mylo"}}
+    )
+    assert user.company_id == 4
+    assert user.company == "Mylo"
+
+
+def test_user_from_json_without_company_is_null_safe() -> None:
+    user = snipeit._user_from_json({"id": 8, "username": "u8"})
+    assert user.company_id is None
+    assert user.company is None
+
+
+async def test_find_status_label_id_is_case_insensitive(
+    client: snipeit.SnipeItClient,
+) -> None:
+    assert await client.find_status_label_id("maintenance") == 2
+    assert await client.find_status_label_id("Ready to deploy") == 1
+    assert await client.find_status_label_id("Nope") is None
