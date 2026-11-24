@@ -62,6 +62,7 @@ class Handover(Base):
             ),
         ),
         Index("ix_handovers_maintenance_state", "maintenance_state"),
+        Index("ix_handovers_device_company", "device_company"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -82,6 +83,13 @@ class Handover(Base):
     device_serial: Mapped[str] = mapped_column(String(100), nullable=False)
     snipeit_asset_id: Mapped[int | None] = mapped_column(Integer)
     snipeit_asset_tag: Mapped[str | None] = mapped_column(String(100))
+    device_company: Mapped[str | None] = mapped_column(String(120))
+    device_model: Mapped[str | None] = mapped_column(String(120))
+    device_category: Mapped[str | None] = mapped_column(String(120))
+    snipeit_status_name: Mapped[str | None] = mapped_column(String(80))
+    recipient_mode: Mapped[str | None] = mapped_column(String(20))
+    recipient_free_name: Mapped[str | None] = mapped_column(String(200))
+    recipient_free_email: Mapped[str | None] = mapped_column(String(200))
     recipient_reported_username: Mapped[str | None] = mapped_column(String(200))
     recipient_snipeit_id: Mapped[int | None] = mapped_column(Integer)
     recipient_snipeit_username: Mapped[str | None] = mapped_column(String(200))

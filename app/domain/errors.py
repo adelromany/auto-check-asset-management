@@ -126,3 +126,21 @@ class RecipientConfirmationConflict(HandoverError):
     def __init__(self, reason: str):
         self.reason = reason
         super().__init__(reason)
+
+
+class DeviceNotInSnipeIt(HandoverError):
+    """The serial is unknown to Snipe-IT (422)."""
+
+    def __init__(
+        self, reason: str = "Serial not found in Snipe-IT"
+    ):
+        self.reason = reason
+        super().__init__(reason)
+
+
+class SnipeItUnreachable(HandoverError):
+    """Snipe-IT could not be reached (503)."""
+
+    def __init__(self, reason: str = "Snipe-IT is unreachable."):
+        self.reason = reason
+        super().__init__(reason)

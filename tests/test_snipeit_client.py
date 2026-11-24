@@ -99,7 +99,9 @@ async def test_get_asset_by_serial_falls_back_to_first_row(
 
 async def test_get_asset_by_serial_not_found(
     client: snipeit.SnipeItClient,
+    fake: SnipeItFake,
 ) -> None:
+    fake.fallback_asset_on_search = False
     with pytest.raises(snipeit.SnipeItNotFound):
         await client.get_asset_by_serial("ZZZ-999")
 

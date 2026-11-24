@@ -30,6 +30,10 @@ class SnipeItFake:
         self.checkin_clears = True
         self.upload_records_file = True
         self.checkout_notes: list[str] = []
+        # When a serial search matches nothing, answer with every asset so the
+        # client's own "first row" fallback applies (as Snipe-IT does for a
+        # partial serial). Set to False to get a real "not found".
+        self.fallback_asset_on_search = True
         self.users: dict[int, dict[str, Any]] = {
             1: {
                 "id": 1,
@@ -158,6 +162,8 @@ class SnipeItFake:
                     if needle
                     in f"{asset['serial']} {asset['asset_tag']} {asset['name']}".casefold()
                 ]
+                if not rows and self.fallback_asset_on_search:
+                    rows = list(self.assets.values())
             elif (
                 assigned_to is not None
                 # Mirrors Snipe-IT v8.8.3: assigned_to is only honored when

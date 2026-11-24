@@ -16,9 +16,11 @@ from sqlalchemy.pool import StaticPool
 import app.db.models  # noqa: F401  (registers every table on Base.metadata)
 import app.dependencies
 import app.main
+import app.clients.snipeit as snipeit
 from app import config
 from app.db.base import Base
 from app.services.sessions import SessionStore
+from tests.fakes.snipeit_fake import SnipeItFake
 
 ENGINEER = {"name": "Engineer One", "email": "engineer@example.com"}
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +31,7 @@ class ApiHarness:
     app: FastAPI
     client: httpx.AsyncClient
     store: SessionStore
+    fake: SnipeItFake
 
 
 @pytest_asyncio.fixture()
@@ -44,6 +47,15 @@ async def api():
 
     application = app.main.create_app()
     store = SessionStore(ttl_seconds=600)
+    fake = SnipeItFake()
+    snipeit_http = httpx.AsyncClient(transport=fake.transport)
+    snipeit_client = snipeit.SnipeItClient(
+        "http://snipeit.test",
+        snipeit.ServiceAccountProvider(fake.token),
+        http_client=snipeit_http,
+        engineer_email=ENGINEER["email"],
+        retry_backoff=0.0,
+    )
 
     async def override_session():
         async with factory() as session:
@@ -54,9 +66,15 @@ async def api():
                 await session.rollback()
                 raise
 
+    async def override_snipeit_client():
+        yield snipeit_client
+
     application.dependency_overrides[app.dependencies.get_session] = override_session
     application.dependency_overrides[app.dependencies.current_user] = lambda: ENGINEER
     application.dependency_overrides[app.dependencies.get_store] = lambda: store
+    application.dependency_overrides[
+        app.dependencies.get_snipeit_client
+    ] = override_snipeit_client
 
     transport = httpx.ASGITransport(app=application)
     async with httpx.AsyncClient(
@@ -64,8 +82,11 @@ async def api():
     ) as client:
         csrf = await client.get("/api/me")
         client.headers["X-CSRF-Token"] = csrf.headers["X-CSRF-Token"]
-        yield ApiHarness(app=application, client=client, store=store)
+        yield ApiHarness(
+            app=application, client=client, store=store, fake=fake
+        )
 
+    await snipeit_http.aclose()
     await engine.dispose()
 
 
@@ -88,6 +109,65 @@ async def test_create_returns_a_draft_summary(api: ApiHarness) -> None:
     assert "stages" not in body
 
 
+async def test_create_stores_the_device_facts_read_from_snipeit(
+    api: ApiHarness,
+) -> None:
+    body = await _create(api, serial="SN-1")
+
+    assert body["device_company"] == "B.tech"
+    assert body["device_model"] == "ThinkPad T14"
+    assert body["device_category"] == "Laptops"
+    assert body["snipeit_status_name"] == "Ready"
+    assert body["snipeit_asset_id"] == 10
+
+
+async def test_create_rejects_a_serial_that_snipeit_does_not_know(
+    api: ApiHarness,
+) -> None:
+    api.fake.fallback_asset_on_search = False
+
+    response = await api.client.post(
+        "/api/handovers", json={"device_serial": "SN-NOT-IN-SNIPEIT"}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Serial not found in Snipe-IT"
+    listed = await api.client.get("/api/handovers")
+    assert listed.json()["total"] == 0
+
+
+async def test_create_reports_an_unreachable_snipeit(api: ApiHarness) -> None:
+    def boom(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("snipeit is down", request=request)
+
+    failing_http = httpx.AsyncClient(
+        transport=httpx.MockTransport(boom)
+    )
+    failing_client = snipeit.SnipeItClient(
+        "http://snipeit.test",
+        snipeit.ServiceAccountProvider("token"),
+        http_client=failing_http,
+        retry_backoff=0.0,
+    )
+
+    async def override_snipeit_client():
+        yield failing_client
+
+    api.app.dependency_overrides[
+        app.dependencies.get_snipeit_client
+    ] = override_snipeit_client
+
+    response = await api.client.post(
+        "/api/handovers", json={"device_serial": "SN-OFFLINE"}
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Snipe-IT is unreachable."
+    listed = await api.client.get("/api/handovers")
+    assert listed.json()["total"] == 0
+    await failing_http.aclose()
+
+
 async def test_detail_includes_stages_missing_steps_and_timeline(
     api: ApiHarness,
 ) -> None:
@@ -98,19 +178,18 @@ async def test_detail_includes_stages_missing_steps_and_timeline(
     assert response.status_code == 200
     body = response.json()
     assert [stage["stage"] for stage in body["stages"]] == [
-        "device_prepared",
-        "user_signed_in",
+        "device_status",
         "agent_report",
         "software_check",
-        "recipient_check",
-        "checkout",
         "report_printed",
-        "user_signed",
+        "recipient_check",
+        "recipient_items",
+        "checkout",
         "document_scanned",
         "document_pushed",
     ]
     assert all(stage["status"] == "pending" for stage in body["stages"])
-    assert len(body["missing_steps"]) == 10
+    assert len(body["missing_steps"]) == 9
     assert all(item["hint"] for item in body["missing_steps"])
     assert [event["type"] for event in body["events"]] == ["handover_created"]
 
@@ -203,7 +282,7 @@ async def test_dashboard_attention_reason_counts_days_at_vendor(
 
     page = await api.client.get("/")
     assert page.status_code == 200
-    # Never a "?" — the days run from the send date to today.
+    # Never a "?" â€” the days run from the send date to today.
     assert "At vendor ? days" not in page.text
     assert "At vendor 30 days, overdue" in page.text
 
@@ -230,49 +309,70 @@ async def test_invalid_stage_name_returns_422(api: ApiHarness) -> None:
     assert "Unknown stage" in response.json()["detail"]
 
 
+async def _submit_agent_report(api: ApiHarness, serial: str, handover_id: str) -> None:
+    session_response = await api.client.get(
+        f"/api/session/new?handover_id={handover_id}"
+    )
+    code = session_response.json()["code"]
+    submit = await api.client.post(
+        f"/api/session/{code}/submit",
+        json={
+            "serial": serial,
+            "cpu": "Intel Core i7",
+            "ram_gb": 16,
+            "disks": [{"name": "NVMe", "size_gb": 512, "type": "SSD"}],
+        },
+    )
+    assert submit.status_code == 200
+
+
 async def test_operations_are_independent_and_only_record_advice(
     api: ApiHarness,
 ) -> None:
-    created = await _create(api)
+    created = await _create(api, serial="SN-ADVICE")
+    await _submit_agent_report(api, "SN-ADVICE", created["id"])
 
     response = await api.client.post(
-        f"/api/handovers/{created['id']}/stages/user_signed_in/confirm"
+        f"/api/handovers/{created['id']}/stages/report_printed/confirm"
     )
 
     assert response.status_code == 200
     body = response.json()
     stage = next(
-        item for item in body["stages"] if item["stage"] == "user_signed_in"
+        item for item in body["stages"] if item["stage"] == "report_printed"
     )
     assert stage["status"] == "passed"
-    assert stage["detail"]["performed_before"] == ["device_prepared"]
+    assert stage["detail"]["performed_before"] == ["software_check"]
     assert stage["detail"]["advice"] == [
-        "Usually done after Device prepared"
+        "Usually done after Software"
     ]
 
 
 async def test_confirming_a_manual_stage_updates_status_and_timeline(
     api: ApiHarness,
 ) -> None:
-    created = await _create(api)
+    created = await _create(api, serial="SN-MANUAL")
+    await _submit_agent_report(api, "SN-MANUAL", created["id"])
 
     response = await api.client.post(
-        f"/api/handovers/{created['id']}/stages/device_prepared/confirm"
+        f"/api/handovers/{created['id']}/stages/report_printed/confirm"
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "in_progress"
     stage = next(
-        item for item in body["stages"] if item["stage"] == "device_prepared"
+        item for item in body["stages"] if item["stage"] == "report_printed"
     )
     assert stage["status"] == "passed"
     assert stage["actor"] == ENGINEER["email"]
     assert [event["type"] for event in body["events"]] == [
         "handover_created",
         "operation_recorded",
+        "operation_recorded",
+        "operation_recorded",
     ]
-    assert body["events"][-1]["detail"]["operation"] == "device_prepared"
+    assert body["events"][-1]["detail"]["operation"] == "report_printed"
     assert body["events"][-1]["detail"]["outcome"] == "passed"
 
 
@@ -304,16 +404,6 @@ async def test_report_printed_can_be_confirmed_after_agent_report(
         if item["stage"] == "report_printed"
     )
     assert printed_stage["status"] == "passed"
-
-    signed = await api.client.post(
-        f"/api/handovers/{created['id']}/stages/user_signed/confirm"
-    )
-    assert signed.status_code == 200
-    signed_stage = next(
-        item for item in signed.json()["stages"]
-        if item["stage"] == "user_signed"
-    )
-    assert signed_stage["status"] == "passed"
 
 
 async def test_confirming_a_non_manual_stage_returns_409(api: ApiHarness) -> None:
@@ -394,7 +484,8 @@ async def test_close_with_gaps_requires_confirmation_and_reopen_clears_it(
 ) -> None:
     created = await _create(api, serial="SN-CLOSE-GAPS")
     await api.client.post(
-        f"/api/handovers/{created['id']}/stages/device_prepared/confirm"
+        f"/api/handovers/{created['id']}/operations/device_status/not-done",
+        json={"reason": "Device not available"},
     )
 
     wrong = await api.client.post(
@@ -410,11 +501,11 @@ async def test_close_with_gaps_requires_confirmation_and_reopen_clears_it(
     assert body["status"] == "closed_with_gaps"
     assert body["closed_at"] is not None
     assert [gap["operation"] for gap in body["closed_gaps"]][0] == (
-        "user_signed_in"
+        "device_status"
     )
 
     blocked = await api.client.post(
-        f"/api/handovers/{created['id']}/stages/user_signed_in/confirm"
+        f"/api/handovers/{created['id']}/stages/report_printed/confirm"
     )
     assert blocked.status_code == 409
 
@@ -593,3 +684,4 @@ async def test_agent_session_rejects_a_non_uuid_handover_id(
 ) -> None:
     response = await api.client.get("/api/session/new?handover_id=not-a-uuid")
     assert response.status_code == 422
+

@@ -88,7 +88,7 @@ async def test_create_makes_nine_pending_stages_and_one_event(service) -> None:
     view = await service.get_detail(handover.id)
     assert [event.type for event in view.events] == ["handover_created"]
     assert view.events[0].actor == ENGINEER
-    assert len(view.missing_steps) == 10
+    assert len(view.missing_steps) == 9
 
 
 async def test_create_strips_serial_and_blank_ticket(service) -> None:
@@ -112,54 +112,69 @@ async def test_cancelled_handover_frees_the_serial(service) -> None:
     assert second.id != first.id
 
 
-async def test_confirm_manual_stage_passes_and_writes_an_event(service) -> None:
+async def test_recording_an_operation_passes_and_writes_an_event(service) -> None:
     handover = await _create(service)
 
-    view = await service.confirm_manual_stage(
-        handover.id, "device_prepared", actor=ENGINEER
+    view = await service.record_operation(
+        handover.id,
+        Stage.DEVICE_STATUS,
+        status=StageStatus.PASSED,
+        reason=None,
+        detail=None,
+        actor=ENGINEER,
     )
 
     assert view.handover.status == HandoverStatus.IN_PROGRESS.value
-    row = next(item for item in view.stages if item.stage == "device_prepared")
+    row = next(item for item in view.stages if item.stage == "device_status")
     assert row.status == StageStatus.PASSED.value
     assert row.actor == ENGINEER
     assert [event.type for event in view.events] == [
         "handover_created",
         "operation_recorded",
     ]
-    assert view.events[-1].detail["operation"] == "device_prepared"
+    assert view.events[-1].detail["operation"] == "device_status"
     assert view.events[-1].detail["outcome"] == "passed"
 
 
 async def test_an_operation_does_not_wait_for_its_recommended_predecessor(service) -> None:
     handover = await _create(service)
 
-    # ``user_signed_in`` recommends ``device_prepared`` but never waits for it.
-    view = await service.confirm_manual_stage(
-        handover.id, Stage.USER_SIGNED_IN, actor=ENGINEER
+    # ``software_check`` recommends ``agent_report`` but never waits for it.
+    view = await service.record_operation(
+        handover.id,
+        Stage.SOFTWARE_CHECK,
+        status=StageStatus.PASSED,
+        reason=None,
+        detail=None,
+        actor=ENGINEER,
     )
 
-    row = next(item for item in view.stages if item.stage == "user_signed_in")
+    row = next(item for item in view.stages if item.stage == "software_check")
     assert row.status == StageStatus.PASSED.value
-    assert row.detail["performed_before"] == ["device_prepared"]
-    assert row.detail["advice"] == ["Usually done after Device prepared"]
+    assert row.detail["performed_before"] == ["agent_report"]
+    assert row.detail["advice"] == ["Usually done after Agent report"]
 
 
 async def test_confirming_a_passed_operation_is_idempotent(service) -> None:
     handover = await _create(service)
-    await service.confirm_manual_stage(handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER)
-
-    view = await service.confirm_manual_stage(
-        handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER
+    await service.record_operation(
+        handover.id, Stage.DEVICE_STATUS,
+        status=StageStatus.PASSED, reason=None, detail=None, actor=ENGINEER,
     )
 
-    assert view.events[-1].detail["operation"] == "device_prepared"
+    view = await service.record_operation(
+        handover.id, Stage.DEVICE_STATUS,
+        status=StageStatus.PASSED, reason=None, detail=None, actor=ENGINEER,
+    )
+
+    assert view.events[-1].detail["operation"] == "device_status"
     assert [event.type for event in view.events].count("operation_recorded") == 1
 
 
 @pytest.mark.parametrize(
     "stage",
-    [Stage.AGENT_REPORT, Stage.RECIPIENT_CHECK, Stage.CHECKOUT,
+    [Stage.DEVICE_STATUS, Stage.AGENT_REPORT, Stage.RECIPIENT_CHECK,
+     Stage.RECIPIENT_ITEMS, Stage.CHECKOUT,
      Stage.DOCUMENT_SCANNED, Stage.DOCUMENT_PUSHED],
 )
 async def test_confirm_rejects_non_manual_stages(service, stage: Stage) -> None:
@@ -185,10 +200,11 @@ async def test_confirm_report_printed_requires_the_agent_report_input(service) -
         )
     assert "agent report" in str(error.value)
     # Everything else stays available; only this operation lacks its input.
-    view = await service.confirm_manual_stage(
-        handover.id, Stage.USER_SIGNED, actor=ENGINEER
+    view = await service.record_operation(
+        handover.id, Stage.RECIPIENT_ITEMS,
+        status=StageStatus.PASSED, reason=None, detail=None, actor=ENGINEER,
     )
-    assert any(item.stage == "user_signed" and item.status == "passed" for item in view.stages)
+    assert any(item.stage == "recipient_items" and item.status == "passed" for item in view.stages)
 
 
 async def test_cancel_marks_cancelled_and_closes(service) -> None:
@@ -217,8 +233,9 @@ async def test_cancelled_handover_rejects_further_work(service) -> None:
     await service.cancel(handover.id, actor=ENGINEER)
 
     with pytest.raises(HandoverCancelled):
-        await service.confirm_manual_stage(
-            handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER
+        await service.record_operation(
+            handover.id, Stage.DEVICE_STATUS,
+            status=StageStatus.PASSED, reason=None, detail=None, actor=ENGINEER,
         )
 
 
@@ -245,8 +262,9 @@ async def test_completed_handover_rejects_cancel_and_confirm(service) -> None:
     with pytest.raises(HandoverCompleted):
         await service.cancel(handover.id, actor=ENGINEER)
     with pytest.raises(HandoverCompleted):
-        await service.confirm_manual_stage(
-            handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER
+        await service.record_operation(
+            handover.id, Stage.DEVICE_STATUS,
+            status=StageStatus.PASSED, reason=None, detail=None, actor=ENGINEER,
         )
 
 
@@ -405,7 +423,7 @@ async def test_mark_not_done_requires_a_reason(service) -> None:
     handover = await _create(service)
     with pytest.raises(NotDoneReasonRequired):
         await service.mark_not_done(
-            handover.id, Stage.DEVICE_PREPARED, reason="  x ", actor=ENGINEER
+            handover.id, Stage.DEVICE_STATUS, reason="  x ", actor=ENGINEER
         )
 
 
@@ -423,25 +441,26 @@ async def test_mark_not_done_records_an_outcome_and_an_event(service) -> None:
     assert detail["outcome"] == "not_done"
     assert detail["reason"] == "Device not available"
     # The recommended predecessor is still pending, so it is recorded as advice.
-    assert detail["performed_before"] == ["agent_report"]
+    assert detail["performed_before"] == ["software_check"]
     assert view.handover.status == HandoverStatus.IN_PROGRESS.value
 
 
 async def test_failed_then_retried_becomes_passed(service) -> None:
     handover = await _create(service)
     await service.record_operation(
-        handover.id, Stage.DEVICE_PREPARED,
+        handover.id, Stage.DEVICE_STATUS,
         status=StageStatus.FAILED, reason="Cracked lid", detail={}, actor=ENGINEER,
     )
-    await service.retry_operation(handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER)
+    await service.retry_operation(handover.id, Stage.DEVICE_STATUS, actor=ENGINEER)
     pending = await service.get_detail(handover.id)
-    row = next(item for item in pending.stages if item.stage == "device_prepared")
+    row = next(item for item in pending.stages if item.stage == "device_status")
     assert row.status == StageStatus.PENDING.value
 
-    view = await service.confirm_manual_stage(
-        handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER
+    view = await service.record_operation(
+        handover.id, Stage.DEVICE_STATUS,
+        status=StageStatus.PASSED, reason=None, detail=None, actor=ENGINEER,
     )
-    row = next(item for item in view.stages if item.stage == "device_prepared")
+    row = next(item for item in view.stages if item.stage == "device_status")
     assert row.status == StageStatus.PASSED.value
 
 
@@ -451,18 +470,22 @@ async def test_one_failure_never_blocks_another_operation(service) -> None:
         handover.id, Stage.AGENT_REPORT,
         status=StageStatus.FAILED, reason="bad report", detail={}, actor=ENGINEER,
     )
-    view = await service.confirm_manual_stage(
-        handover.id, Stage.USER_SIGNED_IN, actor=ENGINEER
+    view = await service.record_operation(
+        handover.id, Stage.SOFTWARE_CHECK,
+        status=StageStatus.PASSED, reason=None, detail=None, actor=ENGINEER,
     )
     assert any(
-        item.stage == "user_signed_in" and item.status == "passed"
+        item.stage == "software_check" and item.status == "passed"
         for item in view.stages
     )
 
 
 async def test_close_with_gaps_stores_the_gap_list_and_reopen_clears_it(service) -> None:
     handover = await _create(service)
-    await service.confirm_manual_stage(handover.id, Stage.DEVICE_PREPARED, actor=ENGINEER)
+    await service.record_operation(
+        handover.id, Stage.DEVICE_STATUS,
+        status=StageStatus.PASSED, reason=None, detail=None, actor=ENGINEER,
+    )
     await service.mark_not_done(
         handover.id, Stage.RECIPIENT_CHECK, reason="Device not available", actor=ENGINEER
     )
@@ -474,7 +497,7 @@ async def test_close_with_gaps_stores_the_gap_list_and_reopen_clears_it(service)
     assert closed.handover.closed_at is not None
     gap_ops = {gap["operation"] for gap in closed.handover.closed_gaps}
     assert "recipient_check" in gap_ops
-    assert "device_prepared" not in gap_ops
+    assert "device_status" not in gap_ops
     assert closed.events[-1].type == "case_closed_with_gaps"
     assert closed.events[-1].detail["gaps"] == closed.handover.closed_gaps
 

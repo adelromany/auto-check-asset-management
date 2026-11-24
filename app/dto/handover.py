@@ -246,6 +246,13 @@ class HandoverSummary(BaseModel):
     device_serial: str
     snipeit_asset_id: int | None = None
     snipeit_asset_tag: str | None = None
+    device_company: str | None = None
+    device_model: str | None = None
+    device_category: str | None = None
+    snipeit_status_name: str | None = None
+    recipient_mode: str | None = None
+    recipient_free_name: str | None = None
+    recipient_free_email: str | None = None
     recipient_reported_username: str | None = None
     recipient_snipeit_id: int | None = None
     recipient_snipeit_username: str | None = None

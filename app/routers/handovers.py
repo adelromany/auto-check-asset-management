@@ -56,6 +56,7 @@ async def create_handover(
     payload: HandoverCreate,
     user: dict = Depends(current_user),
     session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
 ) -> HandoverSummary:
     service = HandoverService(session)
     try:
@@ -65,6 +66,7 @@ async def create_handover(
             engineer_name=user.get("name") or "",
             ticket_ref=payload.ticket_ref,
             kind=payload.kind,
+            client=client,
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc

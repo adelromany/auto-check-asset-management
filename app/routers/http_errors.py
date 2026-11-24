@@ -19,6 +19,7 @@ from app.domain.errors import (
     AgentReportNotFound,
     CaseStateConflict,
     ClosingConfirmationRequired,
+    DeviceNotInSnipeIt,
     DocumentNotFound,
     DocumentTooLarge,
     HandoverAlreadyExists,
@@ -33,6 +34,7 @@ from app.domain.errors import (
     NotDoneReasonRequired,
     OperationNotInKind,
     RecipientConfirmationConflict,
+    SnipeItUnreachable,
     SoftwareCheckConflict,
     StageNotRunnable,
     UnsupportedDocumentType,
@@ -63,6 +65,10 @@ _UNPROCESSABLE_ERRORS = (
 def handover_http_error(exc: HandoverError) -> HTTPException:
     if isinstance(exc, (HandoverNotFound, DocumentNotFound, AgentReportNotFound)):
         return HTTPException(status_code=404, detail=str(exc))
+    if isinstance(exc, DeviceNotInSnipeIt):
+        return HTTPException(status_code=422, detail=str(exc))
+    if isinstance(exc, SnipeItUnreachable):
+        return HTTPException(status_code=503, detail=str(exc))
     if isinstance(exc, _UNPROCESSABLE_ERRORS):
         return HTTPException(status_code=422, detail=str(exc))
     if isinstance(exc, DocumentTooLarge):

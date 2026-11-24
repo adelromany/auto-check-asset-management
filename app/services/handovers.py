@@ -18,6 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import config
+from app.clients.snipeit import SnipeItClient, SnipeItError, SnipeItNotFound
 from app.db.models.handover import Event, Handover, HandoverStage
 from app.db.models.maintenance import MaintenanceInfo
 from app.domain.maintenance_rules import MaintenanceState, derive_maintenance_state
@@ -34,6 +35,7 @@ from app.domain.catalog import (
 from app.domain.errors import (
     CaseStateConflict,
     ClosingConfirmationRequired,
+    DeviceNotInSnipeIt,
     HandoverAlreadyExists,
     HandoverCancelled,
     HandoverCompleted,
@@ -43,6 +45,7 @@ from app.domain.errors import (
     ManualStageRequired,
     NotDoneReasonRequired,
     OperationNotInKind,
+    SnipeItUnreachable,
 )
 from app.domain.handover_rules import (
     StageState,
@@ -154,8 +157,14 @@ class HandoverService:
         engineer_name: str = "",
         ticket_ref: str | None = None,
         kind: CaseKind | str = CaseKind.HANDOVER,
+        client: SnipeItClient | None = None,
     ) -> Handover:
-        """Create a case with every operation pending, then log it once."""
+        """Create a case with every operation pending, then log it once.
+
+        A handover case reads its device facts from Snipe-IT before anything
+        is stored: an unknown serial creates nothing (422) and an unreachable
+        Snipe-IT creates nothing (503).
+        """
         serial = device_serial.strip()
         if not serial:
             raise ValueError("device_serial must not be blank.")
@@ -164,6 +173,8 @@ class HandoverService:
         existing = await self._handovers.find_active_by_serial(serial)
         if existing is not None:
             raise HandoverAlreadyExists(active_case_message(existing, serial))
+
+        device = await self._read_device_facts(serial, resolved_kind, client)
 
         handover = Handover(
             ticket_ref=(ticket_ref or "").strip() or None,
@@ -177,6 +188,13 @@ class HandoverService:
                 for operation in operations_for(resolved_kind)
             ],
         )
+        if device is not None:
+            handover.snipeit_asset_id = device.id
+            handover.snipeit_asset_tag = device.asset_tag
+            handover.device_company = device.company
+            handover.device_model = device.model
+            handover.device_category = device.category
+            handover.snipeit_status_name = device.status
         if resolved_kind == CaseKind.MAINTENANCE:
             handover.maintenance_state = MaintenanceState.NEEDS_MAINTENANCE.value
             handover.maintenance = MaintenanceInfo(handover_id=handover.id)
@@ -199,6 +217,26 @@ class HandoverService:
         )
         await self.recompute_status(handover)
         return handover
+
+    async def _read_device_facts(
+        self,
+        serial: str,
+        kind: CaseKind,
+        client: SnipeItClient | None,
+    ):
+        """Read the device facts of a handover device from Snipe-IT.
+
+        Returns ``None`` when no client is available (maintenance cases and
+        callers that only use the local database).
+        """
+        if kind is not CaseKind.HANDOVER or client is None:
+            return None
+        try:
+            return await client.get_asset_by_serial(serial)
+        except SnipeItNotFound as exc:
+            raise DeviceNotInSnipeIt() from exc
+        except SnipeItError as exc:
+            raise SnipeItUnreachable() from exc
 
     # -- independent operations ------------------------------------------
     async def confirm_manual_stage(
