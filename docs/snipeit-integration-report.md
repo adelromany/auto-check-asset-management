@@ -43,3 +43,13 @@ No tokens or secrets are recorded here.
 | 6 | recipient items are confirmed | PASS | status='passed' detail={'checked_in': ['TEST-SN-0005'], 'kept': []} |
 | 7 | device is checked out with Deployed status | PASS | stage='passed' assignee=5 status='Deployed' |
 | 8 | case cancelled (cleanup) | PASS |  |
+
+## Phase 04
+
+| # | Check | Result | Detail |
+|---|---|---|---|
+| 1 | company form contains the engineer name | PASS |  |
+| 2 | signed paper records scan and push | PASS | stages={'device_status': 'passed', 'agent_report': 'passed', 'software_check': 'passed', 'report_printed': 'passed', 'recipient_check': 'passed', 'recipient_items': 'passed', 'checkout': 'passed', 'document_scanned': 'passed', 'document_pushed': 'passed'} |
+| 3 | signed paper is attached to the Snipe-IT asset | PASS | files=[SnipeItFile(id=79, filename='asset-4-L88MroeU-signed-paper.png', size=None)] |
+| 4 | complete handover outcome is complete | PASS | outcome='complete' status='completed' stages={'device_status': 'passed', 'agent_report': 'passed', 'software_check': 'passed', 'report_printed': 'passed', 'recipient_check': 'passed', 'recipient_items': 'passed', 'checkout': 'passed', 'document_scanned': 'passed', 'document_pushed': 'passed'} |
+| 5 | none recipient outcome is ready | PASS | outcome='ready' status='ready' stages={'device_status': 'passed', 'agent_report': 'passed', 'software_check': 'passed', 'report_printed': 'pending', 'recipient_check': 'not_done', 'recipient_items': 'pending', 'checkout': 'pending', 'document_scanned': 'pending', 'document_pushed': 'pending'} |
