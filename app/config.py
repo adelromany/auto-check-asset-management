@@ -67,6 +67,9 @@ SNIPEIT_STATUS_MAINTENANCE = os.getenv("SNIPEIT_STATUS_MAINTENANCE", "Maintenanc
 # The Snipe-IT status label a device must have for the handover device-status
 # part to pass. Compared case-insensitively.
 SNIPEIT_STATUS_READY = os.getenv("SNIPEIT_STATUS_READY", "Ready to deploy")
+# Maintenance age thresholds used by the maintenance-only dashboard.
+MAINT_WARN_DAYS = int(os.getenv("MAINT_WARN_DAYS", "7"))
+MAINT_LATE_DAYS = int(os.getenv("MAINT_LATE_DAYS", "14"))
 STALL_HOURS = int(os.getenv("STALL_HOURS", "24"))
 REQUIRED_SOFTWARE_IDS = [
     item.strip().casefold()

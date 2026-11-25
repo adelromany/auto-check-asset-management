@@ -142,6 +142,7 @@ class DashboardService:
             )
             for row in open_rows
         ]
+        devices.sort(key=lambda item: (-item.days, item.serial))
         return MaintenanceDashboardOut(
             needs=section(needs),
             in_maintenance=section(at_vendor, include_average=True),

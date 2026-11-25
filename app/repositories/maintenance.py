@@ -232,6 +232,7 @@ class MaintenanceRepository:
         company: str | None = None,
         model: str | None = None,
         vendor_id: int | None = None,
+        q: str | None = None,
     ) -> list[dict[str, Any]]:
         statement = (
             select(Handover, MaintenanceInfo)
@@ -246,6 +247,8 @@ class MaintenanceRepository:
             statement = statement.where(Handover.device_model == model)
         if vendor_id is not None:
             statement = statement.where(MaintenanceInfo.destination_id == vendor_id)
+        if q:
+            statement = statement.where(Handover.device_serial.ilike(f"%{q.strip()}%"))
         result = await self._session.execute(
             statement.order_by(Handover.created_at.desc(), Handover.id)
         )
@@ -265,8 +268,12 @@ class MaintenanceRepository:
             "model": handover.device_model or "Unknown",
             "company": handover.device_company or "Unknown",
             "vendor": vendor,
+            "planned_vendor": vendor,
+            "assigned_to": handover.recipient_snipeit_name,
+            "snipeit_status": handover.snipeit_status_name,
             "state": handover.maintenance_state or "with_it",
             "received_date": info.received_date if info is not None else None,
+            "sent_date": info.sent_date if info is not None else None,
             "returned_date": info.returned_date if info is not None else None,
             "reason": (
                 (info.reason_text or info.diagnosis_category)

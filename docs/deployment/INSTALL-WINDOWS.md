@@ -87,6 +87,10 @@ The repository is `https://github.com/adelromany/auto-check-asset-management.git
    | `SNIPEIT_TIMEOUT_SECONDS` | `10` | Set by operator | Safe default |
    | `SNIPEIT_URL` | `http://localhost:8081` | Snipe-IT administrator | Optional for portal-only setup |
    | `SNIPEIT_TOKEN` | `<PASTE_VALUE_HERE>` | Create a dedicated Snipe-IT service account token | Optional; required for Snipe-IT connection |
+   | `SNIPEIT_STATUS_MAINTENANCE` | `Maintenance` | Snipe-IT administrator | Safe default; must match the label name |
+   | `SNIPEIT_STATUS_READY` | `Ready to deploy` | Snipe-IT administrator | Safe default; must match the label name |
+   | `MAINT_WARN_DAYS` | `7` | Maintenance process owner | Safe default |
+   | `MAINT_LATE_DAYS` | `14` | Maintenance process owner | Safe default |
    | `REQUIRED_SOFTWARE_IDS` | `forticlient,sccm,intune,office2021` | Snipe-IT/software configuration owner | Safe default |
    | `LOG_LEVEL` | `INFO` | Set by operator | Safe default |
    | `STALL_HOURS` | `24` | Set by process owner | Safe proposed default; `0` disables |

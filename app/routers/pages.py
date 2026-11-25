@@ -507,59 +507,66 @@ def _vendor_stats(rows: list[dict]) -> list[dict]:
     return result
 
 
+def _maintenance_group_bars(groups) -> list[dict]:
+    """Dashboard group rows with CSP-safe bar percentages."""
+    total = sum(group.count for group in groups) or 1
+    return [
+        {"name": group.name, "count": group.count, "pct": round(group.count * 100 / total)}
+        for group in groups
+    ]
+
+
 @router.get("/maintenance", response_class=HTMLResponse)
 async def maintenance_page(
     request: Request,
     vendor: str | None = None,
+    company: str | None = None,
+    model: str | None = None,
     q: str | None = None,
-    new: str | None = None,
-    state: str | None = None,
     session: AsyncSession = Depends(get_session),
 ):
     redirect = _login_redirect(request)
     if redirect is not None:
         return redirect
+    dashboard = await DashboardService(session).maintenance()
     query = (q or "").strip()[:100]
-    all_rows = await _list_rows(
-        session, kind=CaseKind.MAINTENANCE.value, q=query or None
-    )
-    averages = _vendor_averages(all_rows)
-    for row in all_rows:
-        row["extra"] = _maintenance_row_extra(
-            row,
-            vendor_warn_days=averages.get(
-                _vendor_name(row["maintenance"]), MAINTENANCE_OVERDUE_DAYS
-            ),
-        )
-    rows = all_rows
+    devices = dashboard.devices
+    if company:
+        devices = [item for item in devices if item.company == company]
+    if model:
+        devices = [item for item in devices if item.model == model]
     if vendor:
-        rows = [r for r in rows if _vendor_name(r["maintenance"]) == vendor]
-    at_vendor_rows = [
-        row for row in rows
-        if row["maintenance_state"] == MaintenanceState.IN_MAINTENANCE.value
-    ]
-    if state:
-        wanted = {
-            "needs": (MaintenanceState.NEEDS_MAINTENANCE.value, None),
-            "in": (MaintenanceState.IN_MAINTENANCE.value,),
-            "returned": (MaintenanceState.RETURNED.value,),
-        }.get(state)
-        if wanted:
-            rows = [r for r in rows if r["maintenance_state"] in wanted]
-    vendor_stats = _vendor_stats(all_rows)
-    vendors = await MaintenanceRepository(session).list_destinations()
+        devices = [item for item in devices if (item.vendor or "Not assigned") == vendor]
+    if query:
+        needle = query.casefold()
+        devices = [item for item in devices if needle in item.serial.casefold()]
+
+    def section_bars(section) -> dict[str, list[dict]]:
+        return {
+            "model": _maintenance_group_bars(section.by_model),
+            "company": _maintenance_group_bars(section.by_company),
+            "vendor": _maintenance_group_bars(section.by_vendor),
+        }
+
+    legacy_rows = await _list_rows(session, kind=CaseKind.MAINTENANCE.value)
+    vendor_stats = _vendor_stats(legacy_rows)
     ctx = _common_ctx(request, "Maintenance", "maintenance")
     ctx.update(
-        rows=rows,
-        at_vendor_rows=at_vendor_rows,
-        vendors=vendors,
+        dashboard=dashboard,
         vendor_stats=vendor_stats,
+        legacy_at_vendor=[
+            row for row in legacy_rows
+            if row["maintenance_state"] == MaintenanceState.AT_VENDOR.value
+        ],
+        devices=devices,
+        needs_bars=section_bars(dashboard.needs),
+        in_bars=section_bars(dashboard.in_maintenance),
+        active_company=company or "",
+        active_model=model or "",
         active_vendor=vendor or "",
-        active_state=state or "",
         query=query,
-        open_new=new == "1",
-        stall_hours=config.STALL_HOURS,
-        MAINTENANCE_STATE_LABELS={s.value: maintenance_label(s) for s in MaintenanceState},
+        warn_days=config.MAINT_WARN_DAYS,
+        late_days=config.MAINT_LATE_DAYS,
     )
     return templates.TemplateResponse(request=request, name="maintenance.html", context=ctx)
 
@@ -699,7 +706,7 @@ async def _case_response(request: Request, view, nav: str, session: AsyncSession
         stall_hours=config.STALL_HOURS,
         OPERATION_TITLES=OPERATION_TITLES,
     )
-    template = "handover_case.html" if nav == "handovers" else "case.html"
+    template = "handover_case.html" if nav == "handovers" else "maintenance_case.html"
     if template == "handover_case.html":
         states = [StageState(Operation(stage.stage), StageStatus(stage.status), stage.reason) for stage in view.stages]
         ctx.update(

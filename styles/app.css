@@ -808,6 +808,44 @@
   .vendor-figures { @apply text-xs text-muted-foreground; }
   .vendor-clear { @apply mt-2 self-start; }
 
+  /* Phase 07 maintenance UI --------------------------------------------------- */
+  .maint-dashboard-tiles { @apply grid grid-cols-1 gap-4 sm:grid-cols-2; }
+  .maint-dashboard-tile { @apply min-h-32; }
+  .maint-dashboard-groups { @apply mt-4 grid grid-cols-1 gap-4 2xl:grid-cols-2; }
+  .maint-group-grid { @apply grid grid-cols-1 gap-5 md:grid-cols-3; }
+  .maint-group h3 { @apply mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground; }
+  .maint-device-table { @apply mt-4; }
+  .maint-add-card { @apply mb-4; }
+  .maint-add-form { @apply grid grid-cols-1 items-end gap-3 md:grid-cols-2 xl:grid-cols-5; }
+  .maint-add-form [data-primary] { @apply md:col-start-2 xl:col-start-auto; }
+  .maint-lookup { @apply min-h-10 text-sm; }
+  .maint-lookup[data-state="miss"] { @apply self-center text-muted-foreground; }
+  .maint-lookup-card { @apply flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 p-2; }
+  .maint-lookup-head { @apply flex min-w-0 flex-wrap items-center gap-2; }
+  .maint-lookup-user { @apply text-xs text-muted-foreground; }
+  .maint-devices-card { @apply relative; }
+  .maint-row-actions { @apply flex min-w-52 flex-wrap items-center gap-1; }
+  .maint-selection-bar {
+    @apply sticky bottom-3 z-10 mx-3 mt-3 flex flex-wrap items-center justify-end gap-3 rounded-xl border bg-card p-3 shadow-lg;
+  }
+  .maint-result-row { @apply flex flex-wrap items-center gap-2 border-b py-2 last:border-b-0; }
+  .maint-case-card { @apply mx-auto max-w-4xl; }
+  .maint-case-header { @apply flex flex-wrap items-start justify-between gap-3; }
+  .maint-case-title { @apply text-xl font-semibold tracking-tight; }
+  .maint-case-content { @apply flex flex-col gap-6; }
+  .maint-case-facts { @apply grid grid-cols-1 gap-2 sm:grid-cols-2; }
+  .maint-case-facts .fact { @apply rounded-md border px-3 py-2; }
+  .maint-parts { @apply flex list-none flex-col divide-y; }
+  .maint-part { @apply grid grid-cols-[1.5rem_1fr_auto] items-center gap-2 py-2 text-sm; }
+  .maint-part-reason { @apply col-span-2 col-start-2 text-xs text-warning; }
+  .maint-case-actions { @apply flex flex-wrap border-t pt-4; }
+  @media (max-width: 639px) {
+    .maint-add-form { @apply grid-cols-1; }
+    .maint-dashboard-groups { @apply grid-cols-1; }
+    .maint-group-grid { @apply grid-cols-1; }
+    .maint-selection-bar { @apply bottom-2 flex-col items-stretch; }
+  }
+
   /* Case page ---------------------------------------------------------------- */
   .case-title { @apply mb-4 flex items-baseline gap-3 text-xl font-semibold tracking-tight; }
   .case-title-label { @apply text-xs font-medium uppercase tracking-wider text-muted-foreground; }

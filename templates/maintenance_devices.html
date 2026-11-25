@@ -2,21 +2,55 @@
 {% block content %}
 <h1 class="sr-only">Devices</h1>
 <div class="page-head">
-  <p class="page-intro">Devices</p>
+  <div class="row-between wrap">
+    <p class="page-intro">Devices</p>
+    <a href="/maintenance" class="btn btn-outline">Maintenance dashboard</a>
+  </div>
 </div>
-<section class="card">
+
+<section class="card maint-add-card" aria-label="Add maintenance device">
+  <div class="card-header"><h2 class="card-title">Add device</h2></div>
   <div class="card-content">
-    {% if rows %}
-    <ul class="attention-list">
-      {% for row in rows %}
-      <li class="attention-row">
-        <span class="mono attention-serial">{{ row.serial }}</span>
-        <span>{{ row.model or '—' }}</span>
-        <a href="/maintenance/{{ row.id }}" class="btn btn-outline btn-sm">Open</a>
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}<div class="empty" data-empty><span>—</span></div>{% endif %}
+    <form class="maint-add-form" data-maint-add-form>
+      <label class="field"><span class="field-label">Serial</span><input class="input" name="serial" autocomplete="off" required maxlength="100"></label>
+      <div class="maint-lookup" data-device-lookup aria-live="polite"></div>
+      <label class="field"><span class="field-label">Reason</span><select class="input" name="reason_id" required><option value="">Loading…</option></select></label>
+      <label class="field hidden" data-details-field><span class="field-label">Details</span><textarea class="input" name="reason_text" maxlength="300" rows="2"></textarea></label>
+      <label class="field"><span class="field-label">Vendor</span><select class="input" name="planned_vendor_id"><option value="">Not assigned</option></select></label>
+      <button class="btn btn-default" type="submit" data-primary>Add</button>
+    </form>
+  </div>
+</section>
+
+<section class="card maint-devices-card" aria-label="Maintenance devices">
+  <div class="card-header">
+    <div class="tabs" role="tablist" aria-label="Device location">
+      <button type="button" class="tabs-trigger" role="tab" aria-selected="true" data-device-tab="with_it">With IT</button>
+      <button type="button" class="tabs-trigger" role="tab" aria-selected="false" data-device-tab="at_vendor">At vendor</button>
+    </div>
+    <form class="filters" data-device-filters>
+      <input class="input input-inline" type="search" name="q" placeholder="Serial" aria-label="Search by serial">
+      <select class="input input-inline" name="company" aria-label="Filter by company"><option value="">Company: all</option></select>
+      <select class="input input-inline" name="model" aria-label="Filter by model"><option value="">Model: all</option></select>
+      <select class="input input-inline" name="vendor" aria-label="Filter by vendor"><option value="">Vendor: all</option></select>
+      <button type="submit" class="btn btn-outline btn-sm">Filter</button>
+    </form>
+  </div>
+  <div class="table-wrap">
+    <table class="table" data-device-table="with_it">
+      <thead><tr><th class="table-head"><input type="checkbox" data-select-all="with_it" aria-label="Select all With IT devices"></th><th class="table-head">Serial</th><th class="table-head">Model</th><th class="table-head">Company</th><th class="table-head">Reason</th><th class="table-head">Days</th><th class="table-head">Vendor</th><th class="table-head">Actions</th></tr></thead>
+      <tbody data-device-rows="with_it"><tr><td colspan="8" class="table-cell"><div class="empty"><span>Loading…</span></div></td></tr></tbody>
+    </table>
+    <table class="table hidden" data-device-table="at_vendor">
+      <thead><tr><th class="table-head"><input type="checkbox" data-select-all="at_vendor" aria-label="Select all At vendor devices"></th><th class="table-head">Serial</th><th class="table-head">Model</th><th class="table-head">Company</th><th class="table-head">Vendor</th><th class="table-head">Sent</th><th class="table-head">Days</th><th class="table-head">Reason</th></tr></thead>
+      <tbody data-device-rows="at_vendor"><tr><td colspan="8" class="table-cell"><div class="empty"><span>Loading…</span></div></td></tr></tbody>
+    </table>
+  </div>
+  <div class="maint-selection-bar hidden" data-selection-bar>
+    <strong data-selection-count>0 selected</strong>
+    <button type="button" class="btn btn-default" data-batch-send>Send batch (0)</button>
+    <button type="button" class="btn btn-default hidden" data-batch-receive>Receive batch (0)</button>
   </div>
 </section>
 {% endblock %}
+{% block scripts %}<script src="/static/js/maintenance_devices.js" defer></script>{% endblock %}

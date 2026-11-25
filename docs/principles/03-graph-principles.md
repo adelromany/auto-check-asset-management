@@ -88,6 +88,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | route | GET / | app/routers/pages.py |
 | route | GET /handovers | app/routers/pages.py |
 | route | GET /maintenance | app/routers/pages.py |
+| route | GET /maintenance/devices | app/routers/pages.py |
 | route | GET /sync | app/routers/pages.py |
 | route | GET /handovers/{id} | app/routers/pages.py |
 | route | GET /maintenance/{id} | app/routers/pages.py |
@@ -133,6 +134,18 @@ The project graph is a map of what depends on what, so any change can be assesse
 | route | POST /api/handovers/{id}/document/push | app/routers/documents.py |
 | route | GET /api/dashboard/handovers/summary | app/routers/dashboard.py |
 | route | GET /api/dashboard/handovers | app/routers/dashboard.py |
+| route | GET /api/maintenance/device-lookup | app/routers/maintenance.py |
+| route | GET /api/maintenance/cases | app/routers/maintenance.py |
+| route | POST /api/maintenance/cases | app/routers/maintenance.py |
+| route | POST /api/maintenance/cases/{id}/set-status | app/routers/maintenance.py |
+| route | POST /api/maintenance/cases/{id}/take-back | app/routers/maintenance.py |
+| route | POST /api/maintenance/cases/{id}/ready-status | app/routers/maintenance.py |
+| route | POST /api/maintenance/batches/send | app/routers/maintenance.py |
+| route | POST /api/maintenance/batches/receive | app/routers/maintenance.py |
+| route | GET /api/maintenance/vendors | app/routers/maintenance.py |
+| route | POST /api/maintenance/vendors | app/routers/maintenance.py |
+| route | GET /api/maintenance/reasons | app/routers/maintenance.py |
+| route | GET /api/dashboard/maintenance | app/routers/dashboard.py |
 | route | GET /api/snipeit/device | app/routers/snipeit.py |
 | route | GET /api/snipeit/health | app/routers/snipeit.py |
 | route | GET /api/health | app/routers/health.py |
@@ -175,9 +188,11 @@ The project graph is a map of what depends on what, so any change can be assesse
 | asset | templates/base.html | every page | the one shell: rail, topbar, bottom nav, toasts, drawer root |
 | asset | templates/dashboard.html | GET / | overview tiles, attention list, bar panels |
 | asset | templates/handovers.html | GET /handovers | kanban board, filters, registration trigger |
-| asset | templates/maintenance.html | GET /maintenance | three-state board, vendor panel, at-vendors table |
+| asset | templates/maintenance.html | GET /maintenance | maintenance-only tiles, grouped bars, device table |
+| asset | templates/maintenance_devices.html | GET /maintenance/devices | add-device card, With IT / At vendor tables, batch actions |
+| asset | templates/maintenance_case.html | GET /maintenance/{id} | compact seven-part maintenance case and actions |
 | asset | templates/sync.html | GET /sync | device check start, commands, result, attach |
-| asset | templates/case.html | GET /handovers/{id}, GET /maintenance/{id} | passport, 10 operation tiles, cancel/sync |
+| asset | templates/case.html | GET /handovers/{id} | handover case workspace |
 | asset | templates/case_history.html | GET /…/{id}/history | append-only audit trail |
 | asset | templates/error.html | every HTML error | friendly error page with request id and Back |
 | asset | templates/diag_clipboard.html | GET /diag/clipboard | clipboard diagnostics page |
@@ -193,7 +208,10 @@ The project graph is a map of what depends on what, so any change can be assesse
 | asset | static/js/theme.js | every page | light/dark/system toggle |
 | asset | static/js/theme-init.js | every page | pre-paint theme, external for CSP |
 | asset | static/js/handovers.js | handovers.html | board filter memory and registration trigger |
-| asset | static/js/maintenance.js | maintenance.html | tabs, vendor panel, send/receive drawers |
+| asset | static/js/maintenance.js | legacy maintenance pages | legacy tabs, vendor panel, send/receive drawers |
+| asset | static/js/maintenance_dashboard.js | maintenance.html | maintenance dashboard bar rendering |
+| asset | static/js/maintenance_devices.js | maintenance_devices.html | device intake, filters and batch send/receive |
+| asset | static/js/maintenance_case.js | maintenance_case.html | compact maintenance case actions |
 | asset | static/js/sync.js | sync.html, case.html | device-check flow and copy feedback |
 | asset | static/js/case.js | case.html | operation drawers, cancel, sync, maintenance |
 | asset | static/js/clipboard.js | sync.html, diag_clipboard.html | shared copyText utility (3 tiers) |
@@ -276,6 +294,8 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/routers/pages.py | renders | templates/dashboard.html |
 | app/routers/pages.py | renders | templates/handovers.html |
 | app/routers/pages.py | renders | templates/maintenance.html |
+| app/routers/pages.py | renders | templates/maintenance_devices.html |
+| app/routers/pages.py | renders | templates/maintenance_case.html |
 | app/routers/pages.py | renders | templates/sync.html |
 | app/routers/pages.py | renders | templates/case.html |
 | app/routers/pages.py | renders | templates/case_history.html |
@@ -284,7 +304,9 @@ The project graph is a map of what depends on what, so any change can be assesse
 | templates/base.html | uses | static/js/theme.js |
 | templates/case.html | uses | static/js/case.js |
 | templates/handovers.html | uses | static/js/handovers.js |
-| templates/maintenance.html | uses | static/js/maintenance.js |
+| templates/maintenance.html | uses | static/js/maintenance_dashboard.js |
+| templates/maintenance_devices.html | uses | static/js/maintenance_devices.js |
+| templates/maintenance_case.html | uses | static/js/maintenance_case.js |
 | templates/sync.html | uses | static/js/sync.js |
 | app/routers/http_errors.py | imports | app/services/handovers.py |
 | app/routers/http_errors.py | imports | app/clients/snipeit.py |

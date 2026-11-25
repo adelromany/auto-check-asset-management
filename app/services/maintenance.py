@@ -134,6 +134,7 @@ class MaintenanceService:
                 assignee = asset.assigned_to_name
             except SnipeItError:
                 assignee = None
+        handover.recipient_snipeit_name = assignee
 
         view = await self._core.record_operation(
             handover.id,
@@ -243,6 +244,8 @@ class MaintenanceService:
                 input_checks=False,
             )
         if asset.assigned_to_id is None:
+            handover.recipient_snipeit_name = None
+            await self._session.flush()
             return await self._core.record_operation(
                 case_id,
                 Operation.TAKEN_BACK,
@@ -268,6 +271,9 @@ class MaintenanceService:
                 input_checks=False,
             )
         passed = result.status == "success" and refreshed.assigned_to_id is None
+        if passed:
+            handover.recipient_snipeit_name = None
+            await self._session.flush()
         return await self._core.record_operation(
             case_id,
             Operation.TAKEN_BACK,
@@ -285,9 +291,10 @@ class MaintenanceService:
         company: str | None = None,
         model: str | None = None,
         vendor_id: int | None = None,
+        q: str | None = None,
     ) -> list[MaintenanceCaseOut]:
         rows = await self._repository.list_case_rows(
-            state=state, company=company, model=model, vendor_id=vendor_id
+            state=state, company=company, model=model, vendor_id=vendor_id, q=q
         )
         today = date.today()
         return [

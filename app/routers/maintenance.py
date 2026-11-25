@@ -48,11 +48,12 @@ async def list_cases(
     company: str | None = Query(default=None, max_length=120),
     model: str | None = Query(default=None, max_length=120),
     vendor_id: int | None = Query(default=None),
+    q: str | None = Query(default=None, max_length=100),
     user: dict = Depends(current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[MaintenanceCaseOut]:
     return await MaintenanceService(session).list_cases(
-        state=state, company=company, model=model, vendor_id=vendor_id
+        state=state, company=company, model=model, vendor_id=vendor_id, q=q
     )
 
 

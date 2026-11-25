@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "partials/opstrip.html" import state_word %}
+{% block body_attrs %}data-case-id="{{ handover.id }}" data-case-kind="maintenance"{% endblock %}
+{% block content %}
+<h1 class="sr-only">Maintenance case {{ row.serial }}</h1>
+<section class="card maint-case-card">
+  <div class="card-header maint-case-header">
+    <div>
+      <h1 class="mono maint-case-title">{{ row.serial }}</h1>
+      <p class="muted">{{ row.model or 'Unknown model' }} · {{ row.company or 'Unknown company' }}</p>
+    </div>
+    <div class="case-chips">
+      <span class="badge {% if row.maintenance_state == 'at_vendor' %}badge-accent{% elif row.maintenance_state == 'returned' %}badge-success{% else %}badge-warning{% endif %}" data-case-state>{{ {'with_it':'Needs maintenance','at_vendor':'In maintenance','returned':'Returned','needs_maintenance':'Needs maintenance','in_maintenance':'In maintenance'}.get(row.maintenance_state or 'with_it', 'Needs maintenance') }}</span>
+      <a href="/maintenance/{{ handover.id }}/history" class="link-quiet">History ({{ event_total }})</a>
+    </div>
+  </div>
+  <div class="card-content maint-case-content">
+    <dl class="facts maint-case-facts">
+      <div class="fact"><dt>Reason</dt><dd data-case-reason>{{ (maintenance.reason_text or maintenance.diagnosis_category) if maintenance else '—' }}</dd></div>
+      <div class="fact"><dt>Vendor</dt><dd>{{ row.vendor or 'Not assigned' }}</dd></div>
+      <div class="fact"><dt>Received</dt><dd class="mono">{{ maintenance.received_date if maintenance else '—' }}</dd></div>
+      <div class="fact"><dt>Sent</dt><dd class="mono">{{ maintenance.sent_date if maintenance else '—' }}</dd></div>
+      <div class="fact"><dt>Returned</dt><dd class="mono">{{ maintenance.returned_date if maintenance else '—' }}</dd></div>
+      <div class="fact"><dt>Days</dt><dd>{{ row.age_days }}d</dd></div>
+    </dl>
+
+    <ol class="maint-parts" aria-label="Maintenance steps">
+      {% for stage in stages %}
+      <li class="maint-part maint-part-{{ stage.status }}">
+        <span class="opdot-{{ stage.status }}" aria-hidden="true">{% if stage.status == 'passed' %}✓{% elif stage.status == 'failed' %}✕{% elif stage.status == 'not_done' %}⊘{% else %}○{% endif %}</span>
+        <span class="maint-part-name">{{ OPERATION_TITLES[stage.stage] }}</span>
+        <span class="muted">{{ state_word(stage.status) }}</span>
+        {% if stage.reason %}<span class="maint-part-reason">{{ stage.reason }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+
+    <div class="case-actions maint-case-actions">
+      {% set status_state = row.states_map.get('snipeit_status', 'pending') %}
+      {% set ready_state = row.states_map.get('ready_status', 'pending') %}
+      {% if status_state != 'passed' %}<button type="button" class="btn btn-default btn-sm" data-maint-action="set-status">Set Maintenance</button>{% endif %}
+      {% if row.recipient_snipeit_name %}<button type="button" class="btn btn-outline btn-sm" data-maint-action="take-back">Remove from user</button>{% endif %}
+      {% if ready_state == 'failed' or ready_state == 'not_done' %}<button type="button" class="btn btn-outline btn-sm" data-maint-action="ready-status">Retry status</button>{% endif %}
+      <span class="badge badge-outline hidden" data-maint-result></span>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/maintenance_case.js" defer></script>{% endblock %}
