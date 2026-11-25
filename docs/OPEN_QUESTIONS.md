@@ -328,3 +328,27 @@ Conservative option taken: generate and download the company DOCX only. No
 server-side print service or office-printer integration is added.
 
 Owner: handover process owner.
+
+## Q-27 — When does a needs-maintenance device have a vendor? (OPEN)
+
+Context: a needs-maintenance device has a vendor only when a planned vendor was selected during intake.
+
+Conservative option taken: show no vendor until a planned vendor exists; never infer one from free text.
+
+Owner: operations owner.
+
+## Q-28 — Are the current Snipe-IT status labels fixed? (OPEN)
+
+Context: `Ready to deploy` and `Maintenance` are configurable Snipe-IT status-label names and may differ per installation.
+
+Conservative option taken: configure `SNIPEIT_STATUS_READY` and `SNIPEIT_STATUS_MAINTENANCE`; compare names case-insensitively.
+
+Owner: Snipe-IT administrator.
+
+## Q-29 — Does maintenance return a device to its previous user? (OPEN)
+
+Context: after maintenance the device does not return automatically to the same user.
+
+Conservative option taken: return it to `Ready to deploy` without an assignee and require a new handover.
+
+Owner: operations owner.

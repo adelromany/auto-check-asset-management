@@ -613,7 +613,7 @@ async def attach_agent_report(
     try:
         handover = await service.record_agent_report(
             handover_id,
-            AgentPayload(**payload.payload),
+            AgentPayload(**payload.payload).model_dump(),
             actor=_actor(user),
         )
     except HandoverError as exc:

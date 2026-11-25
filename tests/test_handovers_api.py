@@ -109,6 +109,31 @@ async def test_create_returns_a_draft_summary(api: ApiHarness) -> None:
     assert "stages" not in body
 
 
+async def test_attach_agent_report_accepts_validated_payload(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-1")
+
+    response = await api.client.post(
+        f"/api/handovers/{case['id']}/attach-report",
+        json={
+            "payload": {
+                "serial": "SN-1",
+                "hostname": "TEST-PC",
+                "windows_activation": {
+                    "status": "Licensed",
+                    "status_code": 1,
+                    "partial_key": "SECRET",
+                },
+            }
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    agent_report = next(
+        item for item in response.json()["stages"] if item["stage"] == "agent_report"
+    )
+    assert agent_report["status"] in {"passed", "failed"}
+
+
 async def test_users_search_marks_a_same_company_user(api: ApiHarness) -> None:
     case = await _create(api, serial="SN-1")
 

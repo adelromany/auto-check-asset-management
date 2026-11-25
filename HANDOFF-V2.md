@@ -71,3 +71,17 @@ STEP 7.8 BLOCKED Playwright e2e setup still fails with the known Snipe-IT servic
 STEP 7.9 DONE final full suite: `pytest -q -p no:cacheprovider --deselect tests/test_clipboard_playwright.py` = 485 passed, 11 skipped, 27 deselected, 3 known e2e setup errors (HTTP 503 Service Unavailable; environment service unavailable, reported not hidden). Added `tests/test_phase07_ui.py`; updated LIVE GRAPH and regenerated principle visuals.
 PHASE 07 DONE - maintenance-only dashboard, device intake and two-location workflow, batch send/receive with retry, compact case page, thresholds, CSP-safe page JS, updated graph/visuals.
 Next: `08-final-verification.md`.
+
+STEP 8.1 DONE added `tools/snipeit_reset_tests.py`; it touches only `TEST-SN-*`, restores the seeded `TEST-SN-0005` owner, and the real probe prints 11/11 PASS. Fresh verification DB created with Alembic and the portal ran on port 8080.
+
+STEP 8.2 DONE added `tools/v2_verify_all.py`; all eight HTTP scenarios passed with Snipe-IT API read-back evidence. Fixed the live-only agent-report 500 by passing the validated payload as a dictionary to the redaction/service boundary. Evidence: `docs/v2-verification.md`.
+
+STEP 8.3 DONE Phase 05 + Phase 07 UI contracts passed (4/4); captured 16 review screenshots (four screens, light/dark, 1440/390) under `docs/review/v2/`. The repository e2e setup still returns the known HTTP 503; the standalone real-browser capture succeeded.
+
+STEP 8.4 DONE full suite result before the final regression test: 507 passed, 13 skipped, 2 xfailed, 1 stale-visual failure, 3 known e2e setup errors (HTTP 503). Regenerated the stale Principle visual; its six tests then passed. Final non-e2e suite: 509 passed, 13 skipped, 2 xfailed. Architecture rules: 30 passed. Ruff was unavailable in the environment (`No module named ruff`).
+
+STEP 8.5 DONE updated `docs/v2-verification.md`, `docs/OPEN_QUESTIONS.md`, `README.md`, and this handoff.
+
+PHASE 08 DONE - live 8/8, browser review matrix, quality evidence, and owner handover. Known gaps: production B.tech/Mylo/Nexta form templates, configurable Snipe-IT label names, engineer-PC printing, and no automatic reassignment after maintenance.
+
+Final commit: the Phase 08 commit on `feature/v2-handover-maintenance` (use `git rev-parse HEAD` for the immutable id).

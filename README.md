@@ -7,6 +7,12 @@ Snipe-IT after an engineer's explicit, verified action.
 
 For installation on another computer, see the [Windows deployment guide](docs/deployment/INSTALL-WINDOWS.md), [Linux/macOS draft](docs/deployment/INSTALL-LINUX-MAC.md), and [troubleshooting guide](docs/deployment/TROUBLESHOOTING.md).
 
+## V2 quick verification
+
+- Run the portal with `python -m uvicorn app.main:app --host 127.0.0.1 --port 8080` after `python -m alembic upgrade head`.
+- Seed the real Snipe-IT test data with `python tools/snipeit_seed.py` and reset it with `python tools/snipeit_reset_tests.py`.
+- With the portal running, verify all eight live scenarios with `python tools/v2_verify_all.py`; evidence is recorded in [docs/v2-verification.md](docs/v2-verification.md).
+
 ## Project structure
 
 ```
