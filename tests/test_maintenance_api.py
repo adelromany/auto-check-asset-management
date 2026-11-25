@@ -383,14 +383,14 @@ async def test_transit_operations_derive_maintenance_states(api: ApiHarness) -> 
 
     # 1. Initially Needs maintenance
     detail = await api.client.get(f"/api/handovers/{case_id}")
-    assert detail.json()["maintenance_state"] == "needs_maintenance"
+    assert detail.json()["maintenance_state"] == "with_it"
 
     # Confirm received
     rx_res = await api.client.post(
         f"/api/handovers/{case_id}/operations/received/confirm"
     )
     assert rx_res.status_code == 200
-    assert rx_res.json()["maintenance_state"] == "needs_maintenance"
+    assert rx_res.json()["maintenance_state"] == "with_it"
 
     # 2. Sent out -> In maintenance
     send_date = (date.today() - timedelta(days=5)).isoformat()
@@ -398,7 +398,7 @@ async def test_transit_operations_derive_maintenance_states(api: ApiHarness) -> 
         f"/api/handovers/{case_id}/operations/sent_out/confirm"
     )
     assert sent_res.status_code == 200
-    assert sent_res.json()["maintenance_state"] == "in_maintenance"
+    assert sent_res.json()["maintenance_state"] == "at_vendor"
 
     # 3. Returned -> Returned
     ret_res = await api.client.post(

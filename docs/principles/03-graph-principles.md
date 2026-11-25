@@ -53,6 +53,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/domain/timeutil.py | domain | normalize persistence datetimes to UTC |
 | module | app/clients/snipeit.py | client | Snipe-IT HTTP client, credential provider and typed results |
 | module | app/dto/handover.py | dto | handover request/response models |
+| module | app/dto/maintenance.py | dto | maintenance intake, lookup, vendor and batch request/response models |
 | module | app/dto/dashboard.py | dto | dashboard summary and paged-row response models |
 | module | app/repositories/filters.py | repository | shared case status, search and active-case SQL filters |
 | module | app/repositories/handovers.py | repository | handover, stage and agent-report data access |
@@ -65,10 +66,12 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/services/documents.py | service | printable report, safe scan storage, download and verified push |
 | module | app/services/forms.py | service | company template lookup and generated handover form |
 | module | app/services/dashboard.py | service | database-side dashboard aggregates and page-sized handover rows |
+| module | app/services/maintenance.py | service | maintenance intake, Snipe-IT status/take-back, batch transitions and case queries |
 | module | app/services/sessions.py | service | in-memory short-code session store |
 | module | app/routers/pages.py | router | four-screen shell (dashboard, handovers, maintenance, sync), case pages/history, legacy 308 redirects, /api/me |
 | module | app/routers/agent.py | router | session code create/poll/submit |
 | module | app/routers/handovers.py | router | /api/handovers create, list, detail, confirm, cancel, recipient, preview, checkin, checkout |
+| module | app/routers/maintenance.py | router | /api/maintenance intake, lookup, reasons, vendors, case actions and batch transitions |
 | module | app/routers/documents.py | router | report page, document upload/download and push |
 | module | app/routers/dashboard.py | router | /api/dashboard summary and paged-row reads |
 | module | app/routers/http_errors.py | router | shared domain/client error to HTTP mapping and detail DTO |
