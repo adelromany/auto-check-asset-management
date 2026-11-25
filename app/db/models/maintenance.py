@@ -89,6 +89,8 @@ class MaintenanceInfo(Base):
         ForeignKey("handovers.id", ondelete="CASCADE"),
         primary_key=True,
     )
+    received_date: Mapped[date | None] = mapped_column(Date)
+    reason_text: Mapped[str | None] = mapped_column(String(300))
     reported_issue: Mapped[str | None] = mapped_column(Text)
     priority: Mapped[str | None] = mapped_column(String(20))
     condition_notes: Mapped[str | None] = mapped_column(Text)
