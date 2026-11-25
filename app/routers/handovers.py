@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import config
 from app.clients.snipeit import SnipeItClient, SnipeItError
 from app.dependencies import current_user, get_session, get_snipeit_client
 from app.domain.errors import CompanyMismatch, HandoverError
@@ -45,6 +46,7 @@ from app.routers.http_errors import (
     snipeit_http_error,
 )
 from app.schemas import AgentPayload
+from app.services.documents import DocumentService
 from app.services.handovers import HandoverService
 from app.services.snipeit_ops import SnipeItHandoverService
 from app.services.software_check import SoftwareCheckService
@@ -216,14 +218,29 @@ async def retry_operation(
     operation: str,
     user: dict = Depends(current_user),
     session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
 ) -> HandoverDetail:
     service = HandoverService(session)
     try:
-        view = await service.retry_operation(
-            handover_id, operation, actor=_actor(user)
-        )
+        if operation == "document_pushed":
+            view = await DocumentService(
+                session,
+                documents_dir=config.DOCUMENTS_DIR,
+                max_bytes=config.DOCUMENT_MAX_BYTES,
+            ).push(
+                handover_id,
+                actor=_actor(user),
+                client=client,
+                require_linked_asset=True,
+            )
+        else:
+            view = await service.retry_operation(
+                handover_id, operation, actor=_actor(user)
+            )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
+    except SnipeItError as exc:
+        raise snipeit_http_error(exc) from exc
     return handover_detail(view)
 
 

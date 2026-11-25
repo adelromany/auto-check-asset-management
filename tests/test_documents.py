@@ -580,6 +580,52 @@ async def test_push_requires_an_uploaded_document(
     assert "Attach the signed scan first" in response.json()["detail"]
 
 
+async def test_signed_paper_records_scan_and_push(docs: DocsHarness) -> None:
+    handover_id = await _create(docs)
+
+    response = await docs.client.post(
+        f"/api/handovers/{handover_id}/signed-paper",
+        files={"file": ("signed.png", PNG, "image/png")},
+    )
+
+    assert response.status_code == 200
+    assert _stage(response.json(), "document_scanned")["status"] == "passed"
+    assert _stage(response.json(), "document_pushed")["status"] == "passed"
+
+
+async def test_signed_paper_keeps_scan_when_push_fails(docs: DocsHarness) -> None:
+    handover_id = await _create(docs)
+    docs.fake.fail_post_statuses = [500]
+
+    response = await docs.client.post(
+        f"/api/handovers/{handover_id}/signed-paper",
+        files={"file": ("signed.png", PNG, "image/png")},
+    )
+
+    assert response.status_code == 200
+    assert _stage(response.json(), "document_scanned")["status"] == "passed"
+    assert _stage(response.json(), "document_pushed")["status"] == "failed"
+
+
+async def test_signed_paper_retry_pushes_only_the_document(
+    docs: DocsHarness,
+) -> None:
+    handover_id = await _create(docs)
+    docs.fake.fail_post_statuses = [500]
+    await docs.client.post(
+        f"/api/handovers/{handover_id}/signed-paper",
+        files={"file": ("signed.png", PNG, "image/png")},
+    )
+
+    response = await docs.client.post(
+        f"/api/handovers/{handover_id}/operations/document_pushed/retry"
+    )
+
+    assert response.status_code == 200
+    assert _stage(response.json(), "document_scanned")["status"] == "passed"
+    assert _stage(response.json(), "document_pushed")["status"] == "passed"
+
+
 async def test_form_endpoint_returns_filled_company_template(
     docs: DocsHarness, tmp_path: Path, monkeypatch
 ) -> None:

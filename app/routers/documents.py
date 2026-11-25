@@ -97,6 +97,26 @@ async def upload_document(
     return DocumentOut.model_validate(document)
 
 
+@router.post("/{handover_id}/signed-paper", response_model=HandoverDetail)
+async def upload_signed_paper(
+    handover_id: uuid.UUID,
+    file: UploadFile = File(...),
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> HandoverDetail:
+    service = _service(session)
+    try:
+        view = await service.store_signed_paper(
+            handover_id, file, actor=user["email"], client=client
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    except SnipeItError as exc:
+        raise snipeit_http_error(exc) from exc
+    return handover_detail(view)
+
+
 @router.get("/{handover_id}/document")
 async def download_document(
     handover_id: uuid.UUID,

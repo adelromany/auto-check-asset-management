@@ -190,6 +190,26 @@ class DocumentService:
         await self._core.recompute_status(handover)
         return document
 
+    async def store_signed_paper(
+        self,
+        handover_id: uuid.UUID,
+        upload: UploadedFile,
+        *,
+        actor: str,
+        client: SnipeItClient,
+    ) -> HandoverDetailView:
+        """Store the signed paper and immediately push it to the linked asset."""
+        handover = await self._core.get(handover_id, with_details=True)
+        if handover.snipeit_asset_id is None:
+            raise InputMissing("Device is not linked to Snipe-IT")
+        await self.store(handover_id, upload, actor=actor)
+        return await self.push(
+            handover_id,
+            actor=actor,
+            client=client,
+            require_linked_asset=True,
+        )
+
     async def latest(self, handover_id: uuid.UUID) -> Document:
         handover = await self._core.get(handover_id)
         document = await self._documents.latest_for_handover(handover.id)
@@ -213,6 +233,7 @@ class DocumentService:
         *,
         actor: str,
         client: SnipeItClient,
+        require_linked_asset: bool = False,
     ) -> HandoverDetailView:
         handover = await self._core.get(handover_id, with_details=True)
         row = stage_row(handover, Operation.DOCUMENT_PUSHED)
@@ -228,9 +249,14 @@ class DocumentService:
             )
 
         try:
-            asset = await client.get_asset_by_serial(
-                handover.device_serial
-            )
+            if require_linked_asset:
+                if handover.snipeit_asset_id is None:
+                    raise InputMissing("Device is not linked to Snipe-IT")
+                asset = await client.get_asset(handover.snipeit_asset_id)
+            else:
+                asset = await client.get_asset_by_serial(handover.device_serial)
+        except InputMissing:
+            raise
         except SnipeItError as exc:
             return await self._fail_push(
                 handover,
