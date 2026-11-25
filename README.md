@@ -13,6 +13,28 @@ For installation on another computer, see the [Windows deployment guide](docs/de
 - Seed the real Snipe-IT test data with `python tools/snipeit_seed.py` and reset it with `python tools/snipeit_reset_tests.py`.
 - With the portal running, verify all eight live scenarios with `python tools/v2_verify_all.py`; evidence is recorded in [docs/v2-verification.md](docs/v2-verification.md).
 
+## V2 reset the app data (start testing from zero)
+
+The reset tool only clears the portal database and the uploaded files. It never
+touches Snipe-IT, the migrations table, the diagnosis reasons or the vendor
+list (unless `--vendors` is given).
+
+```
+python tools/reset_app_data.py            # dry run: prints every table and file count
+python tools/reset_app_data.py --yes      # backup first, then delete
+```
+
+A backup is written to `data/backup-YYYYmmdd-HHMMSS.db` before anything is
+deleted. On PostgreSQL the backup is manual: add `--no-backup` to continue.
+`APP_ENV=production` is refused unless `--i-know-this-is-production` is given.
+
+Demo data for the dashboard:
+
+```
+python tools/seed_demo_handovers.py --count 60
+python tools/seed_demo_handovers.py --remove
+```
+
 ## Project structure
 
 ```

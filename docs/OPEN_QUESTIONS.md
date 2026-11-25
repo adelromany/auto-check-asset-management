@@ -352,3 +352,28 @@ Context: after maintenance the device does not return automatically to the same 
 Conservative option taken: return it to `Ready to deploy` without an assignee and require a new handover.
 
 Owner: operations owner.
+
+## Q-30 — Does a company mismatch block the handover? (RESOLVED 2026-11-25)
+
+Context: Phase 03 blocked a recipient whose company differed from the device
+company (HTTP 422 `company_mismatch`). The owner decided that sometimes the
+engineer must hand over across companies.
+
+Owner decision (Round 2): a company mismatch is a WARNING only. It never
+blocks anything. The case stores the recipient, shows the amber `!` chip
+`Company differs`, writes the event `company_mismatch_warning`, and the
+checkout still succeeds. A warning never changes the case outcome.
+
+Owner: handover process owner (decided 2026-11-25).
+
+## Q-31 — Where exactly does the engineer name go in each form? (RESOLVED 2026-11-25)
+
+Context: the forms are filled with the engineer name only; everything else
+stays empty.
+
+Owner decision (Round 2): B.tech form — the engineer name goes after
+`المهندس :`. Mylo form — the same name goes after
+`توقيع مهندس الدعم الفني:`. The owner saves the templates as `.docx` with the
+`{{ENGINEER}}` placeholder in those two places.
+
+Owner: handover process owner (decided 2026-11-25).

@@ -149,15 +149,21 @@ class Verification:
         return "complete; assignee=test.btech1; status=Deployed; signed PNG attached"
 
     async def s2(self) -> str:
+        """Round 2: a company mismatch is a warning and the checkout succeeds."""
         case_id = await self.create("TEST-SN-0003")
         uid = await self.user_id("test.btech1")
         response = await self.http.post(f"/api/handovers/{case_id}/recipient", json={"mode": "snipeit", "user_id": uid})  # type: ignore[union-attr]
-        assert response.status_code == 422, response.text
-        assert response.json().get("code") == "company_mismatch", response.text
+        assert response.status_code == 200, response.text
+        body = response.json()
+        warnings = [item.get("code") for item in body.get("warnings", [])]
+        assert "company_mismatch" in warnings, body
+        await self.req("POST", f"/api/handovers/{case_id}/checkout")
         asset = await self.asset("TEST-SN-0003")
-        assert asset.assigned_to_id is None and (asset.status or "").casefold() == "ready to deploy"
+        assert asset.assigned_to_id == uid, f"assignee={asset.assigned_to_id!r}"
+        assert self.snipe is not None
+        await self.snipe.checkin_asset(asset.id, "Round 2 verification cleanup")
         await self.req("POST", f"/api/handovers/{case_id}/cancel")
-        return "company_mismatch; Snipe-IT asset unchanged"
+        return "company_mismatch warning; checkout succeeded; asset checked back in"
 
     async def s3(self) -> str:
         case_id = await self.create("TEST-SN-0004")

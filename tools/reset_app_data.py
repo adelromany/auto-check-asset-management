@@ -60,6 +60,14 @@ def _database_file(url: str) -> Path | None:
     return path if path.is_absolute() else (PROJECT_ROOT / path).resolve()
 
 
+def _database_label(url: str) -> str:
+    """A readable label: the file path for SQLite, the URL otherwise."""
+    path = _database_file(url)
+    if path is not None:
+        return str(path)
+    return make_url(url).render_as_string(hide_password=True)
+
+
 def _safe_documents_dir(path: str | Path, project_root: Path) -> Path:
     resolved = Path(path).resolve()
     root = project_root.resolve()
@@ -198,6 +206,7 @@ async def reset_app_data(
         files_removed = _remove_document_files(documents)
     return {
         "database": url,
+        "database_label": _database_label(url),
         "documents_dir": str(documents),
         "applied": apply,
         "demo_only": demo_only,
@@ -213,7 +222,7 @@ async def reset_app_data(
 def _print_report(result: dict) -> None:
     mode = "DELETE" if result["applied"] else "DRY RUN"
     print(f"Reset app data ({mode})")
-    print(f"Database: {result['database']}")
+    print(f"Database: {result['database_label']}")
     print("Table counts:")
     for table, count in result["before"].items():
         kept = " (kept)" if table in KEEP_TABLES else ""

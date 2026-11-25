@@ -257,6 +257,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/services/handovers.py | imports | app/repositories/handovers.py |
 | app/services/handovers.py | imports | app/repositories/events.py |
 | app/services/handovers.py | uses | app/domain/handover_rules.py |
+| app/domain/handover_rules.py | uses | app/domain/company_rules.py |
 | app/services/handovers.py | uses | app/domain/company_rules.py |
 | app/services/handovers.py | uses | app/domain/software_rules.py |
 | app/services/handovers.py | uses | app/domain/recipient_identity.py |
@@ -322,7 +323,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/middleware/request_id.py | app/main.py outer middleware order; app/logging_config.py; request-ID tests |
 | app/logging_config.py | app/main.py startup; app/clients/snipeit.py; logging tests |
 | app/domain/recipient_identity.py | app/services/handovers.py; app/services/snipeit_ops.py; app/routers/pages.py; static/agent.ps1 |
-| app/domain/company_rules.py | recipient search/selection; checkout guards; company-rule tests |
+| app/domain/company_rules.py | recipient search/selection; company mismatch warning; company-rule tests |
 | app/domain/timeutil.py | age rules; dashboard SQL comparisons; SQLite datetime tests |
 | app/services/software_check.py | app/routers/handovers.py; static/js/software_check.js; migration and override tests |
 | app/security/startup.py | app/main.py create_app; tests/test_security_hardening.py; deployment .env |
