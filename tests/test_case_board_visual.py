@@ -175,24 +175,22 @@ def test_case_board_meets_the_visible_word_budgets(headless_chrome, case_board) 
             page.close()
 
 
-def test_case_board_has_nine_operation_tiles_and_drawer(headless_chrome, case_board) -> None:
+def test_handover_case_has_three_panels_and_device_drawer(headless_chrome, case_board) -> None:
     base, handover_id = case_board
     page = headless_chrome.new_page(viewport={"width": 1440, "height": 900})
     try:
         page.goto(f"{base}/handovers/{handover_id}", wait_until="networkidle")
-        tiles = page.locator("[data-op-tile]")
-        assert tiles.count() == 9
+        panels = page.locator(".handover-panel")
+        assert panels.count() == 3
 
-        # No drawer is rendered until a tile is opened.
+        # No drawer is rendered until a device check is opened.
         drawer = page.locator('[data-drawer][data-open="true"]')
         assert drawer.count() == 0
 
-        # Clicking a tile opens the side-sheet drawer.
-        page.locator('[data-op-tile="agent_report"]').click()
+        page.locator('[data-check-device]').click()
         drawer = page.locator('[data-drawer][data-open="true"]')
         assert drawer.count() == 1
 
-        # Pressing Escape closes it.
         page.keyboard.press("Escape")
         page.wait_for_timeout(200)
         assert page.locator('[data-drawer][data-open="true"]').count() == 0
