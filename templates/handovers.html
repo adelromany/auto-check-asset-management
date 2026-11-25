@@ -1,138 +1,49 @@
 {% extends "base.html" %}
-{#-
-  Handovers: a board of columns by progress with a card per case, and a
-  sortable table view. The primary button opens the registration drawer.
--#}
-{% from "partials/opstrip.html" import opstrip, state_word %}
 {% block body_attrs %}{% if open_new %} data-open-new="handover"{% endif %}{% endblock %}
 {% block content %}
 <h1 class="sr-only">Handovers</h1>
 <div class="page-head">
   <div class="row-between">
-    <p class="page-intro">Device handovers</p>
-    <span class="updated" data-updated data-stamp="0"></span>
+    <p class="page-intro">Handovers</p>
+    <button type="button" class="btn btn-default" data-new-shortcut="handover" data-primary-action>New handover</button>
   </div>
-  <div class="row-between wrap">
-    <form id="filter-form" class="filters" method="get">
-      {% for chip in ['draft', 'in_progress', 'stalled', 'completed', 'closed_with_gaps', 'cancelled'] %}
-      <label class="chip {% if active_status == chip %}chip-active{% endif %}">
-        <input type="radio" name="status" value="{{ chip }}" class="sr-only" {% if active_status == chip %}checked{% endif %}>
-        {{ chip.replace('_', ' ')|title }}
-      </label>
-      {% endfor %}
-      <label class="chip {% if not active_status %}chip-active{% endif %}">
-        <input type="radio" name="status" value="" class="sr-only" {% if not active_status %}checked{% endif %}>
-        All
-      </label>
-      {% if engineers %}
-      <select name="engineer" class="input input-inline" aria-label="Filter by engineer">
-        <option value="">Engineer: all</option>
-        {% for name in engineers %}
-        <option value="{{ name }}" {% if active_engineer == name %}selected{% endif %}>{{ name }}</option>
+  <form id="filter-form" class="filters" method="get">
+    <label class="sr-only" for="handover-company">Company</label>
+    <select id="handover-company" name="company" class="input input-inline">
+      <option value="">Company: all</option>
+      {% for name in ['B.tech', 'Mylo', 'Nexta'] %}<option value="{{ name }}" {% if active_company == name %}selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+    <label class="sr-only" for="handover-outcome">Outcome</label>
+    <select id="handover-outcome" name="outcome" class="input input-inline">
+      <option value="">Outcome: all</option>
+      {% for value, label in [('ready', 'Ready'), ('complete', 'Complete'), ('not_complete', 'Not complete yet')] %}<option value="{{ value }}" {% if active_outcome == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <label class="sr-only" for="handover-search">Search</label>
+    <input id="handover-search" name="q" value="{{ query }}" class="input input-inline" placeholder="Serial or recipient">
+    <button type="submit" class="btn btn-outline btn-sm">Filter</button>
+  </form>
+</div>
+<section class="card" aria-label="Handover table">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Serial</th><th>Model</th><th>Company</th><th>Recipient</th><th>Missing</th><th>Age</th><th>Outcome</th><th></th></tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="table-row" data-row data-company="{{ row.company }}">
+          <td class="table-cell"><a class="row-link mono" href="/handovers/{{ row.id }}">{{ row.serial }}</a></td>
+          <td class="table-cell">{{ row.model or '—' }}</td>
+          <td class="table-cell"><span class="badge badge-secondary">{{ row.company or '—' }}</span></td>
+          <td class="table-cell">{{ row.recipient or 'No recipient' }}</td>
+          <td class="table-cell"><div class="case-chips">{% for part in row.missing[:3] %}<span class="badge badge-outline">{{ part }}</span>{% endfor %}{% if row.missing|length > 3 %}<span class="badge badge-secondary">+{{ row.missing|length - 3 }}</span>{% endif %}</div></td>
+          <td class="table-cell mono">{{ row.age_days }}d</td>
+          <td class="table-cell"><span class="badge {% if row.outcome == 'complete' %}badge-success{% elif row.outcome == 'ready' %}badge-accent{% else %}badge-warning{% endif %}">{{ {'complete': 'Complete', 'ready': 'Ready', 'not_complete': 'Not complete yet'}.get(row.outcome, 'Not complete yet') }}</span></td>
+          <td class="table-cell"><a class="btn btn-outline btn-sm" href="/handovers/{{ row.id }}">{{ 'Open' if row.outcome == 'complete' else 'Continue' }}</a></td>
+        </tr>
         {% endfor %}
-      </select>
-      {% endif %}
-      <select name="range" class="input input-inline" aria-label="Filter by date">
-        {% for value, label in [('', 'Date: all'), ('today', 'Today'), ('week', 'Last 7 days'), ('month', 'Last 30 days')] %}
-        <option value="{{ value }}" {% if active_range == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-      {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
-    </form>
-    <div class="row-actions">
-      <label class="view-switch" title="Switch board / table view">
-        <input type="checkbox" id="view-toggle" data-persist="handovers-view" class="sr-only">
-        <span class="view-switch-track"><span class="view-switch-thumb"></span></span>
-        <span class="view-switch-label">Table</span>
-      </label>
-      <button type="button" class="btn btn-default" data-new-shortcut="handover" data-primary-action>New handover</button>
-    </div>
+        {% if not rows %}<tr><td class="table-cell" colspan="8"><div class="empty" data-empty><span>—</span></div></td></tr>{% endif %}
+      </tbody>
+    </table>
   </div>
-</div>
-
-<div data-refresh-region data-refresh="15">
-  {# -- board view -- #}
-  <section id="handover-board" class="kanban {% if view_is_table is defined and view_is_table %}hidden{% endif %}" aria-label="Handover board">
-    {% set columns = [('preparing', 'Preparing'), ('assigned', 'Assigned'), ('paperwork', 'Paperwork'), ('done', 'Done / with gaps')] %}
-    {% for column, title in columns %}
-    <div class="kanban-col" data-column="{{ column }}">
-      <div class="kanban-col-head">
-        <h2 class="kanban-title">{{ title }}</h2>
-        <span class="kanban-count mono">{{ rows|selectattr('column', 'equalto', column)|list|length }}</span>
-      </div>
-      <div class="kanban-cards">
-        {% for row in rows if row.column == column %}
-        <a href="/handovers/{{ row.id }}" class="case-card" data-case-card>
-          <div class="case-card-top">
-            <span class="mono case-serial">{{ row.serial }}</span>
-            {% if row.display_status == 'stalled' %}<span class="badge badge-warning">Stalled</span>
-            {% elif row.status == 'closed_with_gaps' %}<span class="badge badge-secondary">Gaps</span>
-            {% elif row.status == 'cancelled' %}<span class="badge badge-secondary">Cancelled</span>
-            {% elif row.status == 'completed' %}<span class="badge badge-success">Done</span>{% endif %}
-          </div>
-          <div class="case-card-person">
-            <span class="avatar avatar-sm">{{ (row.recipient or row.engineer_name or '?')[:2]|upper }}</span>
-            <span class="case-person-name">{{ row.recipient or row.engineer_name }}</span>
-          </div>
-          {{ opstrip(row.states) }}
-          <div class="case-card-foot muted">
-            <span>{{ row.age_days }}d</span>
-            {% if row.ticket_ref %}<span class="mono">{{ row.ticket_ref }}</span>{% endif %}
-          </div>
-        </a>
-        {% endfor %}
-        {% if not (rows|selectattr('column', 'equalto', column)|list|length) %}
-        <div class="kanban-empty muted">None</div>
-        {% endif %}
-      </div>
-    </div>
-    {% endfor %}
-  </section>
-
-  {# -- table view (same data, sortable) -- #}
-  <section id="handover-table" class="card hidden" aria-label="Handover table">
-    <div class="table-wrap">
-      <table class="table" id="handover-table-el">
-        <thead>
-          <tr>
-            <th class="table-head th-sort" data-sort="serial">Serial</th>
-            <th class="table-head th-sort" data-sort="person">Recipient</th>
-            <th class="table-head">Operations</th>
-            <th class="table-head th-sort" data-sort="age">Age</th>
-            <th class="table-head th-sort" data-sort="status">Status</th>
-          </tr>
-        </thead>
-        <tbody id="handover-table-body">
-          {% for row in rows %}
-          <tr class="table-row" data-row data-serial="{{ row.serial }}" data-person="{{ row.recipient or row.engineer_name }}" data-age="{{ row.age_days }}" data-status="{{ row.display_status }}">
-            <td class="table-cell"><a class="row-link mono" href="/handovers/{{ row.id }}">{{ row.serial }}</a></td>
-            <td class="table-cell">
-              <span class="avatar avatar-sm">{{ (row.recipient or row.engineer_name or '?')[:2]|upper }}</span>
-              <span>{{ row.recipient or row.engineer_name }}</span>
-            </td>
-            <td class="table-cell">{{ opstrip(row.states) }}</td>
-            <td class="table-cell mono">{{ row.age_days }}d</td>
-            <td class="table-cell">
-              {% if row.display_status == 'stalled' %}<span class="badge badge-warning">Stalled</span>
-              {% elif row.status == 'completed' %}<span class="badge badge-success">Done</span>
-              {% elif row.status == 'closed_with_gaps' %}<span class="badge badge-secondary">Gaps</span>
-              {% elif row.status == 'cancelled' %}<span class="badge badge-secondary">Cancelled</span>
-              {% else %}<span class="badge badge-outline">{{ row.status.replace('_',' ')|title }}</span>{% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-          {% if not rows %}
-          <tr><td class="table-cell" colspan="5">
-            <div class="empty" data-empty>
-              <span>No handovers yet.</span>
-              <button type="button" class="btn btn-default btn-sm" data-new-shortcut="handover">New handover</button>
-            </div>
-          </td></tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-</div>
+</section>
 {% endblock %}
 {% block scripts %}<script src="/static/js/handovers.js" defer></script>{% endblock %}

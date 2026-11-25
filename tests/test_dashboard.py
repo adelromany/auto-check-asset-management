@@ -471,9 +471,9 @@ async def test_handovers_page_renders_and_filters(
     assert "Handovers" in body
     assert "SN-COMP-1" in body
     assert "SN-STALLED" in body
-    assert "Recipient Check" in body  # the operation strip labels every dot
-    assert 'data-column="preparing"' in body
-    assert 'data-column="done"' in body
+    assert 'name="company"' in body
+    assert 'name="outcome"' in body
+    assert 'name="q"' in body
 
     searched = await dashboard.client.get("/handovers?q=STALLED")
     assert searched.status_code == 200
@@ -488,12 +488,12 @@ async def test_handovers_page_renders_and_filters(
 
     empty = await dashboard.client.get("/handovers?q=does-not-exist")
     assert empty.status_code == 200
-    assert "No handovers yet." in empty.text
+    assert "—" in empty.text
     assert "New handover" in empty.text  # the empty state is not a dead end
 
     invalid = await dashboard.client.get("/handovers?status=nonsense&kind=other")
     assert invalid.status_code == 200
-    assert 'name="status" value="" class="sr-only" checked' in invalid.text
+    assert 'name="outcome"' in invalid.text
 
 
 async def test_new_case_shortcut_opens_the_registration_drawer(

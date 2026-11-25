@@ -139,6 +139,9 @@ def _row_context(handover) -> dict:
         for stage, row in rows_by_stage.items()
         if row.reason
     }
+    handover_states = [StageState(Operation(stage), StageStatus(state), reason) for stage, state, reason in (
+        (row.stage, row.status, row.reason) for row in rows_by_stage.values()
+    )]
     ctx = {
         "id": handover.id,
         "kind": handover.kind or CaseKind.HANDOVER.value,
@@ -153,6 +156,8 @@ def _row_context(handover) -> dict:
             or handover.recipient_reported_username
         ),
         "status": handover.status,
+        "outcome": case_outcome(handover_states, recipient_mode=handover.recipient_mode, cancelled=handover.status == "cancelled").value,
+        "missing": missing_parts(handover_states),
         "display_status": _display_status(handover),
         "maintenance_state": handover.maintenance_state,
         "states": states,
@@ -176,10 +181,11 @@ def _row_context(handover) -> dict:
 async def _list_rows(
     session: AsyncSession, *, kind: str | None = None, status: str | None = None,
     engineer: str | None = None, q: str | None = None,
+    outcome: str | None = None, company: str | None = None,
 ) -> list[dict]:
     service = HandoverService(session)
     items, _total = await service.list(
-        kind=kind, status=status, engineer=engineer, q=q,
+        kind=kind, status=status, engineer=engineer, q=q, outcome=outcome, company=company,
         page=1, page_size=ROWS_PAGE_SIZE,
     )
     return [_row_context(h) for h in items]
@@ -365,6 +371,8 @@ async def handovers_page(
     engineer: str | None = None,
     q: str | None = None,
     range: str | None = None,
+    company: str | None = None,
+    outcome: str | None = None,
     new: str | None = None,
     session: AsyncSession = Depends(get_session),
 ):
@@ -376,6 +384,8 @@ async def handovers_page(
     rows = await _list_rows(
         session, kind=CaseKind.HANDOVER.value, status=status, engineer=engineer,
         q=query or None,
+        outcome=outcome if outcome in ("complete", "not_complete", "ready") else None,
+        company=company or None,
     )
     active_range = range if range in ("today", "week", "month") else ""
     if active_range:
@@ -395,6 +405,8 @@ async def handovers_page(
         active_engineer=engineer or "",
         active_range=active_range,
         query=query,
+        active_company=company or "",
+        active_outcome=outcome or "",
         open_new=new == "1",
         stall_hours=config.STALL_HOURS,
     )
