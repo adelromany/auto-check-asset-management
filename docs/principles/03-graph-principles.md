@@ -43,6 +43,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/domain/catalog.py | domain | case kinds, operation catalog, lanes and recommended order |
   | module | app/domain/stages.py | domain | operation keys, four outcome statuses and six case statuses |
 | module | app/domain/handover_rules.py | domain | pure derive_status, missing_steps, advice and gap rules |
+| module | app/domain/company_rules.py | domain | pure company normalization and recipient-company conflict rules |
 | module | app/domain/maintenance_rules.py | domain | pure maintenance state derivation, turnaround days and due dates |
   | module | app/domain/software_rules.py | domain | pure hardware, required software and activation evaluators |
 | module | app/domain/errors.py | domain | typed handover workflow exceptions |
@@ -233,11 +234,13 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/services/handovers.py | imports | app/repositories/handovers.py |
 | app/services/handovers.py | imports | app/repositories/events.py |
 | app/services/handovers.py | uses | app/domain/handover_rules.py |
+| app/services/handovers.py | uses | app/domain/company_rules.py |
 | app/services/handovers.py | uses | app/domain/software_rules.py |
 | app/services/handovers.py | uses | app/domain/recipient_identity.py |
 | app/services/handovers.py | uses | app/domain/timeutil.py |
 | app/services/handovers.py | imports | app/domain/redaction.py |
 | app/services/snipeit_ops.py | imports | app/services/handovers.py |
+| app/services/snipeit_ops.py | uses | app/domain/company_rules.py |
 | app/services/snipeit_ops.py | uses | app/domain/recipient_identity.py |
 | app/services/snipeit_ops.py | imports | app/clients/snipeit.py |
 | app/services/snipeit_ops.py | imports | app/repositories/events.py |
@@ -292,6 +295,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/middleware/request_id.py | app/main.py outer middleware order; app/logging_config.py; request-ID tests |
 | app/logging_config.py | app/main.py startup; app/clients/snipeit.py; logging tests |
 | app/domain/recipient_identity.py | app/services/handovers.py; app/services/snipeit_ops.py; app/routers/pages.py; static/agent.ps1 |
+| app/domain/company_rules.py | recipient search/selection; checkout guards; company-rule tests |
 | app/domain/timeutil.py | age rules; dashboard SQL comparisons; SQLite datetime tests |
 | app/services/software_check.py | app/routers/handovers.py; static/js/software_check.js; migration and override tests |
 | app/security/startup.py | app/main.py create_app; tests/test_security_hardening.py; deployment .env |
