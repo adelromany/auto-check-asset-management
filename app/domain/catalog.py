@@ -40,8 +40,10 @@ class Operation(StrEnum):
     RECEIVED = "received"
     DIAGNOSIS = "diagnosis"
     SNIPEIT_STATUS = "snipeit_status"
+    TAKEN_BACK = "taken_back"
     SENT_OUT = "sent_out"
     RETURNED = "returned"
+    READY_STATUS = "ready_status"
 
 
 # Screen order (V2). DEVICE_PREPARED / USER_SIGNED_IN / USER_SIGNED stay in the
@@ -58,13 +60,15 @@ HANDOVER_OPERATIONS: tuple[Operation, ...] = (
     Operation.DOCUMENT_PUSHED,
 )
 
-# PROPOSED (D-70): the owner has not confirmed the maintenance steps yet.
+# Maintenance operations in screen order.
 MAINTENANCE_OPERATIONS: tuple[Operation, ...] = (
     Operation.RECEIVED,
     Operation.DIAGNOSIS,
     Operation.SNIPEIT_STATUS,
+    Operation.TAKEN_BACK,
     Operation.SENT_OUT,
     Operation.RETURNED,
+    Operation.READY_STATUS,
 )
 
 OPERATIONS_BY_KIND: dict[CaseKind, tuple[Operation, ...]] = {
@@ -88,10 +92,12 @@ OPERATION_TITLES: dict[Operation, str] = {
     Operation.DOCUMENT_SCANNED: "Scan",
     Operation.DOCUMENT_PUSHED: "Push",
     Operation.RECEIVED: "Received",
-    Operation.DIAGNOSIS: "Diagnosis",
-    Operation.SNIPEIT_STATUS: "Snipe-IT status",
-    Operation.SENT_OUT: "Sent out",
+    Operation.DIAGNOSIS: "Reason",
+    Operation.SNIPEIT_STATUS: "Status Maintenance",
+    Operation.TAKEN_BACK: "Taken back",
+    Operation.SENT_OUT: "Sent",
     Operation.RETURNED: "Returned",
+    Operation.READY_STATUS: "Status Ready",
 }
 
 # Visual grouping only. The order is a reading order, not a lock.
@@ -124,7 +130,7 @@ LANES: dict[CaseKind, tuple[tuple[str, tuple[Operation, ...]], ...]] = {
     ),
     CaseKind.MAINTENANCE: (
         ("Intake", (Operation.RECEIVED, Operation.DIAGNOSIS)),
-        ("Status", (Operation.SNIPEIT_STATUS,)),
+        ("Status", (Operation.SNIPEIT_STATUS, Operation.TAKEN_BACK, Operation.READY_STATUS)),
         ("Transit", (Operation.SENT_OUT, Operation.RETURNED)),
     ),
 }
@@ -143,8 +149,10 @@ RECOMMENDED_AFTER: dict[Operation, tuple[Operation, ...]] = {
     Operation.RECEIVED: (),
     Operation.DIAGNOSIS: (Operation.RECEIVED,),
     Operation.SNIPEIT_STATUS: (Operation.RECEIVED,),
+    Operation.TAKEN_BACK: (Operation.RECEIVED,),
     Operation.SENT_OUT: (Operation.DIAGNOSIS, Operation.SNIPEIT_STATUS),
     Operation.RETURNED: (Operation.SENT_OUT,),
+    Operation.READY_STATUS: (Operation.RETURNED,),
 }
 
 # Operations an engineer confirms with one click (no evidence payload).
@@ -154,8 +162,10 @@ MANUAL_OPERATIONS: frozenset[Operation] = frozenset(
         Operation.RECEIVED,
         Operation.DIAGNOSIS,
         Operation.SNIPEIT_STATUS,
+        Operation.TAKEN_BACK,
         Operation.SENT_OUT,
         Operation.RETURNED,
+        Operation.READY_STATUS,
     }
 )
 

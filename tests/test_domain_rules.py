@@ -54,13 +54,15 @@ def test_stage_order_is_the_nine_handover_operations() -> None:
     ]
 
 
-def test_maintenance_catalog_is_the_five_proposed_operations() -> None:
+def test_maintenance_catalog_has_the_seven_phase_06_operations() -> None:
     assert [operation.value for operation in MAINTENANCE_OPERATIONS] == [
         "received",
         "diagnosis",
         "snipeit_status",
+        "taken_back",
         "sent_out",
         "returned",
+        "ready_status",
     ]
 
 

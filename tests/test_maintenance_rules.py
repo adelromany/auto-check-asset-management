@@ -8,6 +8,7 @@ from app.domain.maintenance_rules import (
     MAINTENANCE_OVERDUE_DAYS,
     MaintenanceState,
     derive_maintenance_state,
+    days_in_maintenance,
     due_date,
     is_overdue,
     maintenance_label,
@@ -85,6 +86,14 @@ def test_turnaround_days_calculation() -> None:
     assert turnaround_days(sent_date=sent, returned_date=None) is None
     assert turnaround_days(sent_date=None, returned_date=returned) is None
     assert turnaround_days(sent_date=returned, returned_date=sent) is None
+
+
+def test_days_in_maintenance_for_open_and_closed_cases() -> None:
+    received = date(2026, 11, 1)
+    assert days_in_maintenance(received, None, date(2026, 11, 8)) == 7
+    assert days_in_maintenance(received, date(2026, 11, 10), date(2026, 11, 20)) == 9
+    assert days_in_maintenance(received, date(2026, 11, 10), date(2026, 11, 20)) >= 0
+    assert days_in_maintenance(None, None, date(2026, 11, 20)) == 0
 
 
 def test_maintenance_labels() -> None:

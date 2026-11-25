@@ -16,16 +16,20 @@ MAINTENANCE_OVERDUE_DAYS = 14
 
 
 class MaintenanceState(StrEnum):
-    """The three states of a maintenance case."""
+    """The three V2 states of a maintenance case."""
 
-    NEEDS_MAINTENANCE = "needs_maintenance"
-    IN_MAINTENANCE = "in_maintenance"
+    WITH_IT = "with_it"
+    AT_VENDOR = "at_vendor"
     RETURNED = "returned"
+
+    # Legacy names retained as aliases for callers compiled against Phase 01.
+    NEEDS_MAINTENANCE = "with_it"
+    IN_MAINTENANCE = "at_vendor"
 
 
 _LABELS: dict[MaintenanceState, str] = {
-    MaintenanceState.NEEDS_MAINTENANCE: "Needs maintenance",
-    MaintenanceState.IN_MAINTENANCE: "In maintenance",
+    MaintenanceState.WITH_IT: "Needs maintenance",
+    MaintenanceState.AT_VENDOR: "In maintenance",
     MaintenanceState.RETURNED: "Returned from maintenance",
 }
 
@@ -49,8 +53,21 @@ def derive_maintenance_state(
     if statuses.get("returned") == "passed":
         return MaintenanceState.RETURNED
     if statuses.get("sent_out") == "passed":
-        return MaintenanceState.IN_MAINTENANCE
-    return MaintenanceState.NEEDS_MAINTENANCE
+        return MaintenanceState.AT_VENDOR
+    return MaintenanceState.WITH_IT
+
+
+def days_in_maintenance(
+    received_date: date | None,
+    returned_date: date | None,
+    today: date,
+) -> int:
+    """Return calendar days spent in maintenance, never less than zero."""
+    start = received_date
+    if start is None:
+        return 0
+    end = returned_date or today
+    return max(0, (end - start).days)
 
 
 def turnaround_days(
