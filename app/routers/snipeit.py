@@ -4,19 +4,27 @@ All HTTP lives in ``app/clients/snipeit.py``. This router only validates the
 request, calls one client method and maps typed client errors to HTTP.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import config
 from app.clients.snipeit import (
     ServiceAccountProvider,
     SnipeItAuthError,
     SnipeItClient,
+    SnipeItError,
     SnipeItNotFound,
     SnipeItRejected,
     SnipeItUnavailable,
 )
-from app.dependencies import current_user
+from app.dependencies import current_user, get_session, get_snipeit_client
+from app.domain.errors import HandoverError
+from app.dto.handover import SnipeItUserSearchResult
+from app.routers.http_errors import handover_http_error, snipeit_http_error
+from app.services.handovers import HandoverService
 
 router = APIRouter()
 
@@ -68,6 +76,27 @@ async def lookup_device(serial: str, user=Depends(current_user)):
         "warranty_months": asset.warranty_months,
         "notes":         asset.notes,
     })
+
+
+@router.get("/api/snipeit/users", response_model=list[SnipeItUserSearchResult])
+async def search_snipeit_users(
+    q: str = Query(min_length=2, max_length=200),
+    handover_id: uuid.UUID = Query(),
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> list[SnipeItUserSearchResult]:
+    """Search Snipe-IT users and show whether each matches the device company."""
+    service = HandoverService(session)
+    try:
+        users = await service.search_snipeit_users(
+            handover_id, q, client=client
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    except SnipeItError as exc:
+        raise snipeit_http_error(exc) from exc
+    return [SnipeItUserSearchResult.model_validate(user) for user in users]
 
 
 @router.get("/api/snipeit/status-labels")

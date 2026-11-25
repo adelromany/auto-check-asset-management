@@ -350,6 +350,17 @@ class RecipientSearchResult(BaseModel):
     same_as_engineer: bool = False
 
 
+class SnipeItUserSearchResult(BaseModel):
+    """One Snipe-IT user candidate for a handover recipient."""
+
+    id: int
+    name: str | None = None
+    email: str | None = None
+    username: str | None = None
+    company: str | None = None
+    same_company: bool | None = None
+
+
 class RecipientConfirm(BaseModel):
     """Either pick a Snipe-IT user id, or declare "not in Snipe-IT"."""
 

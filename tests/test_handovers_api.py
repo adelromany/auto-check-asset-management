@@ -109,6 +109,58 @@ async def test_create_returns_a_draft_summary(api: ApiHarness) -> None:
     assert "stages" not in body
 
 
+async def test_users_search_marks_a_same_company_user(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-1")
+
+    response = await api.client.get(
+        "/api/snipeit/users",
+        params={"q": "alice", "handover_id": case["id"]},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json() == [
+        {
+            "id": 1,
+            "name": "Alice",
+            "email": "alice@example.com",
+            "username": "alice",
+            "company": "B.tech",
+            "same_company": True,
+        }
+    ]
+
+
+async def test_users_search_marks_an_other_company_user(api: ApiHarness) -> None:
+    api.fake.users[3] = {
+        "id": 3,
+        "username": "carol",
+        "name": "Carol",
+        "email": "carol@example.com",
+        "company": {"id": 4, "name": "Mylo"},
+    }
+    case = await _create(api, serial="SN-1")
+
+    response = await api.client.get(
+        "/api/snipeit/users",
+        params={"q": "carol", "handover_id": case["id"]},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()[0]["same_company"] is False
+
+
+async def test_users_search_marks_an_unknown_company_as_null(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-1")
+
+    response = await api.client.get(
+        "/api/snipeit/users",
+        params={"q": "bob", "handover_id": case["id"]},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()[0]["same_company"] is None
+
+
 async def test_create_stores_the_device_facts_read_from_snipeit(
     api: ApiHarness,
 ) -> None:

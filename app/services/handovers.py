@@ -55,6 +55,7 @@ from app.domain.handover_rules import (
     missing_steps,
     performed_before,
 )
+from app.domain.company_rules import company_conflict, company_known
 from app.domain.redaction import redact_agent_payload
 from app.domain.recipient_identity import detect_recipient
 from app.domain.software_rules import evaluate_hardware, evaluate_software
@@ -122,6 +123,36 @@ class HandoverService:
 
     async def find_active_by_serial(self, serial: str) -> Handover | None:
         return await self._handovers.find_active_by_serial(serial.strip())
+
+    async def search_snipeit_users(
+        self,
+        handover_id: uuid.UUID,
+        query: str,
+        *,
+        client: SnipeItClient,
+    ) -> list[dict[str, Any]]:
+        """Search recipient candidates and compare their company to the device."""
+        handover = await self.get(handover_id, with_details=False)
+        users = await client.search_users(query.strip(), limit=10)
+        results: list[dict[str, Any]] = []
+        for user in users:
+            if company_known(handover.device_company) and company_known(user.company):
+                same_company: bool | None = not company_conflict(
+                    handover.device_company, user.company
+                )
+            else:
+                same_company = None
+            results.append(
+                {
+                    "id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                    "username": user.username,
+                    "company": user.company,
+                    "same_company": same_company,
+                }
+            )
+        return results
 
     async def list(
         self,
