@@ -26,9 +26,11 @@ from app.clients.snipeit import (
 from app.db.models.handover import Handover
 from app.domain.errors import (
     CaseStateConflict,
+    CompanyMismatch,
     InputMissing,
     RecipientConfirmationConflict,
 )
+from app.domain.company_rules import company_conflict, company_known
 from app.domain.recipient_identity import DetectedUser, detect_recipient
 from app.domain.stages import Operation, StageStatus
 from app.dto.handover import (
@@ -142,6 +144,116 @@ class SnipeItHandoverService:
             is_local=detected.is_local,
             same_as_engineer=detected.same_as_engineer,
         )
+
+    async def choose_recipient(
+        self,
+        handover_id: uuid.UUID,
+        *,
+        mode: str,
+        user_id: int | None = None,
+        name: str | None = None,
+        email: str | None = None,
+        actor: str,
+        client: SnipeItClient,
+    ) -> HandoverDetailView:
+        """Store one of the three supported recipient choices."""
+        handover = await self._core.get(handover_id, with_details=True)
+        ensure_open(handover)
+
+        checkout_row = stage_row(handover, Operation.CHECKOUT)
+        if checkout_row.status == StageStatus.PASSED.value:
+            raise CaseStateConflict("The device is already checked out.")
+
+        old_name = (
+            handover.recipient_snipeit_name
+            or handover.recipient_snipeit_username
+            or handover.recipient_free_name
+            or ""
+        )
+        user = None
+        if mode == "snipeit":
+            assert user_id is not None
+            user = await client.get_user(user_id)
+            if company_conflict(handover.device_company, user.company):
+                raise CompanyMismatch()
+
+        new_name = ""
+        detail: dict[str, Any]
+        status: StageStatus
+        reason: str | None
+        if mode == "snipeit":
+            assert user is not None
+            new_name = user.name or user.username or ""
+            detail = {
+                "snipeit_user_id": user.id,
+                "username": user.username,
+                "name": user.name,
+            }
+            if not company_known(user.company):
+                detail["warning"] = "company_unknown"
+            status = StageStatus.PASSED
+            reason = None
+        elif mode == "none":
+            detail = {}
+            status = StageStatus.NOT_DONE
+            reason = "No recipient yet"
+        else:
+            new_name = (name or "").strip()
+            detail = {"name": new_name, "email": (email or "").strip()}
+            status = StageStatus.NOT_DONE
+            reason = "Not in Snipe-IT yet"
+
+        self._clear_recipient_fields(handover)
+        handover.recipient_mode = mode
+        if mode == "snipeit":
+            assert user is not None
+            handover.recipient_snipeit_id = user.id
+            handover.recipient_snipeit_username = user.username
+            handover.recipient_snipeit_name = user.name
+            handover.recipient_snipeit_email = user.email
+            handover.recipient_confirmed_by = actor
+            handover.recipient_confirmed_at = _utcnow()
+        elif mode == "not_in_snipeit":
+            handover.recipient_free_name = new_name
+            handover.recipient_free_email = (email or "").strip()
+
+        items_row = stage_row(handover, Operation.RECIPIENT_ITEMS)
+        if items_row.status == StageStatus.PASSED.value:
+            items_row.status = StageStatus.PENDING.value
+            items_row.reason = None
+            items_row.detail = {}
+            items_row.actor = None
+            items_row.updated_at = _utcnow()
+
+        await self._session.flush()
+        if old_name != new_name:
+            await self._events.add(
+                handover_id=handover.id,
+                actor=actor,
+                type="recipient_changed",
+                detail={"old_name": old_name, "new_name": new_name},
+            )
+
+        return await self._core.record_operation(
+            handover.id,
+            Operation.RECIPIENT_CHECK,
+            status=status,
+            reason=reason,
+            detail=detail,
+            actor=actor,
+            input_checks=False,
+        )
+
+    @staticmethod
+    def _clear_recipient_fields(handover: Handover) -> None:
+        handover.recipient_snipeit_id = None
+        handover.recipient_snipeit_username = None
+        handover.recipient_snipeit_name = None
+        handover.recipient_snipeit_email = None
+        handover.recipient_free_name = None
+        handover.recipient_free_email = None
+        handover.recipient_confirmed_by = None
+        handover.recipient_confirmed_at = None
 
     async def confirm_recipient(
         self,

@@ -144,3 +144,16 @@ class SnipeItUnreachable(HandoverError):
     def __init__(self, reason: str = "Snipe-IT is unreachable."):
         self.reason = reason
         super().__init__(reason)
+
+
+class CompanyMismatch(HandoverError):
+    """The recipient company differs from the device company."""
+
+    code = "company_mismatch"
+
+    def __init__(
+        self,
+        reason: str = "Recipient company differs from the device company",
+    ):
+        self.reason = reason
+        super().__init__(reason)

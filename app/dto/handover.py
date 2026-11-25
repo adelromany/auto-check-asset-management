@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -359,6 +359,27 @@ class SnipeItUserSearchResult(BaseModel):
     username: str | None = None
     company: str | None = None
     same_company: bool | None = None
+
+
+class RecipientSelectionRequest(BaseModel):
+    """Choose a Snipe-IT user, no recipient, or a free-form recipient."""
+
+    mode: Literal["snipeit", "none", "not_in_snipeit"]
+    user_id: int | None = Field(default=None, ge=1)
+    name: str | None = Field(default=None, max_length=200)
+    email: str | None = Field(default=None, max_length=200)
+
+    @model_validator(mode="after")
+    def _validate_mode_fields(self) -> "RecipientSelectionRequest":
+        if self.mode == "snipeit":
+            if self.user_id is None:
+                raise ValueError("user_id is required for a Snipe-IT recipient.")
+        elif self.mode == "not_in_snipeit":
+            if not self.name or not self.name.strip():
+                raise ValueError("name is required for a recipient not in Snipe-IT.")
+            if not self.email or "@" not in self.email.strip():
+                raise ValueError("A valid email is required.")
+        return self
 
 
 class RecipientConfirm(BaseModel):

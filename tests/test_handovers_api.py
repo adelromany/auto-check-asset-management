@@ -161,6 +161,104 @@ async def test_users_search_marks_an_unknown_company_as_null(api: ApiHarness) ->
     assert response.json()[0]["same_company"] is None
 
 
+async def test_recipient_snipeit_same_company_passes(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-1")
+
+    response = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient",
+        json={"mode": "snipeit", "user_id": 1},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["recipient_mode"] == "snipeit"
+    assert body["recipient_snipeit_id"] == 1
+    recipient = next(
+        item for item in body["stages"] if item["stage"] == "recipient_check"
+    )
+    assert recipient["status"] == "passed"
+
+
+async def test_recipient_company_mismatch_stores_nothing(api: ApiHarness) -> None:
+    api.fake.users[3] = {
+        "id": 3,
+        "username": "carol",
+        "name": "Carol",
+        "email": "carol@example.com",
+        "company": {"id": 4, "name": "Mylo"},
+    }
+    case = await _create(api, serial="SN-1")
+
+    response = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient",
+        json={"mode": "snipeit", "user_id": 3},
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json() == {
+        "code": "company_mismatch",
+        "message": "Recipient company differs from the device company",
+    }
+    detail = await api.client.get(f"/api/handovers/{case['id']}")
+    assert detail.json()["recipient_mode"] is None
+
+
+async def test_recipient_none_is_not_done(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-1")
+
+    response = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient",
+        json={"mode": "none"},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["recipient_mode"] == "none"
+    recipient = next(
+        item for item in body["stages"] if item["stage"] == "recipient_check"
+    )
+    assert recipient["status"] == "not_done"
+    assert recipient["reason"] == "No recipient yet"
+
+
+async def test_recipient_not_in_snipeit_stores_free_fields(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-1")
+
+    response = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient",
+        json={
+            "mode": "not_in_snipeit",
+            "name": " New User ",
+            "email": " new@example.com ",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["recipient_mode"] == "not_in_snipeit"
+    assert body["recipient_free_name"] == "New User"
+    assert body["recipient_free_email"] == "new@example.com"
+
+
+async def test_recipient_change_after_checkout_is_rejected(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-1")
+    chosen = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient",
+        json={"mode": "snipeit", "user_id": 1},
+    )
+    assert chosen.status_code == 200, chosen.text
+    checked_out = await api.client.post(f"/api/handovers/{case['id']}/checkout")
+    assert checked_out.status_code == 200, checked_out.text
+
+    response = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient",
+        json={"mode": "snipeit", "user_id": 2},
+    )
+
+    assert response.status_code == 409, response.text
+    assert "already checked out" in response.json()["detail"]
+
+
 async def test_create_stores_the_device_facts_read_from_snipeit(
     api: ApiHarness,
 ) -> None:

@@ -10,11 +10,12 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.snipeit import SnipeItClient, SnipeItError
 from app.dependencies import current_user, get_session, get_snipeit_client
-from app.domain.errors import HandoverError
+from app.domain.errors import CompanyMismatch, HandoverError
 from app.domain.stages import HandoverStatus
 from app.dto.handover import (
     AgentReportAttach,
@@ -33,6 +34,7 @@ from app.dto.handover import (
     NotDoneRequest,
     RecipientConfirm,
     RecipientSearchResult,
+    RecipientSelectionRequest,
     SoftwareCheckOverride,
 )
 from app.repositories.maintenance import MaintenanceRepository
@@ -275,6 +277,38 @@ async def update_maintenance(
 
 
 # -- Phase 5: Snipe-IT write operations -------------------------------------
+
+
+@router.post("/{handover_id}/recipient", response_model=HandoverDetail)
+async def choose_recipient(
+    handover_id: uuid.UUID,
+    payload: RecipientSelectionRequest,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> HandoverDetail | JSONResponse:
+    """Choose a Snipe-IT recipient, no recipient, or a free-form recipient."""
+    service = SnipeItHandoverService(session)
+    try:
+        view = await service.choose_recipient(
+            handover_id,
+            mode=payload.mode,
+            user_id=payload.user_id,
+            name=payload.name,
+            email=payload.email,
+            actor=_actor(user),
+            client=client,
+        )
+    except CompanyMismatch as exc:
+        return JSONResponse(
+            status_code=422,
+            content={"code": exc.code, "message": str(exc)},
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    except SnipeItError as exc:
+        raise snipeit_http_error(exc) from exc
+    return handover_detail(view)
 
 
 @router.post(
