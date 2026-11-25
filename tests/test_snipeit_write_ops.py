@@ -490,13 +490,33 @@ async def test_checkout_refuses_when_the_asset_is_assigned_elsewhere(
         f"/api/handovers/{handover_id}/checkout"
     )
 
-    assert response.status_code == 200
-    body = response.json()
-    stage = _stage(body, "checkout")
-    assert stage["status"] == "failed"
-    assert "Bob" in stage["reason"]
-    assert body["status"] == "in_progress"
+    assert response.status_code == 422, response.text
+    assert "Bob" in response.json()["detail"]
     assert _post_paths(ops) == []
+
+
+async def test_checkout_requires_a_snipeit_recipient(ops: OpsHarness) -> None:
+    handover_id = await _create(ops)
+
+    response = await ops.client.post(f"/api/handovers/{handover_id}/checkout")
+
+    assert response.status_code == 422, response.text
+    assert response.json()["detail"] == "Choose a Snipe-IT recipient first"
+
+
+async def test_checkout_rejects_a_recipient_company_mismatch(
+    ops: OpsHarness,
+) -> None:
+    ops.fake.users[1]["company"]["name"] = "Mylo"
+    handover_id = await _ready(ops)
+
+    response = await ops.client.post(f"/api/handovers/{handover_id}/checkout")
+
+    assert response.status_code == 422, response.text
+    assert response.json() == {
+        "code": "company_mismatch",
+        "message": "Recipient company differs from the device company",
+    }
 
 
 async def test_checkout_fails_cleanly_when_the_serial_is_unknown(

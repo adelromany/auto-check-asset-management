@@ -485,6 +485,11 @@ async def checkout_handover(
         view = await service.checkout(
             handover_id, actor=_actor(user), client=client
         )
+    except CompanyMismatch as exc:
+        return JSONResponse(
+            status_code=422,
+            content={"code": exc.code, "message": str(exc)},
+        )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
     except SnipeItError as exc:

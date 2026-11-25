@@ -188,6 +188,7 @@ class SnipeItHandoverService:
                 "snipeit_user_id": user.id,
                 "username": user.username,
                 "name": user.name,
+                "company": user.company,
             }
             if not company_known(user.company):
                 detail["warning"] = "company_unknown"
@@ -403,6 +404,7 @@ class SnipeItHandoverService:
         except SnipeItNotFound:
             return await self._block_recipient(handover, actor=actor)
 
+        handover.recipient_mode = "snipeit"
         handover.recipient_snipeit_id = user.id
         handover.recipient_snipeit_username = user.username or user.name
         handover.recipient_snipeit_name = user.name
@@ -420,6 +422,7 @@ class SnipeItHandoverService:
                 "snipeit_user_id": user.id,
                 "username": user.username,
                 "name": user.name,
+                "company": user.company,
             },
             actor=actor,
             input_checks=False,
@@ -741,11 +744,16 @@ class SnipeItHandoverService:
 
         ensure_open(handover)
 
+        if handover.recipient_mode != "snipeit":
+            raise InputMissing("Choose a Snipe-IT recipient first")
         recipient_id = handover.recipient_snipeit_id
         if recipient_id is None:
-            raise InputMissing(
-                "Pick a recipient first, or mark Checkout as not done."
-            )
+            raise InputMissing("Choose a Snipe-IT recipient first")
+
+        recipient_row = stage_row(handover, Operation.RECIPIENT_CHECK)
+        recipient_company = (recipient_row.detail or {}).get("company")
+        if company_conflict(handover.device_company, recipient_company):
+            raise CompanyMismatch()
 
         try:
             asset = await client.get_asset_by_serial(
@@ -776,18 +784,8 @@ class SnipeItHandoverService:
             )
 
         if asset.assigned_to_id is not None:
-            return await self._fail_checkout(
-                handover,
-                reason=(
-                    "Device is currently assigned to "
-                    f"{_holder_label(asset)}; no checkout was made."
-                ),
-                actor=actor,
-                detail={
-                    "asset_id": asset.id,
-                    "assigned_to_id": asset.assigned_to_id,
-                    "assigned_to_name": asset.assigned_to_name,
-                },
+            raise InputMissing(
+                f"Device is currently assigned to {_holder_label(asset)}"
             )
 
         note = (
