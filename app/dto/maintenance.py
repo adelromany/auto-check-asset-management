@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import uuid
+from datetime import date
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -38,6 +41,23 @@ class MaintenanceDeviceLookup(BaseModel):
     company: str | None = None
     status: str | None = None
     assigned_to: str | None = None
+
+
+class MaintenanceBatchSend(BaseModel):
+    case_ids: list[uuid.UUID] = Field(min_length=1, max_length=100)
+    vendor_id: int
+    sent_date: date
+
+
+class MaintenanceBatchReceive(BaseModel):
+    case_ids: list[uuid.UUID] = Field(min_length=1, max_length=100)
+    returned_date: date
+
+
+class MaintenanceBatchResult(BaseModel):
+    case_id: uuid.UUID
+    ok: bool
+    error: str | None = None
 
 
 class MaintenanceVendorCreate(BaseModel):

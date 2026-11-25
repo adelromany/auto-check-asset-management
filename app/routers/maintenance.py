@@ -12,6 +12,9 @@ from app.dependencies import current_user, get_session, get_snipeit_client
 from app.domain.errors import HandoverError
 from app.dto.handover import HandoverDetail
 from app.dto.maintenance import (
+    MaintenanceBatchReceive,
+    MaintenanceBatchResult,
+    MaintenanceBatchSend,
     MaintenanceCaseCreate,
     MaintenanceDeviceLookup,
     MaintenanceReason,
@@ -85,6 +88,57 @@ async def take_back(
 ) -> HandoverDetail:
     try:
         view = await MaintenanceService(session).take_back(
+            case_id, engineer_email=user["email"], client=client
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.post("/batches/send", response_model=list[MaintenanceBatchResult])
+async def batch_send(
+    payload: MaintenanceBatchSend,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[MaintenanceBatchResult]:
+    try:
+        return await MaintenanceService(session).batch_send(
+            payload.case_ids,
+            vendor_id=payload.vendor_id,
+            sent_date=payload.sent_date,
+            engineer_email=user["email"],
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+
+
+@router.post("/batches/receive", response_model=list[MaintenanceBatchResult])
+async def batch_receive(
+    payload: MaintenanceBatchReceive,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> list[MaintenanceBatchResult]:
+    try:
+        return await MaintenanceService(session).batch_receive(
+            payload.case_ids,
+            returned_date=payload.returned_date,
+            engineer_email=user["email"],
+            client=client,
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+
+
+@router.post("/cases/{case_id}/ready-status", response_model=HandoverDetail)
+async def ready_status(
+    case_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> HandoverDetail:
+    try:
+        view = await MaintenanceService(session).ready_status(
             case_id, engineer_email=user["email"], client=client
         )
     except HandoverError as exc:

@@ -13,17 +13,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import config
 from app.clients.snipeit import SnipeItClient, SnipeItError, SnipeItNotFound
+from app.db.models.maintenance import MaintenanceInfo
 from app.domain.catalog import Operation
 from app.domain.errors import (
+    CaseStateConflict,
     DeviceNotInSnipeIt,
     HandoverAlreadyExists,
+    HandoverError,
     MaintenanceCaseExists,
     MaintenanceLabelNotFound,
     MaintenanceReasonInvalid,
     SnipeItUnreachable,
 )
 from app.domain.stages import StageStatus
-from app.dto.maintenance import MaintenanceDeviceLookup
+from app.dto.maintenance import (
+    MaintenanceBatchResult,
+    MaintenanceDeviceLookup,
+)
 from app.repositories.maintenance import MaintenanceRepository
 from app.services.handovers import HandoverDetailView, HandoverService
 
@@ -269,3 +275,182 @@ class MaintenanceService:
             actor=engineer_email,
             input_checks=False,
         )
+
+    async def batch_send(
+        self,
+        case_ids: list[uuid.UUID],
+        *,
+        vendor_id: int,
+        sent_date: date,
+        engineer_email: str,
+    ) -> list[MaintenanceBatchResult]:
+        if sent_date > date.today():
+            raise MaintenanceReasonInvalid("Sent date cannot be in the future.")
+        vendor = await self._repository.get_destination(vendor_id)
+        if vendor is None:
+            raise MaintenanceReasonInvalid("Vendor was not found.")
+        results: list[MaintenanceBatchResult] = []
+        for case_id in case_ids:
+            try:
+                handover = await self._core.get(case_id, with_details=True)
+                if handover.maintenance_state != "with_it":
+                    raise CaseStateConflict("The device is not with IT.")
+                if handover.maintenance is None:
+                    handover.maintenance = MaintenanceInfo(handover_id=handover.id)
+                    self._session.add(handover.maintenance)
+                handover.maintenance.destination_id = vendor.id
+                handover.maintenance.destination = vendor
+                handover.maintenance.sent_date = sent_date
+                await self._session.flush()
+                await self._core.record_operation(
+                    case_id,
+                    Operation.SENT_OUT,
+                    status=StageStatus.PASSED,
+                    reason=None,
+                    detail={
+                        "vendor_id": vendor.id,
+                        "vendor": vendor.name,
+                    },
+                    actor=engineer_email,
+                    input_checks=False,
+                )
+                results.append(MaintenanceBatchResult(case_id=case_id, ok=True))
+            except HandoverError as exc:
+                results.append(
+                    MaintenanceBatchResult(case_id=case_id, ok=False, error=str(exc))
+                )
+        return results
+
+    async def batch_receive(
+        self,
+        case_ids: list[uuid.UUID],
+        *,
+        returned_date: date,
+        engineer_email: str,
+        client: SnipeItClient,
+    ) -> list[MaintenanceBatchResult]:
+        if returned_date > date.today():
+            raise MaintenanceReasonInvalid("Returned date cannot be in the future.")
+        results: list[MaintenanceBatchResult] = []
+        for case_id in case_ids:
+            try:
+                handover = await self._core.get(case_id, with_details=True)
+                if handover.maintenance_state != "at_vendor":
+                    raise CaseStateConflict("The device is not at the vendor.")
+                sent_date = (
+                    handover.maintenance.sent_date
+                    if handover.maintenance is not None
+                    else None
+                )
+                if sent_date is not None and returned_date < sent_date:
+                    raise MaintenanceReasonInvalid(
+                        "Returned date cannot be before the sent date."
+                    )
+                if handover.maintenance is not None:
+                    handover.maintenance.returned_date = returned_date
+                    await self._session.flush()
+                await self._core.record_operation(
+                    case_id,
+                    Operation.RETURNED,
+                    status=StageStatus.PASSED,
+                    reason=None,
+                    detail={},
+                    actor=engineer_email,
+                    input_checks=False,
+                )
+                await self._set_ready_status(
+                    case_id,
+                    engineer_email=engineer_email,
+                    client=client,
+                )
+                results.append(MaintenanceBatchResult(case_id=case_id, ok=True))
+            except HandoverError as exc:
+                results.append(
+                    MaintenanceBatchResult(case_id=case_id, ok=False, error=str(exc))
+                )
+        return results
+
+    async def ready_status(
+        self,
+        case_id: uuid.UUID,
+        *,
+        engineer_email: str,
+        client: SnipeItClient,
+    ) -> HandoverDetailView:
+        return await self._set_ready_status(
+            case_id, engineer_email=engineer_email, client=client
+        )
+
+    async def _set_ready_status(
+        self,
+        case_id: uuid.UUID,
+        *,
+        engineer_email: str,
+        client: SnipeItClient,
+    ) -> HandoverDetailView:
+        handover = await self._core.get(case_id, with_details=True)
+        if handover.snipeit_asset_id is None:
+            raise MaintenanceReasonInvalid("The case has no Snipe-IT device.")
+        label = config.SNIPEIT_STATUS_READY
+        try:
+            label_id = await client.find_status_label_id(label)
+        except SnipeItError as exc:
+            await self._core.record_operation(
+                case_id,
+                Operation.READY_STATUS,
+                status=StageStatus.FAILED,
+                reason=str(exc),
+                detail={"label": label},
+                actor=engineer_email,
+                input_checks=False,
+            )
+            raise MaintenanceReasonInvalid(str(exc)) from exc
+        if label_id is None:
+            await self._core.record_operation(
+                case_id,
+                Operation.READY_STATUS,
+                status=StageStatus.FAILED,
+                reason=f'Status label "{label}" not found in Snipe-IT',
+                detail={"label": label},
+                actor=engineer_email,
+                input_checks=False,
+            )
+            raise MaintenanceLabelNotFound(label)
+        try:
+            result = await client.update_asset_status(handover.snipeit_asset_id, label_id)
+            asset = await client.get_asset(handover.snipeit_asset_id)
+        except SnipeItError as exc:
+            await self._core.record_operation(
+                case_id,
+                Operation.READY_STATUS,
+                status=StageStatus.FAILED,
+                reason=str(exc),
+                detail={"label": label},
+                actor=engineer_email,
+                input_checks=False,
+            )
+            raise MaintenanceReasonInvalid(str(exc)) from exc
+        matched = str(asset.status or "").strip().casefold() == label.strip().casefold()
+        if matched and result.status == "success":
+            handover.snipeit_status_name = asset.status
+            await self._session.flush()
+            return await self._core.record_operation(
+                case_id,
+                Operation.READY_STATUS,
+                status=StageStatus.PASSED,
+                reason=None,
+                detail={"label": label, "status": asset.status},
+                actor=engineer_email,
+                input_checks=False,
+            )
+        await self._core.record_operation(
+            case_id,
+            Operation.READY_STATUS,
+            status=StageStatus.FAILED,
+            reason=f"Status is {asset.status}",
+            detail={"label": label, "status": asset.status},
+            actor=engineer_email,
+            input_checks=False,
+        )
+        raise MaintenanceReasonInvalid(f"Status is {asset.status}")
+

@@ -24,6 +24,8 @@ class SnipeItFake:
         self.calls: list[tuple[str, str, dict[str, str]]] = []
         self.fail_get_statuses: list[int] = []
         self.fail_post_statuses: list[int] = []
+        self.fail_patch_statuses: list[int] = []
+        self.fail_patch = False
         self.fail_post_exception: Exception | None = None
         # Test hooks for the verification step in Phase 5.
         self.checkout_assigns = True
@@ -107,6 +109,11 @@ class SnipeItFake:
 
         if request.method == "GET" and self.fail_get_statuses:
             status = self.fail_get_statuses.pop(0)
+            return httpx.Response(status, json={"status": "error"})
+        if request.method == "PATCH" and self.fail_patch:
+            return httpx.Response(500, json={"status": "error"})
+        if request.method == "PATCH" and self.fail_patch_statuses:
+            status = self.fail_patch_statuses.pop(0)
             return httpx.Response(status, json={"status": "error"})
         if request.method == "POST" and self.fail_post_exception is not None:
             exc = self.fail_post_exception

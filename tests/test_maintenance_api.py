@@ -198,6 +198,91 @@ async def test_phase06_vendor_list_and_create(api: ApiHarness) -> None:
     assert invalid.status_code == 422
 
 
+async def test_phase06_batch_send_and_receive(api: ApiHarness) -> None:
+    vendor = await api.client.post(
+        "/api/maintenance/vendors", json={"name": "Batch Vendor"}
+    )
+    vendor_id = vendor.json()["id"]
+    first = await api.client.post(
+        "/api/maintenance/cases", json={"serial": "SN-10"}
+    )
+    second = await api.client.post(
+        "/api/maintenance/cases", json={"serial": "SN-11"}
+    )
+    ids = [first.json()["id"], second.json()["id"]]
+
+    sent = await api.client.post(
+        "/api/maintenance/batches/send",
+        json={"case_ids": ids, "vendor_id": vendor_id, "sent_date": date.today().isoformat()},
+    )
+    assert sent.status_code == 200, sent.text
+    assert [item["ok"] for item in sent.json()] == [True, True]
+
+    received = await api.client.post(
+        "/api/maintenance/batches/receive",
+        json={"case_ids": [ids[0]], "returned_date": date.today().isoformat()},
+    )
+    assert received.status_code == 200, received.text
+    assert received.json()[0]["ok"] is True
+    assert api.fake.assets[10]["status_label"]["name"] == "Ready to deploy"
+
+
+async def test_phase06_batch_isolates_a_wrong_state(api: ApiHarness) -> None:
+    vendor = await api.client.post(
+        "/api/maintenance/vendors", json={"name": "Batch Vendor"}
+    )
+    created = await api.client.post(
+        "/api/maintenance/cases", json={"serial": "SN-10"}
+    )
+    case_id = created.json()["id"]
+    response = await api.client.post(
+        "/api/maintenance/batches/receive",
+        json={"case_ids": [case_id], "returned_date": date.today().isoformat()},
+    )
+    assert response.status_code == 200
+    assert response.json()[0]["ok"] is False
+    assert "not at the vendor" in response.json()[0]["error"]
+
+
+async def test_phase06_batch_ready_status_failure_can_be_retried(api: ApiHarness) -> None:
+    vendor = await api.client.post(
+        "/api/maintenance/vendors", json={"name": "Batch Vendor"}
+    )
+    created = await api.client.post(
+        "/api/maintenance/cases", json={"serial": "SN-10"}
+    )
+    case_id = created.json()["id"]
+    await api.client.post(
+        "/api/maintenance/batches/send",
+        json={
+            "case_ids": [case_id],
+            "vendor_id": vendor.json()["id"],
+            "sent_date": date.today().isoformat(),
+        },
+    )
+    api.fake.fail_patch = True
+    received = await api.client.post(
+        "/api/maintenance/batches/receive",
+        json={"case_ids": [case_id], "returned_date": date.today().isoformat()},
+    )
+    assert received.status_code == 200, received.text
+    assert received.json()[0]["ok"] is False
+
+    detail = await api.client.get(f"/api/handovers/{case_id}")
+    operation = next(
+        item for item in detail.json()["stages"] if item["stage"] == "ready_status"
+    )
+    assert operation["status"] == "failed"
+
+    api.fake.fail_patch = False
+    retry = await api.client.post(f"/api/maintenance/cases/{case_id}/ready-status")
+    assert retry.status_code == 200, retry.text
+    operation = next(
+        item for item in retry.json()["stages"] if item["stage"] == "ready_status"
+    )
+    assert operation["status"] == "passed"
+
+
 async def test_update_maintenance_info_and_vendors(api: ApiHarness) -> None:
     created = await api.client.post(
         "/api/handovers",
