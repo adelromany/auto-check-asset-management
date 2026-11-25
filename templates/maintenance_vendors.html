@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="vendor-page-head">
+  <div>
+    <p class="vendor-eyebrow">Maintenance partners</p>
+    <h1 class="page-title">Vendors</h1>
+  </div>
+  <div class="vendor-page-actions">
+    <label class="vendor-toggle"><input type="checkbox" data-show-inactive><span>Show inactive</span></label>
+    <button class="btn btn-default" type="button" data-add-vendor>Add vendor</button>
+  </div>
+</header>
+
+<section class="vendor-overview" data-vendor-overview aria-label="Vendor summary"></section>
+
+<section class="card vendor-analytics-card" aria-labelledby="vendor-analytics-title">
+  <div class="card-header"><div><p class="vendor-eyebrow">Service performance</p><h2 class="card-title" id="vendor-analytics-title">Vendor analysis</h2></div></div>
+  <div class="card-content" data-vendor-analytics aria-live="polite"></div>
+</section>
+
+<section class="vendor-directory-section" aria-labelledby="vendor-directory-title">
+  <div class="vendor-section-heading"><p class="vendor-eyebrow">Contacts and records</p><h2 id="vendor-directory-title">Vendor directory</h2></div>
+  <div class="vendor-grid" data-vendor-grid aria-live="polite"></div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/maintenance_vendors.js?v=analytics-3" defer></script>{% endblock %}

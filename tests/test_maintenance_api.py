@@ -187,8 +187,8 @@ async def test_phase06_vendor_list_and_create(api: ApiHarness) -> None:
     repeated = await api.client.post(
         "/api/maintenance/vendors", json={"name": "test-vendor"}
     )
-    assert repeated.status_code == 201
-    assert repeated.json()["id"] == created.json()["id"]
+    assert repeated.status_code == 409
+    assert repeated.json()["detail"]["id"] == created.json()["id"]
 
     listed = await api.client.get("/api/maintenance/vendors")
     assert listed.status_code == 200
@@ -217,6 +217,10 @@ async def test_phase06_batch_send_and_receive(api: ApiHarness) -> None:
     )
     assert sent.status_code == 200, sent.text
     assert [item["ok"] for item in sent.json()] == [True, True]
+    performance = (await api.client.get("/api/maintenance/vendors")).json()[0]
+    assert performance["at_vendor_now"] == 2
+    assert performance["total_sent"] == 2
+    assert performance["overdue_now"] == 0
 
     received = await api.client.post(
         "/api/maintenance/batches/receive",
@@ -225,6 +229,10 @@ async def test_phase06_batch_send_and_receive(api: ApiHarness) -> None:
     assert received.status_code == 200, received.text
     assert received.json()[0]["ok"] is True
     assert api.fake.assets[10]["status_label"]["name"] == "Ready to deploy"
+    performance = (await api.client.get("/api/maintenance/vendors")).json()[0]
+    assert performance["at_vendor_now"] == 1
+    assert performance["returned_total"] == 1
+    assert performance["avg_days"] == 0
 
 
 async def test_phase06_batch_isolates_a_wrong_state(api: ApiHarness) -> None:

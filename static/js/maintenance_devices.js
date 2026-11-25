@@ -80,16 +80,33 @@
   function populateVendors() {
     return portal.request("/api/maintenance/vendors").then(function (items) {
       state.vendors = items || [];
-      var select = addForm.elements.planned_vendor_id;
-      select.textContent = "";
-      var blank = node("option", "", "Not assigned");
-      blank.value = "";
-      select.appendChild(blank);
-      state.vendors.forEach(function (item) {
-        var option = node("option", "", item.name);
-        option.value = item.id;
-        select.appendChild(option);
-      });
+    });
+  }
+
+  function openVendorDrawer(onSaved, note) {
+    var drawer = portal.drawerForm("Add vendor", {});
+    var form = drawer.__form;
+    if (note) form.appendChild(node("p", "muted", note));
+    var inputs = {};
+    [["Name", "name", 120], ["Contact", "contact_name", 120], ["Phone", "phone", 40], ["Email", "email", 200], ["Notes", "notes", 500]].forEach(function (row) {
+      var input = portal.textInput(row[1], "", { maxlength: row[2], required: row[1] === "name" });
+      inputs[row[1]] = input;
+      form.appendChild(portal.field(row[0], input));
+    });
+    var error = node("p", "text-sm text-destructive", "");
+    error.setAttribute("aria-live", "polite");
+    form.appendChild(error);
+    var actions = portal.formActions("Save"); form.appendChild(actions);
+    form.addEventListener("submit", function (event) {
+      event.preventDefault(); portal.setBusy(actions, true); error.textContent = "";
+      var payload = {};
+      Object.keys(inputs).forEach(function (key) { payload[key] = inputs[key].value.trim() || null; });
+      portal.apiJson("/api/maintenance/vendors", { method: "POST", body: JSON.stringify(payload) })
+        .then(function (created) {
+          portal.closeDrawer();
+          return populateVendors(created.id).then(function () { if (onSaved) onSaved(created); });
+        })
+        .catch(function (failure) { error.textContent = failure.message; portal.setBusy(actions, false); });
     });
   }
 
@@ -114,7 +131,6 @@
     if (reasonIsOther() && !details) { portal.toast("Details are required for Other.", "error"); addForm.elements.reason_text.focus(); return; }
     var payload = { serial: serial, reason_id: Number(reasonId) };
     if (details) payload.reason_text = details;
-    if (addForm.elements.planned_vendor_id.value) payload.planned_vendor_id = Number(addForm.elements.planned_vendor_id.value);
     var button = addForm.querySelector("[data-primary]");
     portal.setBusy({ __primary: button }, true);
     portal.apiJson("/api/maintenance/cases", { method: "POST", body: JSON.stringify(payload) })
@@ -261,8 +277,11 @@
   }
 
   function loadCases() {
-    return portal.request("/api/maintenance/cases").then(function (items) {
-      state.items = items || [];
+    return Promise.all([
+      portal.request("/api/maintenance/cases?state=with_it"),
+      portal.request("/api/maintenance/cases?state=at_vendor")
+    ]).then(function (lists) {
+      state.items = (lists[0] || []).concat(lists[1] || []);
       updateFilterOptions();
       renderTables();
     }).catch(function (error) { portal.toast(error.message, "error"); });
@@ -331,25 +350,35 @@
   function openSendDrawer() {
     var ids = selectedIds("with_it");
     if (!ids.length) return;
+    if (!state.vendors.length) {
+      openVendorDrawer(function () { portal.closeDrawer(); openSendDrawer(); }, "Add a vendor first");
+      return;
+    }
     var drawer = portal.drawerForm("Send to vendor", {});
     var form = drawer.__form;
-    var vendor = portal.selectInput("vendor_id", [{ value: "", label: "Select vendor" }]);
+    var vendor = portal.selectInput("vendor_id", [{ value: "", label: "Select vendor" }, { value: "__new__", label: "+ New vendor" }]);
     form.appendChild(portal.field("Vendor", vendor));
-    var newVendor = portal.textInput("new_vendor", "New vendor name", { maxlength: 120 });
-    form.appendChild(portal.field("New vendor", newVendor));
     var day = portal.textInput("sent_date", "", { type: "date", value: today(), required: true });
     form.appendChild(portal.field("Day", day));
     var actions = portal.formActions("Send"); form.appendChild(actions);
     state.vendors.forEach(function (item) { var option = node("option", "", item.name); option.value = item.id; vendor.appendChild(option); });
+    vendor.addEventListener("change", function () {
+      if (vendor.value !== "__new__") return;
+      openVendorDrawer(function (created) {
+        var option = node("option", "", created.name); option.value = created.id;
+        vendor.insertBefore(option, vendor.querySelector('option[value="__new__"]'));
+        vendor.value = String(created.id);
+      });
+    });
     form.addEventListener("submit", function (event) {
       event.preventDefault();
       var vendorId = vendor.value;
-      var create = vendorId ? Promise.resolve(null) : portal.apiJson("/api/maintenance/vendors", { method: "POST", body: JSON.stringify({ name: newVendor.value.trim() }) });
-      create.then(function (created) {
-        var id = vendorId || created.id;
-        if (!id) throw new Error("Select or create a vendor.");
-        return portal.apiJson("/api/maintenance/batches/send", { method: "POST", body: JSON.stringify({ case_ids: ids, vendor_id: Number(id), sent_date: day.value }) });
+      if (!vendorId || vendorId === "__new__") { portal.toast("Select a vendor.", "error"); return; }
+      portal.setBusy(actions, true);
+      Promise.resolve().then(function () {
+        return portal.apiJson("/api/maintenance/batches/send", { method: "POST", body: JSON.stringify({ case_ids: ids, vendor_id: Number(vendorId), sent_date: day.value }) });
       }).then(function (results) {
+        (results || []).forEach(function (res) { if (res.ok) delete state.selected.with_it[res.case_id]; });
         showBatchResults("Send", results, ids, "send"); return loadCases();
       }).catch(function (error) { portal.toast(error.message, "error"); }).then(function () { portal.setBusy(actions, false); });
     });
@@ -367,7 +396,10 @@
       event.preventDefault();
       portal.setBusy(actions, true);
       portal.apiJson("/api/maintenance/batches/receive", { method: "POST", body: JSON.stringify({ case_ids: ids, returned_date: day.value }) })
-        .then(function (results) { showBatchResults("Receive", results, ids, "receive"); return loadCases(); })
+        .then(function (results) {
+          (results || []).forEach(function (res) { if (res.ok) delete state.selected.at_vendor[res.case_id]; });
+          showBatchResults("Receive", results, ids, "receive"); return loadCases();
+        })
         .catch(function (error) { portal.toast(error.message, "error"); })
         .then(function () { portal.setBusy(actions, false); });
     });
@@ -377,7 +409,7 @@
     var drawer = portal.openDrawer(title + " results", node("div", "drawer-body stack-sm"));
     var body = drawer.querySelector(".drawer-body");
     results.forEach(function (result) {
-      var item = state.items.find(function (candidate) { candidate.case_id === result.case_id; });
+      var item = state.items.find(function (candidate) { return candidate.case_id === result.case_id; });
       var row = node("div", "maint-result-row");
       row.appendChild(node("strong", "", item ? item.serial : result.case_id));
       if (mode === "send") {

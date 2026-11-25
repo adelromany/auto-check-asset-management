@@ -4,6 +4,27 @@
   var portal = window.portal;
   if (!portal) return;
   var caseId = document.body.getAttribute("data-case-id");
+  var base = "/api/handovers/" + caseId;
+  var scanInput = portal.$("[data-maint-scan]");
+  if (scanInput) scanInput.addEventListener("change", function () {
+    var file = scanInput.files && scanInput.files[0];
+    if (!file) return;
+    var status = portal.$("[data-maint-document-status]");
+    var list = portal.$("[data-maint-document-list]");
+    var data = new FormData();
+    data.append("file", file);
+    status.textContent = "Uploading " + file.name + "...";
+    portal.request(base + "/document", { method: "POST", body: data })
+      .then(function (document) {
+        status.textContent = "Scan uploaded.";
+        list.textContent = "";
+        var link = portal.el("a", "link-quiet", "Download " + document.original_name);
+        link.href = base + "/document";
+        list.appendChild(link);
+        scanInput.value = "";
+      })
+      .catch(function (error) { status.textContent = error.message; });
+  });
   document.addEventListener("click", function (event) {
     var button = event.target.closest ? event.target.closest("[data-maint-action]") : null;
     if (!button || !caseId) return;

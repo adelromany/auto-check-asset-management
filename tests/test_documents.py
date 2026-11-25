@@ -232,10 +232,10 @@ async def test_report_renders_the_stored_agent_report_without_the_partial_key(
     assert "PC-1" in body
     assert "Chrome" in body
     assert "Licensed" in body
-    assert "[Company legal text goes here]" in body
-    assert "Recipient signature" in body
+    assert "Hardware and software report" in body
+    assert "Required software" in body
+    assert "Company legal text goes here" not in body
     assert "SECRET-KEY-123" not in body
-    assert body.rfind(handover_id) > body.index("[Company legal text goes here]")
 
     detail = (
         await docs.client.get(f"/api/handovers/{handover_id}")

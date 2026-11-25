@@ -16,7 +16,6 @@
       <div class="maint-lookup" data-device-lookup aria-live="polite"></div>
       <label class="field"><span class="field-label">Reason</span><select class="input" name="reason_id" required><option value="">Loading…</option></select></label>
       <label class="field hidden" data-details-field><span class="field-label">Details</span><textarea class="input" name="reason_text" maxlength="300" rows="2"></textarea></label>
-      <label class="field"><span class="field-label">Vendor</span><select class="input" name="planned_vendor_id"><option value="">Not assigned</option></select></label>
       <button class="btn btn-default" type="submit" data-primary>Add</button>
     </form>
   </div>
@@ -53,4 +52,4 @@
   </div>
 </section>
 {% endblock %}
-{% block scripts %}<script src="/static/js/maintenance_devices.js" defer></script>{% endblock %}
+{% block scripts %}<script src="/static/js/maintenance_devices.js?v=fix12-3" defer></script>{% endblock %}

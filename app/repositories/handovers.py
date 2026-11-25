@@ -67,9 +67,10 @@ class HandoverRepository:
 
     async def find_active_by_serial(self, serial: str) -> Handover | None:
         """An active case is any status except completed, closed_gaps, cancelled."""
+        normalized = serial.strip().lower()
         result = await self._session.execute(
             select(Handover).where(
-                Handover.device_serial == serial,
+                func.lower(Handover.device_serial) == normalized,
                 Handover.status.not_in(
                     [
                         HandoverStatus.COMPLETED.value,

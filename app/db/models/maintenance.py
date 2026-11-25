@@ -48,12 +48,21 @@ class MaintenanceDestination(Base):
     active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=text("1")
     )
+    contact_name: Mapped[str | None] = mapped_column(String(120))
+    phone: Mapped[str | None] = mapped_column(String(40))
+    email: Mapped[str | None] = mapped_column(String(200))
+    notes: Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         default=_utcnow,
         server_default=text("CURRENT_TIMESTAMP"),
     )
+
+    @property
+    def is_active(self) -> bool:
+        """Public vendor vocabulary for the existing ``active`` column."""
+        return self.active
 
 
 class DiagnosisCategory(Base):

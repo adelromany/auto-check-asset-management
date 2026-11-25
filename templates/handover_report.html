@@ -2,78 +2,67 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Handover report — {{ handover.device_serial }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Device report - {{ handover.device_serial }}</title>
   <link rel="icon" type="image/jpeg" href="/static/img/b_labs.jpeg">
-  <link rel="stylesheet" href="/static/css/report.css?v=1">
+  <link rel="stylesheet" href="/static/css/report.css?v=report-2">
 </head>
 <body>
-  <div class="report-head">
-    <img src="/static/img/b_labs.jpeg" alt="b_labs" width="36" height="36" class="report-logo">
-    <div>
-      <h1>Handover report</h1>
-      <p class="meta">Case {{ handover.id }} · Date {{ handover.created_at }}</p>
-    </div>
-  </div>
+  <main class="report-shell">
+    <header class="report-head">
+      <div class="brand-lockup">
+        <img src="/static/img/b_labs.jpeg" alt="B Labs" width="48" height="48" class="report-logo">
+        <div><p class="eyebrow">B Labs | Device operations</p><h1>Hardware and software report</h1></div>
+      </div>
+      <button class="print-button no-print" type="button" onclick="window.print()">Print report</button>
+    </header>
 
-  <h2>Hardware</h2>
-  <table>
-    <tr><th>Hostname</th><td>{{ payload.hostname or "—" }}</td></tr>
-    <tr><th>Serial</th><td>{{ payload.serial or "—" }}</td></tr>
-    <tr><th>Manufacturer / model</th><td>{{ payload.manufacturer or "—" }} / {{ payload.model or "—" }}</td></tr>
-    <tr><th>CPU</th><td>{{ payload.cpu or "—" }}{% if payload.cpu_cores %} ({{ payload.cpu_cores }} cores){% endif %}</td></tr>
-    <tr><th>RAM</th><td>{% if payload.ram_gb %}{{ payload.ram_gb }} GB{% else %}—{% endif %}</td></tr>
-    <tr><th>Operating system</th><td>{{ payload.os_name or "—" }} {{ payload.os_version or "" }} {{ payload.os_arch or "" }}</td></tr>
-  </table>
+    <section class="report-meta" aria-label="Device and case">
+      <div><span class="meta-label">Serial number</span><strong class="serial">{{ payload.serial or handover.device_serial }}</strong></div>
+      <div><span class="meta-label">Device</span><strong>{{ payload.manufacturer or "" }} {{ payload.model or "Unknown model" }}</strong></div>
+      <div><span class="meta-label">Hostname</span><strong>{{ payload.hostname or "-" }}</strong></div>
+      <div><span class="meta-label">Report date</span><strong>{{ handover.created_at.strftime("%Y-%m-%d %H:%M") if handover.created_at else "-" }}</strong></div>
+      <div><span class="meta-label">Engineer</span><strong>{{ handover.engineer_name or handover.engineer_email }}</strong></div>
+      <div><span class="meta-label">Recipient</span><strong>{{ handover.recipient_snipeit_name or handover.recipient_reported_username or "-" }}</strong></div>
+    </section>
 
-  {% if payload.disks %}
-  <h2>Disks</h2>
-  <table>
-    <tr><th>Name</th><th>Size (GB)</th><th>Type</th></tr>
-    {% for disk in payload.disks %}
-    <tr><td>{{ disk.name or "—" }}</td><td>{{ disk.size_gb if disk.size_gb is not none else "—" }}</td><td>{{ disk.type or "—" }}</td></tr>
-    {% endfor %}
-  </table>
-  {% endif %}
+    <section class="report-section">
+      <div class="section-heading"><div><p class="eyebrow">01 / Hardware</p><h2>Device specifications</h2></div></div>
+      <div class="spec-grid">
+        <article class="spec-card"><span>Processor</span><strong>{{ payload.cpu or "-" }}</strong>{% if payload.cpu_cores %}<small>{{ payload.cpu_cores }} cores</small>{% endif %}</article>
+        <article class="spec-card"><span>Memory</span><strong>{% if payload.ram_gb is not none %}{{ payload.ram_gb }} GB{% else %}-{% endif %}</strong></article>
+        <article class="spec-card"><span>Operating system</span><strong>{{ payload.os_name or "-" }}</strong><small>{{ payload.os_version or "" }} {{ payload.os_arch or "" }}</small></article>
+      </div>
+      {% if payload.disks %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Disk</th><th>Capacity</th><th>Type</th></tr></thead>
+        <tbody>{% for disk in payload.disks %}<tr><td>{{ disk.name or "Disk " ~ loop.index }}</td><td>{{ disk.size_gb if disk.size_gb is not none else "-" }} GB</td><td>{{ disk.type or "-" }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+      {% else %}<p class="empty-state">No disk details were reported.</p>{% endif %}
+    </section>
 
-  {% if payload.windows_activation %}
-  <h2>Windows activation</h2>
-  <table>
-    <tr><th>Status</th><td>{{ payload.windows_activation.status or "—" }}</td></tr>
-    <tr><th>Product</th><td>{{ payload.windows_activation.product_name or "—" }}</td></tr>
-  </table>
-  {% endif %}
+    <section class="report-section">
+      <div class="section-heading"><div><p class="eyebrow">02 / Activation</p><h2>Windows activation</h2></div>
+        {% if payload.windows_activation %}<span class="status-pill {% if payload.windows_activation.status_code == 1 %}status-good{% else %}status-bad{% endif %}">{{ "Activated" if payload.windows_activation.status_code == 1 else (payload.windows_activation.status or "Not activated") }}</span>{% else %}<span class="status-pill status-muted">Not reported</span>{% endif %}
+      </div>
+      {% if payload.windows_activation %}<div class="detail-line"><span>Product</span><strong>{{ payload.windows_activation.product_name or "-" }}</strong></div>{% endif %}
+    </section>
 
-  {% if payload.software_checks %}
-  <h2>Software checks</h2>
-  <table>
-    <tr><th>Software</th><th>Installed</th><th>Version</th><th>Method</th></tr>
-    {% for check in payload.software_checks %}
-    <tr>
-      <td>{{ check.name or check.id or "—" }}</td>
-      <td>{{ "Yes" if check.installed else "No" }}</td>
-      <td>{{ check.version or "—" }}</td>
-      <td>{{ check.method or "—" }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-  {% endif %}
+    <section class="report-section">
+      <div class="section-heading"><div><p class="eyebrow">03 / Software</p><h2>Required software</h2></div><span class="count-pill">{{ payload.software_checks|length if payload.software_checks else 0 }} checks</span></div>
+      {% if payload.software_checks %}
+      <div class="table-wrap"><table class="software-table">
+        <thead><tr><th>Application</th><th>Result</th><th>Version</th><th>Source</th></tr></thead>
+        <tbody>{% for check in payload.software_checks %}<tr>
+          <td><strong>{{ check.name or check.id or "Unknown application" }}</strong></td>
+          <td><span class="status-pill {% if check.installed %}status-good{% else %}status-bad{% endif %}">{{ "Installed" if check.installed else "Missing" }}</span></td>
+          <td>{{ check.version or "-" }}</td><td>{{ check.method or "-" }}</td>
+        </tr>{% endfor %}</tbody>
+      </table></div>
+      {% else %}<p class="empty-state">No software checks were reported.</p>{% endif %}
+    </section>
 
-  <h2>Recipient and engineer</h2>
-  <table>
-    <tr><th>Recipient</th><td>{{ handover.recipient_snipeit_username or handover.recipient_reported_username or "—" }}</td></tr>
-    <tr><th>Engineer</th><td>{{ handover.engineer_name or handover.engineer_email }}</td></tr>
-  </table>
-
-  <section class="legal-text" aria-label="Company legal text">
-    <h2>Company legal text</h2>
-    <p>[Company legal text goes here]</p>
-  </section>
-
-  <div class="signatures">
-    <div class="signature">Recipient signature and date</div>
-    <div class="signature">Engineer signature and date</div>
-  </div>
-
-  <p class="note">Case {{ handover.id }}.</p>
+    <footer class="report-footer"><span>Case {{ handover.id }}</span><span>Generated by B Labs Asset Management</span></footer>
+  </main>
 </body>
 </html>

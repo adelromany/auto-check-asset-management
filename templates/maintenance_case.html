@@ -45,5 +45,20 @@
     </div>
   </div>
 </section>
+<section class="card maint-case-card" aria-labelledby="maintenance-documents-title">
+  <div class="card-header"><h2 class="card-title" id="maintenance-documents-title">Scans and documents</h2></div>
+  <div class="card-content stack-sm">
+    <div data-maint-document-list>
+      {% if handover.documents %}<a class="link-quiet" href="/api/handovers/{{ handover.id }}/document">Download {{ handover.documents[-1].original_name }}</a>
+      {% else %}<span class="muted">No scan attached.</span>{% endif %}
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+      <label for="maintenance-scan-file" class="btn btn-default">Upload scan</label>
+      <input class="sr-only" type="file" id="maintenance-scan-file" accept=".pdf,.png,.jpeg,.jpg" data-maint-scan>
+      <span class="field-hint">PDF, PNG, JPEG</span>
+    </div>
+    <p class="field-hint" aria-live="polite" data-maint-document-status></p>
+  </div>
+</section>
 {% endblock %}
-{% block scripts %}<script src="/static/js/maintenance_case.js" defer></script>{% endblock %}
+{% block scripts %}<script src="/static/js/maintenance_case.js?v=scan-1" defer></script>{% endblock %}

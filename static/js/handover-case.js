@@ -61,10 +61,11 @@
       });
     }
     var canCheckout = data.recipient_mode === "snipeit" && !!data.recipient_snipeit_id;
+    var checkoutStage = (data.stages || []).find(function (stage) { return stage.stage === "checkout"; });
     var checkout = document.querySelector("[data-checkout]");
     var reason = document.querySelector("[data-checkout-reason]");
     if (checkout) {
-      checkout.disabled = !canCheckout;
+      checkout.disabled = !canCheckout || !!(checkoutStage && checkoutStage.status === "passed");
       var oldMark = checkout.querySelector("[data-checkout-warn]");
       if (oldMark) oldMark.remove();
       if (hasCompanyMismatch(data)) {
@@ -76,6 +77,12 @@
       }
     }
     if (reason) reason.hidden = canCheckout;
+    var checkoutResult = document.querySelector("[data-checkout-result]");
+    if (checkoutResult && checkoutStage && (checkoutStage.status === "failed" || checkoutStage.status === "not_done")) {
+      checkoutResult.textContent = checkoutStage.reason || "Checkout failed. Review the device and try again.";
+      checkoutResult.className = "field-error";
+      checkoutResult.classList.remove("hidden");
+    }
     var card = document.querySelector("[data-recipient-card]");
     if (card) {
       card.textContent = "";
@@ -191,6 +198,11 @@
       });
       host.appendChild(retry);
     }
+    if (saved) {
+      var download = portal.el("a", "link-quiet", "Download signed scan");
+      download.href = base + "/document";
+      host.appendChild(download);
+    }
   }
 
   document.addEventListener("click", function (event) {
@@ -245,8 +257,35 @@
       });
     }
     if (target.closest("[data-checkout]")) {
+      var checkout = document.querySelector("[data-checkout]");
+      var checkoutResult = document.querySelector("[data-checkout-result]");
+      checkout.disabled = true;
+      checkoutResult.textContent = "Checking out...";
+      checkoutResult.className = "field-hint";
+      checkoutResult.classList.remove("hidden");
       portal.apiJson(base + "/checkout", { method: "POST" })
-        .then(loadDetail).catch(function (error) { portal.toast(error.message, "error"); });
+        .then(function (data) {
+          renderDetail(data);
+          var stage = (data.stages || []).find(function (item) { return item.stage === "checkout"; });
+          if (stage && stage.status === "passed") {
+            checkoutResult.textContent = "Checkout completed.";
+            checkoutResult.className = "field-hint text-success";
+            checkoutResult.classList.remove("hidden");
+            portal.toast("Checkout completed.", "success");
+          } else {
+            checkoutResult.textContent = (stage && stage.reason) || "Checkout did not complete. Check the device status and recipient.";
+            checkoutResult.className = "field-error";
+            checkoutResult.classList.remove("hidden");
+            checkout.disabled = false;
+            portal.toast(checkoutResult.textContent, "error");
+          }
+        }).catch(function (error) {
+          checkoutResult.textContent = error.message || "Checkout failed. Try again.";
+          checkoutResult.className = "field-error";
+          checkoutResult.classList.remove("hidden");
+          checkout.disabled = false;
+          portal.toast(checkoutResult.textContent, "error");
+        });
     }
   });
 
@@ -263,10 +302,19 @@
     if (!event.target.matches || !event.target.matches("[data-signed-file]")) return;
     var file = event.target.files[0];
     if (!file) return;
+    var selected = document.querySelector("[data-paper-selected]");
+    if (selected) selected.textContent = "Uploading " + file.name + "...";
     var data = new FormData();
     data.append("file", file);
     portal.request(base + "/signed-paper", { method: "POST", body: data })
-      .then(renderDetail).catch(function (error) { portal.toast(error.message, "error"); });
+      .then(function (response) {
+        renderDetail(response);
+        if (selected) selected.textContent = "Uploaded " + file.name;
+        event.target.value = "";
+      }).catch(function (error) {
+        if (selected) selected.textContent = error.message;
+        portal.toast(error.message, "error");
+      });
   });
 
   loadDetail().then(function () { loadStatuses(); loadRecipientItems(); });

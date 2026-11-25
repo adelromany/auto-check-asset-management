@@ -25,11 +25,27 @@
       <button type="button" class="btn btn-outline" data-check-device>Check device</button>
       <div class="device-check-results" data-device-results>
         {% if agent_report %}
-        <div class="fact"><dt>CPU</dt><dd>{{ agent_report.cpu or '—' }}</dd></div>
+        <div class="device-report-heading">
+          <h3 class="drawer-sub">Hardware summary</h3>
+          <a class="link-quiet" href="/api/handovers/{{ handover.id }}/report" target="_blank" rel="noopener">Full report</a>
+        </div>
+        <dl class="device-report-grid">
+          <div class="device-report-card"><dt class="device-report-label">Serial</dt><dd class="device-report-value mono">{{ agent_report.serial or '-' }}</dd><dd class="device-report-state {{ 'state-ok' if serial_match else 'state-fail' }}">{{ 'Matches device' if serial_match else 'Serial differs' }}</dd></div>
+          <div class="device-report-card"><dt class="device-report-label">Computer</dt><dd class="device-report-value">{{ agent_report.hostname or '-' }}</dd><dd class="device-report-state">{{ agent_report.manufacturer or '' }} {{ agent_report.model or '' }}</dd></div>
+          <div class="device-report-card"><dt class="device-report-label">Processor</dt><dd class="device-report-value">{{ agent_report.cpu or '-' }}</dd><dd class="device-report-state">{{ agent_report.cpu_cores or '-' }} cores</dd></div>
+          <div class="device-report-card"><dt class="device-report-label">Memory</dt><dd class="device-report-value">{{ agent_report.ram_gb if agent_report.ram_gb is not none else '-' }} GB</dd></div>
+          <div class="device-report-card"><dt class="device-report-label">Operating system</dt><dd class="device-report-value">{{ agent_report.os_name or '-' }}</dd><dd class="device-report-state">{{ agent_report.os_version or '' }} {{ agent_report.os_arch or '' }}</dd></div>
+          <div class="device-report-card"><dt class="device-report-label">Windows activation</dt><dd class="device-report-value {{ 'state-ok' if agent_report.windows_activation and agent_report.windows_activation.status_code == 1 else 'state-fail' }}">{{ 'Activated' if agent_report.windows_activation and agent_report.windows_activation.status_code == 1 else (agent_report.windows_activation.status if agent_report.windows_activation else 'Not reported') }}</dd></div>
+        </dl>
+        {% if agent_report.disks %}
+        <div class="stack-sm"><h3 class="drawer-sub">Disks</h3><ul class="device-report-list">
+          {% for disk in agent_report.disks %}<li><span>{{ disk.name or 'Disk ' ~ loop.index }}</span><strong>{{ disk.size_gb if disk.size_gb is not none else '-' }} GB</strong><span class="muted">{{ disk.type or 'Unknown type' }}</span></li>{% endfor %}
+        </ul></div>
+        {% endif %}
         {% if agent_report.software_checks %}
-        <ul class="software-list">
-          {% for check in agent_report.software_checks %}<li class="software-item"><span class="{% if check.installed %}state-ok{% else %}state-fail{% endif %}">{% if check.installed %}✓{% else %}✕{% endif %}</span><span>{{ check.name }}</span></li>{% endfor %}
-        </ul>
+        <div class="stack-sm"><h3 class="drawer-sub">Software checks</h3><ul class="device-software-list">
+          {% for check in agent_report.software_checks %}<li class="device-software-item"><span class="device-software-name">{{ check.name or check.id or 'Unknown software' }}{% if check.version %}<small>{{ check.version }}</small>{% endif %}</span><span class="badge {{ 'badge-success' if check.installed else 'badge-destructive' }}">{{ 'Installed' if check.installed else 'Missing' }}</span></li>{% endfor %}
+        </ul></div>
         {% endif %}
         {% endif %}
       </div>
@@ -65,12 +81,15 @@
       <button type="button" class="btn btn-outline" data-print-form>Print form</button>
       <p class="field-error hidden" data-form-error></p>
       <div class="drop-zone" data-signed-paper>
-        <input type="file" id="signed-paper-file" accept=".pdf,.png,.jpeg,.jpg" data-signed-file>
-        <span>Signed paper</span>
+        <label for="signed-paper-file" class="btn btn-outline btn-sm">Choose signed scan</label>
+        <input class="sr-only" type="file" id="signed-paper-file" accept=".pdf,.png,.jpeg,.jpg" data-signed-file>
+        <span class="field-hint">PDF, PNG, JPEG</span>
+        <span class="field-hint" aria-live="polite" data-paper-selected></span>
       </div>
       <div class="stack-sm" data-paper-state></div>
       <button type="button" class="btn btn-default" data-checkout disabled>Check out</button>
       <p class="field-hint" data-checkout-reason>Choose a recipient</p>
+      <p class="field-error hidden" data-checkout-result aria-live="polite" role="status"></p>
       <div class="case-chips" data-missing-parts>
         {% for part in missing_parts %}<span class="badge badge-outline">{{ part }}</span>{% endfor %}
       </div>
@@ -78,4 +97,4 @@
   </section>
 </div>
 {% endblock %}
-{% block scripts %}<script src="/static/js/clipboard.js" defer></script><script src="/static/js/sync.js" defer></script><script src="/static/js/handover-case.js" defer></script>{% endblock %}
+{% block scripts %}<script src="/static/js/clipboard.js" defer></script><script src="/static/js/sync.js" defer></script><script src="/static/js/handover-case.js?v=vendor-checkout-3" defer></script>{% endblock %}

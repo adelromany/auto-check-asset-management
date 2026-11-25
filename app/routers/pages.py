@@ -41,6 +41,7 @@ from app.domain.handover_rules import (
 from app.domain.maintenance_rules import (
     MAINTENANCE_OVERDUE_DAYS,
     MaintenanceState,
+    derive_maintenance_state,
     is_overdue,
     maintenance_label,
     turnaround_days,
@@ -139,6 +140,12 @@ def _handover_column(row: dict) -> str:
 
 def _row_context(handover) -> dict:
     states = _row_states(handover)
+    maintenance_state = handover.maintenance_state
+    if (
+        (handover.kind or CaseKind.HANDOVER.value) == CaseKind.MAINTENANCE.value
+        and handover.stages
+    ):
+        maintenance_state = derive_maintenance_state(dict(states)).value
     rows_by_stage = {row.stage: row for row in handover.stages}
     reasons = {
         stage: (row.reason or "")
@@ -170,7 +177,7 @@ def _row_context(handover) -> dict:
             getattr(handover, "recipient_company", None),
         ),
         "display_status": _display_status(handover),
-        "maintenance_state": handover.maintenance_state,
+        "maintenance_state": maintenance_state,
         "states": states,
         "states_map": {stage: status for stage, status in states},
         "reasons": reasons,
@@ -518,11 +525,16 @@ def _vendor_stats(rows: list[dict]) -> list[dict]:
     return result
 
 
-def _maintenance_group_bars(groups) -> list[dict]:
+def _maintenance_group_bars(groups, *, vendor_ids: dict[str, int] | None = None) -> list[dict]:
     """Dashboard group rows with CSP-safe bar percentages."""
     total = sum(group.count for group in groups) or 1
     return [
-        {"name": group.name, "count": group.count, "pct": round(group.count * 100 / total)}
+        {
+            "name": group.name,
+            "count": group.count,
+            "pct": round(group.count * 100 / total),
+            "vendor_id": (vendor_ids or {}).get(group.name),
+        }
         for group in groups
     ]
 
@@ -552,11 +564,14 @@ async def maintenance_page(
         needle = query.casefold()
         devices = [item for item in devices if needle in item.serial.casefold()]
 
+    vendors = await MaintenanceRepository(session).list_vendors(include_inactive=True)
+    vendor_ids = {item.name: item.id for item in vendors}
+
     def section_bars(section) -> dict[str, list[dict]]:
         return {
             "model": _maintenance_group_bars(section.by_model),
             "company": _maintenance_group_bars(section.by_company),
-            "vendor": _maintenance_group_bars(section.by_vendor),
+            "vendor": _maintenance_group_bars(section.by_vendor, vendor_ids=vendor_ids),
         }
 
     legacy_rows = await _list_rows(session, kind=CaseKind.MAINTENANCE.value)
@@ -594,6 +609,18 @@ async def maintenance_devices_page(
     ctx = _common_ctx(request, "Devices", "maintenance_devices")
     ctx.update(rows=rows)
     return templates.TemplateResponse(request=request, name="maintenance_devices.html", context=ctx)
+
+
+@router.get("/maintenance/vendors", response_class=HTMLResponse)
+async def maintenance_vendors_page(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+):
+    redirect = _login_redirect(request)
+    if redirect is not None:
+        return redirect
+    ctx = _common_ctx(request, "Vendors", "maintenance_vendors")
+    return templates.TemplateResponse(request=request, name="maintenance_vendors.html", context=ctx)
 
 
 # -- sync screen --------------------------------------------------------------

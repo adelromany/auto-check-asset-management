@@ -346,6 +346,7 @@
   .table {
     @apply w-full caption-bottom text-sm;
   }
+  .table.hidden { display: none !important; }
   .table-header {
     @apply [&_tr]:border-b;
   }
@@ -668,6 +669,43 @@
   }
   .bottomnav-plus svg { @apply size-6; }
 
+  .vendor-page-head { @apply mb-5 flex flex-wrap items-end justify-between gap-4; }
+  .vendor-eyebrow { @apply mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground; }
+  .vendor-page-head h1 { @apply text-2xl font-semibold tracking-tight; }
+  .vendor-page-actions { @apply flex flex-wrap items-center gap-3; }
+  .vendor-toggle { @apply flex items-center gap-2 text-sm text-muted-foreground; }
+  .vendor-overview { @apply mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5; }
+  .vendor-metric { @apply flex min-h-28 flex-col justify-between rounded-xl border bg-card p-4 shadow-xs; }
+  .vendor-metric-accent { @apply border-primary/30; }
+  .vendor-metric-warning { @apply border-warning/50; }
+  .vendor-metric-label { @apply text-xs font-medium text-muted-foreground; }
+  .vendor-metric-value { @apply text-2xl font-semibold; }
+  .vendor-metric-note { @apply text-[11px] text-muted-foreground; }
+  .vendor-analytics-card { @apply mb-7; }
+  .vendor-analysis-table-wrap { @apply overflow-x-auto; }
+  .vendor-analysis-table { @apply min-w-[760px]; }
+  .vendor-analysis-link { @apply font-medium text-primary; }
+  .vendor-volume-line { @apply flex min-w-32 items-center gap-3; }
+  .vendor-volume-track { @apply h-2 min-w-16 flex-1 overflow-hidden rounded-full bg-muted; }
+  .vendor-volume-fill { @apply block h-full rounded-full bg-primary; }
+  .vendor-no-activity { @apply rounded-lg border border-dashed p-5 text-sm text-muted-foreground; }
+  .vendor-directory-section { @apply mt-7; }
+  .vendor-section-heading { @apply mb-3; }
+  .vendor-section-heading h2 { @apply text-lg font-semibold; }
+  .vendor-grid { @apply grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3; }
+  .vendor-card { @apply min-w-0 scroll-mt-20; }
+  .vendor-card .card-content { @apply min-h-32; }
+  .vendor-contact { @apply flex flex-wrap gap-x-4 gap-y-1 break-words text-sm; }
+  .vendor-notes { @apply whitespace-pre-wrap break-words text-sm; }
+  .vendor-empty { @apply col-span-full flex min-h-32 items-center justify-center rounded-xl border border-dashed p-5 text-center; }
+  @media (max-width: 639px) {
+    .vendor-page-head { @apply items-stretch; }
+    .vendor-page-actions { @apply w-full justify-between; }
+    .vendor-overview { @apply grid-cols-2; }
+    .vendor-metric { @apply min-h-24 p-3; }
+    .vendor-metric-value { @apply text-xl; }
+  }
+
   /* Page scaffolding ------------------------------------------------------ */
   .stack { @apply flex flex-col gap-4; }
   .stack-lg { @apply flex flex-col gap-6; }
@@ -908,6 +946,18 @@
   .fact dd { @apply min-w-0 truncate text-right; }
   .software-list { @apply grid grid-cols-2 gap-x-4 gap-y-1; }
   .software-item { @apply flex items-center gap-2 text-sm; }
+  .device-report-heading { @apply flex flex-wrap items-center justify-between gap-2 border-t pt-3; }
+  .device-report-grid { @apply grid grid-cols-2 gap-2; }
+  .device-report-card { @apply min-w-0 rounded-lg border bg-muted/30 p-2.5; }
+  .device-report-label { @apply text-[10px] font-semibold uppercase tracking-wide text-muted-foreground; }
+  .device-report-value { @apply mt-1 break-words text-xs font-semibold; }
+  .device-report-state { @apply mt-1 break-words text-[10px] text-muted-foreground; }
+  .device-report-list { @apply flex flex-col divide-y rounded-lg border; }
+  .device-report-list li { @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-xs; }
+  .device-software-list { @apply flex flex-col divide-y rounded-lg border; }
+  .device-software-item { @apply flex items-center justify-between gap-2 px-3 py-2 text-xs; }
+  .device-software-name { @apply min-w-0 break-words font-medium; }
+  .device-software-name small { @apply block text-[10px] font-normal text-muted-foreground; }
   .state-ok { @apply text-success; }
   .state-fail { @apply text-destructive; }
   .state-pending { @apply text-muted-foreground; }

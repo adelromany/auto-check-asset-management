@@ -15,6 +15,7 @@ import asyncio
 import os
 import sqlite3
 import sys
+import traceback
 import uuid
 import zipfile
 from datetime import date
@@ -127,6 +128,7 @@ class Verification:
         except Exception as exc:  # noqa: BLE001
             self.results.append((name, False, f"{type(exc).__name__}: {exc}"))
             print(f"FAIL {name} :: {type(exc).__name__}: {exc}")
+            traceback.print_exc()
 
     async def s1(self) -> str:
         case_id = await self.create("TEST-SN-0001")
@@ -219,10 +221,20 @@ class Verification:
             await self.req("POST", f"/api/maintenance/cases/{case_id}/take-back")
         sent = (await self.req("POST", "/api/maintenance/batches/send", json={"case_ids": ids, "vendor_id": vendor["id"], "sent_date": date.today().isoformat()})).json()
         assert all(item["ok"] for item in sent), sent
+        with_it_ids = {item["case_id"] for item in (await self.req("GET", "/api/maintenance/cases", params={"state": "with_it"})).json()}
+        at_vendor_ids = {item["case_id"] for item in (await self.req("GET", "/api/maintenance/cases", params={"state": "at_vendor"})).json()}
+        assert all(cid not in with_it_ids and cid in at_vendor_ids for cid in ids), (with_it_ids, at_vendor_ids)
         dash = await self.dashboard("maintenance")
         assert dash["in_maintenance"]["total"] == 2, dash["in_maintenance"]
+        dash_needs = {d["case_id"] for d in dash["devices"] if d["state"] == "with_it"}
+        dash_maint = {d["case_id"] for d in dash["devices"] if d["state"] == "at_vendor"}
+        assert dash_needs.isdisjoint(dash_maint) and all(cid in dash_maint and cid not in dash_needs for cid in ids)
         received = (await self.req("POST", "/api/maintenance/batches/receive", json={"case_ids": [ids[0]], "returned_date": date.today().isoformat()})).json()
         assert received[0]["ok"], received
+        with_it_after = {item["case_id"] for item in (await self.req("GET", "/api/maintenance/cases", params={"state": "with_it"})).json()}
+        at_vendor_after = {item["case_id"] for item in (await self.req("GET", "/api/maintenance/cases", params={"state": "at_vendor"})).json()}
+        returned_after = {item["case_id"] for item in (await self.req("GET", "/api/maintenance/cases", params={"state": "returned"})).json()}
+        assert ids[0] not in with_it_after and ids[0] not in at_vendor_after and ids[0] in returned_after
         one = await self.asset("TEST-SN-0001")
         two = await self.asset("TEST-SN-0002")
         assert (one.status or "").casefold() == "ready to deploy" and (two.status or "").casefold() == "maintenance"
@@ -233,11 +245,10 @@ class Verification:
         handover_before = await self.dashboard("handover")
         maintenance_before = await self.dashboard("maintenance")
         # The dashboard aggregates are independent by design; verify their
-        # handover/maintenance partitions do not include each other's cases.
-        handover_items = handover_before.get("items", [])
-        assert all(item.get("handover", {}).get("kind", "handover") != "maintenance" for item in handover_items)
-        maintenance_items = maintenance_before.get("items", maintenance_before.get("cases", []))
-        assert all(item.get("kind", "maintenance") != "handover" for item in maintenance_items)
+        # handover/maintenance partitions do not include each other's data.
+        assert "tiles" in handover_before and "by_company" in handover_before, handover_before
+        assert "needs" in maintenance_before and "in_maintenance" in maintenance_before, maintenance_before
+        assert "tiles" not in maintenance_before, maintenance_before
         return "handover and maintenance dashboards remain separated"
 
     async def s8(self) -> str:

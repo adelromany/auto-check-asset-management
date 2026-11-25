@@ -454,10 +454,10 @@ class DashboardService:
     ) -> MaintenanceDashboardOut:
         """Return maintenance-only groups and open devices."""
         current_day = today or date.today()
-        rows = await MaintenanceRepository(self._session).all_case_rows()
-        open_rows = [row for row in rows if row["state"] in ("with_it", "at_vendor")]
-        needs = [row for row in open_rows if row["state"] == "with_it"]
-        at_vendor = [row for row in open_rows if row["state"] == "at_vendor"]
+        repo = MaintenanceRepository(self._session)
+        needs = await repo.list_case_rows(state="with_it")
+        at_vendor = await repo.list_case_rows(state="at_vendor")
+        open_rows = [*needs, *at_vendor]
 
         def section(items: list[dict], include_average: bool = False) -> MaintenanceSectionOut:
             days = [
@@ -481,6 +481,7 @@ class DashboardService:
                 model=row["model"],
                 company=row["company"],
                 vendor=row["vendor"],
+                vendor_id=row["vendor_id"],
                 state=row["state"],
                 days=days_in_maintenance(
                     row["received_date"], row["returned_date"], current_day

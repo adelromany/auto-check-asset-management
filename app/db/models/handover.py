@@ -61,6 +61,17 @@ class Handover(Base):
                 "status NOT IN ('completed', 'closed_with_gaps', 'cancelled')"
             ),
         ),
+        Index(
+            "uq_handovers_active_maintenance_serial",
+            text("lower(device_serial)"),
+            unique=True,
+            postgresql_where=text(
+                "kind = 'maintenance' AND status != 'cancelled' AND (maintenance_state IS NULL OR maintenance_state != 'returned')"
+            ),
+            sqlite_where=text(
+                "kind = 'maintenance' AND status != 'cancelled' AND (maintenance_state IS NULL OR maintenance_state != 'returned')"
+            ),
+        ),
         Index("ix_handovers_maintenance_state", "maintenance_state"),
         Index("ix_handovers_device_company", "device_company"),
     )

@@ -102,6 +102,7 @@ class MaintenanceDeviceOut(BaseModel):
     model: str
     company: str
     vendor: str | None = None
+    vendor_id: int | None = None
     state: str
     days: int = 0
     reason: str | None = None
@@ -119,6 +120,7 @@ class MaintenanceCaseOut(BaseModel):
     model: str
     company: str
     vendor: str | None = None
+    vendor_id: int | None = None
     planned_vendor: str | None = None
     assigned_to: str | None = None
     snipeit_status: str | None = None

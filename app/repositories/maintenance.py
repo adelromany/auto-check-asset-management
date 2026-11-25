@@ -8,19 +8,72 @@ Services own transactions; this module reads, creates and flushes.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import date
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, and_, case, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.db.models.handover import Handover
+from app.db.models.handover import Handover, HandoverStage
 from app.db.models.maintenance import (
     DiagnosisCategory,
     MaintenanceDestination,
     MaintenanceInfo,
     MaintenanceVendor,
 )
+from app.domain.maintenance_rules import (
+    MaintenanceState,
+    derive_maintenance_state,
+    is_overdue,
+)
+
+def case_state_filter(state: MaintenanceState | str) -> ColumnElement[bool]:
+    """Return the SQL predicate matching one derived maintenance state.
+
+    Matches ``derive_maintenance_state``:
+    - ``returned``: ``returned`` stage passed
+    - ``at_vendor``: ``sent_out`` stage passed and ``returned`` not passed
+    - ``with_it``: neither ``sent_out`` nor ``returned`` passed
+    Rows without any ``handover_stages`` (legacy test fixtures) fall back to
+    ``Handover.maintenance_state``.
+    """
+    target = MaintenanceState(state).value
+    has_stages = exists(
+        select(HandoverStage.id).where(HandoverStage.handover_id == Handover.id)
+    )
+    sent_passed = exists(
+        select(HandoverStage.id).where(
+            HandoverStage.handover_id == Handover.id,
+            HandoverStage.stage == "sent_out",
+            HandoverStage.status == "passed",
+        )
+    )
+    returned_passed = exists(
+        select(HandoverStage.id).where(
+            HandoverStage.handover_id == Handover.id,
+            HandoverStage.stage == "returned",
+            HandoverStage.status == "passed",
+        )
+    )
+    if target == MaintenanceState.RETURNED.value:
+        stage_pred: ColumnElement[bool] = returned_passed
+        fallback_pred: ColumnElement[bool] = Handover.maintenance_state == target
+    elif target == MaintenanceState.AT_VENDOR.value:
+        stage_pred = and_(sent_passed, ~returned_passed)
+        fallback_pred = Handover.maintenance_state == target
+    else:
+        stage_pred = and_(~sent_passed, ~returned_passed)
+        fallback_pred = or_(
+            Handover.maintenance_state.is_(None),
+            Handover.maintenance_state == MaintenanceState.WITH_IT.value,
+        )
+    return or_(
+        and_(has_stages, stage_pred),
+        and_(~has_stages, fallback_pred),
+    )
+
 
 _FIELD_NAMES: tuple[str, ...] = (
     "reported_issue",
@@ -78,9 +131,114 @@ class MaintenanceRepository:
         )
         return list(result.scalars().all())
 
-    async def list_vendors(self) -> list[MaintenanceVendor]:
-        """Semantic alias for list_destinations."""
-        return await self.list_destinations()
+    async def list_vendors(self, *, include_inactive: bool = False) -> list[MaintenanceVendor]:
+        statement = select(MaintenanceDestination)
+        if not include_inactive:
+            statement = statement.where(MaintenanceDestination.active.is_(True))
+        result = await self._session.execute(statement.order_by(MaintenanceDestination.name))
+        return list(result.scalars().all())
+
+    async def get_vendor(self, vendor_id: int) -> MaintenanceDestination | None:
+        return await self._session.get(MaintenanceDestination, vendor_id)
+
+    async def find_vendor(self, name: str) -> MaintenanceDestination | None:
+        return await self._session.scalar(
+            select(MaintenanceDestination).where(
+                func.lower(MaintenanceDestination.name) == name.strip().lower()
+            )
+        )
+
+    async def vendor_stats(self) -> dict[int, dict[str, float | int | None]]:
+        sent = MaintenanceInfo.sent_date.is_not(None)
+        at_vendor = case_state_filter(MaintenanceState.AT_VENDOR)
+        dialect = self._session.bind.dialect.name if self._session.bind else "sqlite"
+        if dialect == "sqlite":
+            elapsed_days = func.julianday(MaintenanceInfo.returned_date) - func.julianday(MaintenanceInfo.sent_date)
+        else:
+            elapsed_days = func.extract("epoch", MaintenanceInfo.returned_date - MaintenanceInfo.sent_date) / 86400
+        average_days = func.avg(
+            case(
+                (and_(MaintenanceInfo.sent_date.is_not(None), MaintenanceInfo.returned_date.is_not(None)), elapsed_days),
+                else_=None,
+            )
+        )
+        statement = (
+            select(
+                MaintenanceDestination.id,
+                func.sum(case((and_(sent, at_vendor), 1), else_=0)),
+                func.sum(case((sent, 1), else_=0)),
+                func.sum(case((MaintenanceInfo.returned_date.is_not(None), 1), else_=0)),
+                average_days,
+                func.count(MaintenanceInfo.handover_id),
+            )
+            .outerjoin(MaintenanceInfo, MaintenanceInfo.destination_id == MaintenanceDestination.id)
+            .outerjoin(Handover, Handover.id == MaintenanceInfo.handover_id)
+            .group_by(MaintenanceDestination.id)
+        )
+        rows = (await self._session.execute(statement)).all()
+        overdue_rows = (
+            await self._session.execute(
+                select(
+                    MaintenanceInfo.destination_id,
+                    MaintenanceInfo.sent_date,
+                    MaintenanceInfo.expected_return_date,
+                )
+                .join(Handover, Handover.id == MaintenanceInfo.handover_id)
+                .where(
+                    MaintenanceInfo.destination_id.is_not(None),
+                    case_state_filter(MaintenanceState.AT_VENDOR),
+                )
+            )
+        ).all()
+        overdue_by_vendor: dict[int, int] = {}
+        for vendor_id, sent_date, expected_return_date in overdue_rows:
+            if is_overdue(
+                sent_date=sent_date,
+                expected_return_date=expected_return_date,
+                today=date.today(),
+                returned=False,
+            ):
+                overdue_by_vendor[vendor_id] = overdue_by_vendor.get(vendor_id, 0) + 1
+        return {
+            vendor_id: {
+                "at_vendor_now": int(at_now or 0),
+                "total_sent": int(total or 0),
+                "returned_total": int(returned or 0),
+                "overdue_now": overdue_by_vendor.get(vendor_id, 0),
+                "avg_days": float(avg) if avg is not None else None,
+                "can_delete": referenced == 0,
+            }
+            for vendor_id, at_now, total, returned, avg, referenced in rows
+        }
+
+    async def create_vendor(self, values: Mapping[str, Any]) -> MaintenanceDestination:
+        name = str(values["name"]).strip()
+        vendor = MaintenanceDestination(name=name, name_key=name.casefold())
+        for key in ("contact_name", "phone", "email", "notes"):
+            setattr(vendor, key, values.get(key))
+        self._session.add(vendor)
+        await self._session.flush()
+        return vendor
+
+    async def update_vendor(self, vendor: MaintenanceDestination, values: Mapping[str, Any]) -> None:
+        for key, value in values.items():
+            if key == "is_active":
+                vendor.active = value
+            elif key == "name" and value is not None:
+                vendor.name = value.strip()
+                vendor.name_key = vendor.name.casefold()
+            else:
+                setattr(vendor, key, value)
+        await self._session.flush()
+
+    async def vendor_is_referenced(self, vendor_id: int) -> bool:
+        return bool(await self._session.scalar(
+            select(exists().where(MaintenanceInfo.destination_id == vendor_id))
+        ))
+
+    async def delete_vendor(self, vendor: MaintenanceDestination) -> None:
+        await self._session.delete(vendor)
+        await self._session.flush()
 
     async def list_diagnosis_categories(self) -> list[DiagnosisCategory]:
         result = await self._session.execute(
@@ -237,10 +395,11 @@ class MaintenanceRepository:
         statement = (
             select(Handover, MaintenanceInfo)
             .outerjoin(MaintenanceInfo, MaintenanceInfo.handover_id == Handover.id)
+            .options(selectinload(Handover.stages))
             .where(Handover.kind == "maintenance")
         )
         if state:
-            statement = statement.where(Handover.maintenance_state == state)
+            statement = statement.where(case_state_filter(state))
         if company:
             statement = statement.where(Handover.device_company == company)
         if model:
@@ -262,16 +421,23 @@ class MaintenanceRepository:
         handover: Handover, info: MaintenanceInfo | None
     ) -> dict[str, Any]:
         vendor = info.destination.name if info is not None and info.destination else None
+        if handover.stages:
+            derived_state = derive_maintenance_state(
+                {s.stage: s.status for s in handover.stages}
+            ).value
+        else:
+            derived_state = handover.maintenance_state or MaintenanceState.WITH_IT.value
         return {
             "case_id": handover.id,
             "serial": handover.device_serial,
             "model": handover.device_model or "Unknown",
             "company": handover.device_company or "Unknown",
             "vendor": vendor,
+            "vendor_id": info.destination_id if info is not None else None,
             "planned_vendor": vendor,
             "assigned_to": handover.recipient_snipeit_name,
             "snipeit_status": handover.snipeit_status_name,
-            "state": handover.maintenance_state or "with_it",
+            "state": derived_state,
             "received_date": info.received_date if info is not None else None,
             "sent_date": info.sent_date if info is not None else None,
             "returned_date": info.returned_date if info is not None else None,

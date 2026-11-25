@@ -9,6 +9,7 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import config
@@ -25,7 +26,11 @@ from app.domain.errors import (
     MaintenanceReasonInvalid,
     SnipeItUnreachable,
 )
-from app.domain.maintenance_rules import days_in_maintenance
+from app.domain.maintenance_rules import (
+    MaintenanceState,
+    days_in_maintenance,
+    derive_maintenance_state,
+)
 from app.domain.stages import StageStatus
 from app.dto.dashboard import MaintenanceCaseOut
 from app.dto.maintenance import (
@@ -110,10 +115,13 @@ class MaintenanceService:
                 client=client,
                 exact_serial=True,
             )
-        except HandoverAlreadyExists as exc:
+        except (HandoverAlreadyExists, IntegrityError) as exc:
+            await self._session.rollback()
             existing = await self._core.find_active_by_serial(cleaned_serial)
             if existing is not None:
                 raise MaintenanceCaseExists(str(existing.id)) from exc
+            if isinstance(exc, IntegrityError):
+                raise MaintenanceCaseExists("") from exc
             raise
 
         assert handover.maintenance is not None
@@ -324,8 +332,15 @@ class MaintenanceService:
         for case_id in case_ids:
             try:
                 handover = await self._core.get(case_id, with_details=True)
-                if handover.maintenance_state != "with_it":
-                    raise CaseStateConflict("The device is not with IT.")
+                current_state = (
+                    derive_maintenance_state(
+                        {s.stage: s.status for s in handover.stages}
+                    ).value
+                    if handover.stages
+                    else (handover.maintenance_state or MaintenanceState.WITH_IT.value)
+                )
+                if current_state != MaintenanceState.WITH_IT.value:
+                    raise CaseStateConflict("Not with IT.")
                 if handover.maintenance is None:
                     handover.maintenance = MaintenanceInfo(handover_id=handover.id)
                     self._session.add(handover.maintenance)
@@ -366,7 +381,14 @@ class MaintenanceService:
         for case_id in case_ids:
             try:
                 handover = await self._core.get(case_id, with_details=True)
-                if handover.maintenance_state != "at_vendor":
+                current_state = (
+                    derive_maintenance_state(
+                        {s.stage: s.status for s in handover.stages}
+                    ).value
+                    if handover.stages
+                    else (handover.maintenance_state or MaintenanceState.WITH_IT.value)
+                )
+                if current_state != MaintenanceState.AT_VENDOR.value:
                     raise CaseStateConflict("The device is not at the vendor.")
                 sent_date = (
                     handover.maintenance.sent_date

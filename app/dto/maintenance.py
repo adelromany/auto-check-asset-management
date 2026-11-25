@@ -61,15 +61,27 @@ class MaintenanceBatchResult(BaseModel):
 
 
 class MaintenanceVendorCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=120)
+    name: str = Field(min_length=2, max_length=120)
+    contact_name: str | None = Field(default=None, max_length=120)
+    phone: str | None = Field(default=None, max_length=40)
+    email: str | None = Field(default=None, max_length=200)
+    notes: str | None = Field(default=None, max_length=500)
 
     @field_validator("name")
     @classmethod
     def _clean_name(cls, value: str) -> str:
         cleaned = value.strip()
-        if not cleaned:
-            raise ValueError("name must not be blank")
+        if len(cleaned) < 2:
+            raise ValueError("name must be at least 2 characters")
         return cleaned
+
+    @field_validator("email")
+    @classmethod
+    def _email_has_at(cls, value: str | None) -> str | None:
+        cleaned = value.strip() if value is not None else None
+        if cleaned and "@" not in cleaned:
+            raise ValueError("email must contain @")
+        return cleaned or None
 
 
 class MaintenanceVendor(BaseModel):
@@ -77,6 +89,44 @@ class MaintenanceVendor(BaseModel):
 
     id: int
     name: str
+    contact_name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    notes: str | None = None
+    is_active: bool
+    at_vendor_now: int = 0
+    total_sent: int = 0
+    returned_total: int = 0
+    overdue_now: int = 0
+    avg_days: float | None = None
+    can_delete: bool = True
+
+
+class MaintenanceVendorUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    contact_name: str | None = Field(default=None, max_length=120)
+    phone: str | None = Field(default=None, max_length=40)
+    email: str | None = Field(default=None, max_length=200)
+    notes: str | None = Field(default=None, max_length=500)
+    is_active: bool | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _clean_optional_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if len(cleaned) < 2:
+            raise ValueError("name must be at least 2 characters")
+        return cleaned
+
+    @field_validator("email")
+    @classmethod
+    def _optional_email_has_at(cls, value: str | None) -> str | None:
+        cleaned = value.strip() if value is not None else None
+        if cleaned and "@" not in cleaned:
+            raise ValueError("email must contain @")
+        return cleaned or None
 
 
 class MaintenanceReason(BaseModel):

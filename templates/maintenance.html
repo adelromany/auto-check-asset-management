@@ -30,7 +30,7 @@
         <h3>{{ title }}</h3>
         <div class="bar-list">
           {% for bar in needs_bars[key] %}
-          <a class="bar-row" href="/maintenance?{% if key == 'company' %}company={{ bar.name|urlencode }}{% elif key == 'model' %}model={{ bar.name|urlencode }}{% else %}vendor={{ bar.name|urlencode }}{% endif %}{% if active_company %}&company={{ active_company|urlencode }}{% endif %}{% if active_model %}&model={{ active_model|urlencode }}{% endif %}{% if active_vendor %}&vendor={{ active_vendor|urlencode }}{% endif %}">
+          <a class="bar-row" href="{% if key == 'vendor' and bar.vendor_id %}/maintenance/vendors#vendor-{{ bar.vendor_id }}{% else %}/maintenance?{% if key == 'company' %}company={{ bar.name|urlencode }}{% elif key == 'model' %}model={{ bar.name|urlencode }}{% else %}vendor={{ bar.name|urlencode }}{% endif %}{% if active_company %}&company={{ active_company|urlencode }}{% endif %}{% if active_model %}&model={{ active_model|urlencode }}{% endif %}{% if active_vendor %}&vendor={{ active_vendor|urlencode }}{% endif %}{% endif %}">
             <span class="bar-label">{{ bar.name }}</span>
             <span class="bar-track"><span class="bar-fill" data-pct="{{ bar.pct }}"></span></span>
             <span class="bar-count mono">{{ bar.count }}{% if key == 'vendor' %}<span class="sr-only"> here</span>{% endif %}</span>
@@ -49,7 +49,7 @@
         <h3>{{ title }}</h3>
         <div class="bar-list">
           {% for bar in in_bars[key] %}
-          <a class="bar-row" href="/maintenance?{% if key == 'company' %}company={{ bar.name|urlencode }}{% elif key == 'model' %}model={{ bar.name|urlencode }}{% else %}vendor={{ bar.name|urlencode }}{% endif %}{% if active_company %}&company={{ active_company|urlencode }}{% endif %}{% if active_model %}&model={{ active_model|urlencode }}{% endif %}{% if active_vendor %}&vendor={{ active_vendor|urlencode }}{% endif %}">
+          <a class="bar-row" href="{% if key == 'vendor' and bar.vendor_id %}/maintenance/vendors#vendor-{{ bar.vendor_id }}{% else %}/maintenance?{% if key == 'company' %}company={{ bar.name|urlencode }}{% elif key == 'model' %}model={{ bar.name|urlencode }}{% else %}vendor={{ bar.name|urlencode }}{% endif %}{% if active_company %}&company={{ active_company|urlencode }}{% endif %}{% if active_model %}&model={{ active_model|urlencode }}{% endif %}{% if active_vendor %}&vendor={{ active_vendor|urlencode }}{% endif %}{% endif %}">
             <span class="bar-label">{{ bar.name }}</span>
             <span class="bar-track"><span class="bar-fill" data-pct="{{ bar.pct }}"></span></span>
             <span class="bar-count mono">{{ bar.count }}{% if key == 'vendor' %}<span class="sr-only"> here</span>{% endif %}</span>
@@ -86,7 +86,7 @@
           <td class="table-cell"><a class="row-link mono" href="/maintenance/{{ item.case_id }}">{{ item.serial }}</a></td>
           <td class="table-cell">{{ item.model }}</td>
           <td class="table-cell">{{ item.company }}</td>
-          <td class="table-cell">{{ item.vendor or 'Not assigned' }}</td>
+          <td class="table-cell">{% if item.vendor_id %}<a href="/maintenance/vendors#vendor-{{ item.vendor_id }}">{{ item.vendor }}</a>{% else %}{{ item.vendor or 'Not assigned' }}{% endif %}</td>
           <td class="table-cell"><span class="days-clock {% if item.days > late_days %}days-overdue{% elif item.days > warn_days %}days-warn{% else %}days-ok{% endif %}">{{ item.days }}d</span></td>
           <td class="table-cell">{{ item.reason or '—' }}</td>
         </tr>
