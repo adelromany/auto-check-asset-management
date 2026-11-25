@@ -62,12 +62,8 @@ if not Path(FORMS_DIR).is_absolute():
 DOCUMENT_MAX_BYTES = int(os.getenv("DOCUMENT_MAX_BYTES", "10485760"))
 SNIPEIT_TIMEOUT_SECONDS = float(os.getenv("SNIPEIT_TIMEOUT_SECONDS", "10"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-# Snipe-IT status label names used when a maintenance device changes state.
-# Empty means "not configured": the UI notes it and records the snipeit_status
-# operation as not done (never blocking).
-SNIPEIT_STATUS_NEEDS_MAINTENANCE = os.getenv("SNIPEIT_STATUS_NEEDS_MAINTENANCE", "")
-SNIPEIT_STATUS_IN_MAINTENANCE = os.getenv("SNIPEIT_STATUS_IN_MAINTENANCE", "")
-SNIPEIT_STATUS_RETURNED = os.getenv("SNIPEIT_STATUS_RETURNED", "")
+# Snipe-IT status label names used by V2 maintenance and handover.
+SNIPEIT_STATUS_MAINTENANCE = os.getenv("SNIPEIT_STATUS_MAINTENANCE", "Maintenance")
 # The Snipe-IT status label a device must have for the handover device-status
 # part to pass. Compared case-insensitively.
 SNIPEIT_STATUS_READY = os.getenv("SNIPEIT_STATUS_READY", "Ready to deploy")
