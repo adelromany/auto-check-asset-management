@@ -56,6 +56,9 @@ if (
 DOCUMENTS_DIR = os.getenv("DOCUMENTS_DIR", "./data/documents")
 if not Path(DOCUMENTS_DIR).is_absolute():
     DOCUMENTS_DIR = str((PROJECT_ROOT / DOCUMENTS_DIR).resolve())
+FORMS_DIR = os.getenv("FORMS_DIR", "forms")
+if not Path(FORMS_DIR).is_absolute():
+    FORMS_DIR = str((PROJECT_ROOT / FORMS_DIR).resolve())
 DOCUMENT_MAX_BYTES = int(os.getenv("DOCUMENT_MAX_BYTES", "10485760"))
 SNIPEIT_TIMEOUT_SECONDS = float(os.getenv("SNIPEIT_TIMEOUT_SECONDS", "10"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

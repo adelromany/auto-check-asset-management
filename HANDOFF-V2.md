@@ -28,3 +28,4 @@ STEP 3.7 DONE full suite: first run exposed the new `app/domain/company_rules.py
 PHASE 03 DONE - company rule, recipient modes/search, recipient current items/checkin/confirm, checkout guards, live probe 8/8 PASS. Changed test: `test_checkout_refuses_when_the_asset_is_assigned_elsewhere` now expects 422 per the Phase 03 owner spec.
 Next: `04-handover-form-and-outcome.md` (read only its steps; `00-README` A and B1).
 STEP 4.1 DONE pure `app/domain/form_fill.py` fills `{{ENGINEER}}` in document/header/footer XML, handles split runs, escapes names, and preserves valid DOCX ZIP structure; 5 tests in `tests/test_form_fill.py`; `pytest tests/test_form_fill.py -q` = 5 passed.
+STEP 4.2 DONE `FORMS_DIR` config, company-normalized `find_template` service, `forms/README.md`, `tools/check_forms.py`, and 3 lookup tests; `pytest tests/test_form_fill.py tests/test_forms_service.py -q` = 8 passed.
