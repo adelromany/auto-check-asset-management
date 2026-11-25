@@ -53,3 +53,14 @@ No tokens or secrets are recorded here.
 | 3 | signed paper is attached to the Snipe-IT asset | PASS | files=[SnipeItFile(id=79, filename='asset-4-L88MroeU-signed-paper.png', size=None)] |
 | 4 | complete handover outcome is complete | PASS | outcome='complete' status='completed' stages={'device_status': 'passed', 'agent_report': 'passed', 'software_check': 'passed', 'report_printed': 'passed', 'recipient_check': 'passed', 'recipient_items': 'passed', 'checkout': 'passed', 'document_scanned': 'passed', 'document_pushed': 'passed'} |
 | 5 | none recipient outcome is ready | PASS | outcome='ready' status='ready' stages={'device_status': 'passed', 'agent_report': 'passed', 'software_check': 'passed', 'report_printed': 'pending', 'recipient_check': 'not_done', 'recipient_items': 'pending', 'checkout': 'pending', 'document_scanned': 'pending', 'document_pushed': 'pending'} |
+
+## Phase 06
+
+| # | Check | Result | Detail |
+|---|---|---|---|
+| 1 | lookup and create store the Nexta device snapshot | PASS | lookup_company='Nexta' stored='Nexta' |
+| 2 | set-status shows Maintenance in Snipe-IT | PASS | operation='passed' asset_status='Maintenance' |
+| 3 | take-back clears the user and set-status shows Maintenance | PASS | take_back='passed' assignee=None status='Maintenance' |
+| 4 | batch send puts both devices at the test vendor | PASS | results=[(UUID('cc18279e-9f97-45ba-bb3e-2d9177d80c71'), True), (UUID('00e101c4-79fa-451e-b38f-fce465d1c1fd'), True)] total=2 vendor=2 |
+| 5 | receiving one device sets only that device Ready to deploy | PASS | first='Ready to Deploy' second='Maintenance' |
+| 6 | receiving the second device leaves both Ready to deploy | PASS | first='Ready to Deploy' second='Ready to Deploy' |
