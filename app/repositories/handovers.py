@@ -93,6 +93,8 @@ class HandoverRepository:
         page: int = 1,
         page_size: int = 25,
         stall_cutoff: datetime | None = None,
+        outcome: str | None = None,
+        company: str | None = None,
     ) -> tuple[list[Handover], int]:
         filters = build_case_filters(
             status=status,
@@ -102,6 +104,8 @@ class HandoverRepository:
             created_from=created_from,
             created_to=created_to,
             stall_cutoff=stall_cutoff,
+            outcome=outcome,
+            company=company,
         )
 
         total = await self._session.scalar(

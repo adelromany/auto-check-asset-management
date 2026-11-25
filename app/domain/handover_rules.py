@@ -12,8 +12,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from enum import StrEnum
 
-from .catalog import RECOMMENDED_AFTER, Operation, operation_title
+from .catalog import HANDOVER_OPERATIONS, RECOMMENDED_AFTER, Operation, operation_title
 from .stages import (
     SATISFIED_STATUSES,
     HandoverStatus,
@@ -29,6 +30,53 @@ class StageState:
     stage: Operation
     status: StageStatus = StageStatus.PENDING
     reason: str | None = None
+
+
+class Outcome(StrEnum):
+    """The single result shown for every handover case."""
+
+    COMPLETE = "complete"
+    NOT_COMPLETE = "not_complete"
+    READY = "ready"
+    CANCELLED = "cancelled"
+
+
+def case_outcome(
+    states: Sequence[StageState],
+    *,
+    recipient_mode: str | None,
+    cancelled: bool = False,
+) -> Outcome:
+    """Derive the case result from its operation states."""
+    if cancelled:
+        return Outcome.CANCELLED
+    by_stage = _by_stage(states)
+    if all(
+        _state_for(by_stage, operation).status is StageStatus.PASSED
+        for operation in HANDOVER_OPERATIONS
+    ):
+        return Outcome.COMPLETE
+    ready_operations = (
+        Operation.DEVICE_STATUS,
+        Operation.AGENT_REPORT,
+        Operation.SOFTWARE_CHECK,
+    )
+    if recipient_mode == "none" and all(
+        _state_for(by_stage, operation).status is StageStatus.PASSED
+        for operation in ready_operations
+    ):
+        return Outcome.READY
+    return Outcome.NOT_COMPLETE
+
+
+def missing_parts(states: Sequence[StageState]) -> list[str]:
+    """Return the titles of handover operations that are not passed."""
+    by_stage = _by_stage(states)
+    return [
+        operation_title(operation)
+        for operation in HANDOVER_OPERATIONS
+        if _state_for(by_stage, operation).status is not StageStatus.PASSED
+    ]
 
 
 _STAGE_HINTS: dict[Operation, str] = {
@@ -65,6 +113,7 @@ def derive_status(
     *,
     operations: Sequence[Operation] | None = None,
     cancelled: bool = False,
+    recipient_mode: str | None = None,
     closed_with_gaps: bool = False,
     updated_at: datetime | None = None,
     now: datetime | None = None,
@@ -86,6 +135,17 @@ def derive_status(
     )
     states = _by_stage(stages)
     statuses = [_state_for(states, stage).status for stage in order]
+
+    if tuple(order) == tuple(HANDOVER_OPERATIONS):
+        outcome = case_outcome(
+            stages,
+            recipient_mode=recipient_mode,
+            cancelled=cancelled,
+        )
+        if outcome is Outcome.COMPLETE:
+            return HandoverStatus.COMPLETED
+        if outcome is Outcome.READY:
+            return HandoverStatus.READY
 
     if statuses and all(status in SATISFIED_STATUSES for status in statuses):
         return HandoverStatus.COMPLETED

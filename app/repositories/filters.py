@@ -102,6 +102,8 @@ def build_case_filters(
     created_from: datetime | None = None,
     created_to: datetime | None = None,
     stall_cutoff: datetime | None = None,
+    outcome: str | None = None,
+    company: str | None = None,
 ) -> list:
     """Every filter for a case list, in one place."""
     filters = []
@@ -112,6 +114,24 @@ def build_case_filters(
         filters.append(Handover.engineer_email == engineer)
     if kind:
         filters.append(Handover.kind == kind)
+    if company:
+        filters.append(func.lower(func.trim(Handover.device_company)) == company.strip().casefold())
+    if outcome:
+        filters.append(Handover.kind == "handover")
+        if outcome == "complete":
+            filters.append(Handover.status == HandoverStatus.COMPLETED.value)
+        elif outcome == "ready":
+            filters.append(Handover.status == HandoverStatus.READY.value)
+        elif outcome == "not_complete":
+            filters.append(
+                Handover.status.notin_(
+                    [
+                        HandoverStatus.COMPLETED.value,
+                        HandoverStatus.READY.value,
+                        HandoverStatus.CANCELLED.value,
+                    ]
+                )
+            )
     if created_from is not None:
         filters.append(Handover.created_at >= created_from)
     if created_to is not None:

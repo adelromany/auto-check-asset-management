@@ -6,6 +6,10 @@ import uuid
 from datetime import date, datetime
 from typing import Any, Literal
 
+from app.domain.catalog import Operation
+from app.domain.handover_rules import StageState, case_outcome, missing_parts
+from app.domain.stages import StageStatus
+
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -212,6 +216,35 @@ class MaintenanceUpdate(BaseModel):
     warranty: str | None = None
 
 
+def _outcome_fields(data: Any) -> dict[str, Any]:
+    """Derive outcome and missing parts from loaded operation rows."""
+    stages = data.get("stages") if isinstance(data, dict) else getattr(data, "stages", None)
+    recipient_mode = (
+        data.get("recipient_mode")
+        if isinstance(data, dict)
+        else getattr(data, "recipient_mode", None)
+    )
+    cancelled = (
+        data.get("status")
+        if isinstance(data, dict)
+        else getattr(data, "status", None)
+    ) == "cancelled"
+    states = [
+        StageState(
+            Operation(row.stage),
+            StageStatus(row.status),
+            row.reason,
+        )
+        for row in (stages or [])
+    ]
+    return {
+        "outcome": case_outcome(
+            states, recipient_mode=recipient_mode, cancelled=cancelled
+        ).value,
+        "missing": missing_parts(states),
+    }
+
+
 class HandoverSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -219,7 +252,7 @@ class HandoverSummary(BaseModel):
     @classmethod
     def _extract_from_orm(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            return data
+            return {**data, **_outcome_fields(data)}
         try:
             from sqlalchemy import inspect
             from sqlalchemy.orm.base import NO_VALUE
@@ -237,7 +270,8 @@ class HandoverSummary(BaseModel):
                     for col in ins.mapper.column_attrs
                 }
                 result["maintenance"] = maint
-                return result
+                result["stages"] = list(data.stages)
+                return {**result, **_outcome_fields(result)}
         except Exception:
             pass
         return data
@@ -246,6 +280,8 @@ class HandoverSummary(BaseModel):
     ticket_ref: str | None = None
     kind: str = "handover"
     status: str
+    outcome: str
+    missing: list[str]
     maintenance_state: str | None = None
     engineer_email: str
     engineer_name: str

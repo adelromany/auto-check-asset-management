@@ -848,6 +848,26 @@ async def test_list_paginates_filters_and_caps_page_size(api: ApiHarness) -> Non
     assert bad_status.status_code == 422
 
 
+async def test_list_filters_by_outcome_and_company(api: ApiHarness) -> None:
+    created = await _create(api, serial="SN-OUTCOME")
+
+    detail = await api.client.get(f"/api/handovers/{created['id']}")
+    listed = await api.client.get(
+        "/api/handovers?outcome=not_complete&company=B.tech"
+    )
+    wrong_company = await api.client.get(
+        "/api/handovers?outcome=not_complete&company=Mylo"
+    )
+    invalid = await api.client.get("/api/handovers?outcome=invalid")
+
+    assert detail.json()["outcome"] == "not_complete"
+    assert "Device status" in detail.json()["missing"]
+    assert listed.json()["total"] == 1
+    assert listed.json()["items"][0]["outcome"] == "not_complete"
+    assert wrong_company.json()["total"] == 0
+    assert invalid.status_code == 422
+
+
 async def test_unknown_handover_returns_404(api: ApiHarness) -> None:
     response = await api.client.get(f"/api/handovers/{uuid.uuid4()}")
     assert response.status_code == 404

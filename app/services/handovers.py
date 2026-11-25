@@ -166,6 +166,8 @@ class HandoverService:
         page: int = 1,
         page_size: int = 25,
         stall_cutoff: datetime | None = None,
+        outcome: str | None = None,
+        company: str | None = None,
     ) -> tuple[list[Handover], int]:
         return await self._handovers.list(
             status=status,
@@ -177,6 +179,8 @@ class HandoverService:
             page=page,
             page_size=page_size,
             stall_cutoff=stall_cutoff,
+            outcome=outcome,
+            company=company,
         )
 
     # -- creation ---------------------------------------------------------
@@ -555,6 +559,7 @@ class HandoverService:
             stage_states(handover),
             operations=operations_for(handover.kind or CaseKind.HANDOVER.value),
             cancelled=cancelled,
+            recipient_mode=handover.recipient_mode,
             closed_with_gaps=closed_with_gaps,
             updated_at=as_utc(handover.updated_at),
             now=now,
