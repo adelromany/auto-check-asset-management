@@ -436,26 +436,29 @@ async def test_dashboard_page_renders_seeded_data(
 
     assert response.status_code == 200, response.text
     body = response.text
-    assert "Dashboard" in body
-    assert "Needs attention" in body
-    # The stalled case is the one that needs an engineer now.
-    assert f'href="/handovers/{stalled_id}"' in body
-    assert 'href="/handovers"' in body
+    assert "Handover" in body
+    assert "Ready labs" in body
+    assert "Complete" in body
+    assert "Not complete yet" in body
+    assert 'data-outcome="ready"' in body
+    assert 'data-outcome="complete"' in body
+    assert 'data-outcome="not_complete"' in body
+    assert 'data-handover-list' in body
     assert 'data-rail' in body and 'data-topbar' in body and 'data-bottomnav' in body
 
 
-async def test_dashboard_tiles_count_open_and_attention_cases(
+async def test_dashboard_tiles_expose_outcome_filters(
     dashboard: DashboardHarness,
 ) -> None:
     response = await dashboard.client.get("/")
 
     assert response.status_code == 200, response.text
     body = response.text
-    assert "Handovers" in body and "open" in body
-    assert "Stalled" in body
-    # Three open handovers (in progress, stalled, draft) plus one stalled badge.
-    assert 'data-value="3"' in body
-    assert 'data-value="1"' in body
+    assert "Ready labs" in body
+    assert "Not complete yet" in body
+    assert 'data-ready-count' in body
+    assert 'data-complete-count' in body
+    assert 'data-not-complete-count' in body
 
 
 async def test_handovers_page_renders_and_filters(

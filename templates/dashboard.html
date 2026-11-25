@@ -1,109 +1,31 @@
 {% extends "base.html" %}
-{#-
-  Dashboard: "what needs me now?" for both case types.
-  Five tiles, the needs-attention list, two small status panels.
-  No forms here; every tile is a link that opens the right screen filtered.
--#}
-{% from "partials/opstrip.html" import opstrip, state_word %}
 {% block content %}
-<h1 class="sr-only">Dashboard</h1>
-<div data-refresh-region data-refresh="15" class="stack-lg">
-  <div class="flex items-center justify-between">
-    <p class="page-intro">What needs you now</p>
-    <span class="updated" data-updated data-stamp="0"></span>
+<h1 class="sr-only">Handover</h1>
+<div class="page-head">
+  <div class="row-between">
+    <p class="page-intro">Handover</p>
+    <button type="button" class="btn btn-default" data-new-handover>New handover</button>
   </div>
-
-  <section class="tiles" aria-label="Overview">
-    <a href="/handovers" class="tile">
-      <span class="tile-value" data-countup data-value="{{ tiles.handovers_open }}">{{ tiles.handovers_open }}</span>
-      <span class="tile-label">Handovers open</span>
-    </a>
-    <a href="/handovers?status=stalled" class="tile tile-amber">
-      <span class="tile-value" data-countup data-value="{{ tiles.handovers_attention }}">{{ tiles.handovers_attention }}</span>
-      <span class="tile-label">Stalled / with gaps</span>
-    </a>
-    <a href="/maintenance?state=needs" class="tile">
-      <span class="tile-value" data-countup data-value="{{ tiles.needs_maintenance }}">{{ tiles.needs_maintenance }}</span>
-      <span class="tile-label">Needs maintenance</span>
-    </a>
-    <a href="/maintenance?state=in" class="tile tile-amber">
-      <span class="tile-value" data-countup data-value="{{ tiles.at_vendor }}">{{ tiles.at_vendor }}</span>
-      <span class="tile-label">At vendor</span>
-    </a>
-    <a href="/maintenance?state=returned" class="tile">
-      <span class="tile-value" data-countup data-value="{{ tiles.returned_week }}">{{ tiles.returned_week }}</span>
-      <span class="tile-label">Returned this week</span>
-    </a>
-  </section>
-
-  <section class="card">
-    <div class="card-header row-between">
-      <h2 class="card-title">Needs attention</h2>
-      <span class="badge badge-secondary">{{ attention|length }}</span>
-    </div>
-    <div class="card-content">
-      {% if attention %}
-      <ul class="attention-list">
-        {% for item in attention %}
-        <li class="attention-row">
-          <span class="attention-icon attention-{{ item.urgency }}" data-state-icon>
-            {% if item.urgency == 0 %}✕{% elif item.urgency == 1 %}⏱{% elif item.urgency == 2 %}⏸{% elif item.urgency == 3 %}⊘{% else %}⚑{% endif %}
-          </span>
-          <span class="mono attention-serial">{{ item.serial }}</span>
-          <span class="attention-reason">{{ item.reason }}</span>
-          {% if item.kind == 'maintenance' %}
-          <span class="badge badge-accent">Repair</span>
-          {% endif %}
-          <span class="opstrip-inline">{% for stage, st in item.states %}<span class="opdot opdot-{{ st }} opdot-sm" data-opdot data-state="{{ st }}" title="{{ stage.replace('_',' ')|title }} — {{ state_word(st) }}"><span class="opdot-glyph" aria-hidden="true">{% if st == 'passed' %}✓{% elif st == 'failed' %}✕{% elif st == 'not_done' %}⊘{% else %}○{% endif %}</span></span>{% endfor %}</span>
-          {% if item.age_days %}<span class="attention-age muted">{{ item.age_days }}d</span>{% endif %}
-          <a href="{% if item.kind == 'maintenance' %}/maintenance/{% else %}/handovers/{% endif %}{{ item.id }}" class="btn btn-outline btn-sm attention-open">Open</a>
-        </li>
-        {% endfor %}
-      </ul>
-      {% else %}
-      <div class="empty" data-empty>
-        <span>Nothing needs attention.</span>
-        <a href="/handovers?new=1" class="btn btn-outline btn-sm">New handover</a>
-      </div>
-      {% endif %}
-    </div>
-  </section>
-
-  <section class="panels">
-    <div class="card panel">
-      <div class="card-header"><h2 class="card-title">Handovers by status</h2></div>
-      <div class="card-content">
-        <ul class="bar-list">
-          {% for bar in handover_bars %}
-          {% if bar.count %}
-          <li class="bar-row">
-            <span class="bar-label">{{ bar.key.replace('_', ' ')|title }}</span>
-            <span class="bar-track"><span class="bar-fill bar-{{ bar.key }}" data-bar data-pct="{{ bar.pct }}"></span></span>
-            <span class="bar-count mono">{{ bar.count }}</span>
-          </li>
-          {% endif %}
-          {% endfor %}
-          {% if not handover_bars|sum(attribute='count') %}<li class="empty" data-empty><span>No handovers yet.</span></li>{% endif %}
-        </ul>
-      </div>
-    </div>
-    <div class="card panel">
-      <div class="card-header"><h2 class="card-title">Maintenance by state</h2></div>
-      <div class="card-content">
-        <ul class="bar-list">
-          {% for bar in maint_bars %}
-          {% if bar.count %}
-          <li class="bar-row">
-            <span class="bar-label">{{ bar.key.replace('_', ' ')|title }}</span>
-            <span class="bar-track"><span class="bar-fill bar-maint-{{ bar.key }}" data-bar data-pct="{{ bar.pct }}"></span></span>
-            <span class="bar-count mono">{{ bar.count }}</span>
-          </li>
-          {% endif %}
-          {% endfor %}
-          {% if not maint_bars|sum(attribute='count') %}<li class="empty" data-empty><span>No maintenance cases yet.</span></li>{% endif %}
-        </ul>
-      </div>
-    </div>
-  </section>
 </div>
+<section class="tiles handover-tiles" aria-label="Handover overview">
+  <button type="button" class="tile tile-button" data-outcome="ready">
+    <span class="tile-value" data-ready-count>—</span>
+    <span class="tile-label">Ready labs</span>
+    <span class="tile-chips" data-ready-companies></span>
+  </button>
+  <button type="button" class="tile tile-button" data-outcome="complete">
+    <span class="tile-value" data-complete-count>—</span>
+    <span class="tile-label">Complete</span>
+  </button>
+  <button type="button" class="tile tile-button" data-outcome="not_complete">
+    <span class="tile-value" data-not-complete-count>—</span>
+    <span class="tile-label">Not complete yet</span>
+  </button>
+</section>
+<section class="card handover-results" aria-label="Handover cases">
+  <div class="card-content">
+    <div class="handover-list" data-handover-list><div class="empty" data-empty><span>—</span></div></div>
+  </div>
+</section>
 {% endblock %}
+{% block scripts %}<script src="/static/js/dashboard.js" defer></script>{% endblock %}
