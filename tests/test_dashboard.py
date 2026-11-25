@@ -61,9 +61,15 @@ def _handover(
     reported: str = "alice",
     confirmed: str = "alice",
     updated: datetime | None = None,
+    company: str | None = None,
+    kind: str = "handover",
+    recipient_mode: str | None = None,
 ) -> Handover:
     return Handover(
         status=status,
+        kind=kind,
+        device_company=company,
+        recipient_mode=recipient_mode,
         engineer_email=engineer[1],
         engineer_name=engineer[0],
         device_serial=serial,
@@ -570,6 +576,60 @@ async def test_case_board_shows_all_passed_only_when_every_operation_passed(
     draft_id = await _id_for(dashboard, "SN-DRAFT")
     draft = await dashboard.client.get(f"/handovers/{draft_id}")
     assert "All operations passed" not in draft.text
+
+
+async def test_handover_outcome_dashboard_excludes_maintenance(
+    dashboard: DashboardHarness,
+) -> None:
+    await _add(
+        dashboard,
+        serial="SN-READY-B1",
+        engineer=ENGINEER_A,
+        status="ready",
+        created=datetime(2026, 10, 23, 9, 0),
+        company="B.tech",
+        recipient_mode="none",
+    )
+    await _add(
+        dashboard,
+        serial="SN-READY-B2",
+        engineer=ENGINEER_B,
+        status="ready",
+        created=datetime(2026, 10, 24, 9, 0),
+        company="B.tech",
+        recipient_mode="none",
+    )
+    await _add(
+        dashboard,
+        serial="SN-READY-M1",
+        engineer=ENGINEER_B,
+        status="ready",
+        created=datetime(2026, 10, 25, 9, 0),
+        company="Mylo",
+        recipient_mode="none",
+    )
+    await _add(
+        dashboard,
+        serial="SN-MAINT-1",
+        engineer=ENGINEER_A,
+        status="completed",
+        created=datetime(2026, 10, 26, 9, 0),
+        kind="maintenance",
+        company="B.tech",
+        stages=_stages(passed=ALL_PASSED),
+    )
+
+    response = await dashboard.client.get("/api/dashboard/handover")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ready"]["total"] == 3
+    assert body["ready"]["by_company"] == [
+        {"company": "B.tech", "count": 2},
+        {"company": "Mylo", "count": 1},
+    ]
+    assert body["complete"]["total"] == 2
+    assert body["not_complete"]["total"] == 3
 
 
 async def test_case_history_page_renders_the_audit_trail(

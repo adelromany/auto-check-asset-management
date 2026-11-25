@@ -12,7 +12,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import current_user, get_session
-from app.dto.dashboard import DashboardSummaryOut, HandoverRowListOut
+from app.dto.dashboard import (
+    DashboardSummaryOut,
+    HandoverOutcomeDashboardOut,
+    HandoverRowListOut,
+)
 from app.services.dashboard import DashboardService
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -30,6 +34,14 @@ async def handovers_summary(
         created_from=_parse_bound(created_from, end_of_day=False),
         created_to=_parse_bound(created_to, end_of_day=True),
     )
+
+
+@router.get("/handover", response_model=HandoverOutcomeDashboardOut)
+async def handover_outcome_summary(
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> HandoverOutcomeDashboardOut:
+    return await DashboardService(session).handover_outcomes()
 
 
 @router.get("/handovers", response_model=HandoverRowListOut)

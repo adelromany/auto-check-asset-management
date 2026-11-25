@@ -28,9 +28,12 @@ from app.domain.stages import (
 from app.dto.dashboard import (
     DashboardSummaryOut,
     EngineerCountOut,
+    HandoverOutcomeDashboardOut,
     HandoverRowListOut,
     HandoverRowOut,
     MissingStepCountOut,
+    ReadyCompanyOut,
+    ReadyGroupOut,
     StageCountsOut,
     StageProgressOut,
 )
@@ -50,6 +53,48 @@ class DashboardService:
     def __init__(self, session: AsyncSession, *, now: datetime | None = None):
         self._session = session
         self._now = as_utc(now or datetime.now(timezone.utc))
+
+    # -- handover outcome summary -----------------------------------------
+    async def handover_outcomes(self) -> HandoverOutcomeDashboardOut:
+        """Return handover-only outcome totals; maintenance is excluded."""
+        handover_only = [Handover.kind == "handover"]
+        ready_rows = await self._session.execute(
+            select(Handover.device_company, func.count())
+            .where(*handover_only, Handover.status == HandoverStatus.READY.value)
+            .group_by(Handover.device_company)
+            .order_by(Handover.device_company)
+        )
+        by_company = [
+            ReadyCompanyOut(company=str(company or "Unknown"), count=int(count))
+            for company, count in ready_rows.all()
+        ]
+        ready_total = sum(item.count for item in by_company)
+
+        complete = await self._session.scalar(
+            select(func.count())
+            .where(
+                *handover_only,
+                Handover.status == HandoverStatus.COMPLETED.value,
+            )
+        )
+        not_complete = await self._session.scalar(
+            select(func.count())
+            .where(
+                *handover_only,
+                Handover.status.not_in(
+                    [
+                        HandoverStatus.COMPLETED.value,
+                        HandoverStatus.READY.value,
+                        HandoverStatus.CANCELLED.value,
+                    ]
+                ),
+            )
+        )
+        return HandoverOutcomeDashboardOut(
+            ready=ReadyGroupOut(total=ready_total, by_company=by_company),
+            complete={"total": int(complete or 0)},
+            not_complete={"total": int(not_complete or 0)},
+        )
 
     # -- summary ----------------------------------------------------------
     async def summary(

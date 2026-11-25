@@ -62,3 +62,21 @@ class HandoverRowListOut(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ReadyCompanyOut(BaseModel):
+    company: str
+    count: int
+
+
+class ReadyGroupOut(BaseModel):
+    total: int = 0
+    by_company: list[ReadyCompanyOut] = Field(default_factory=list)
+
+
+class HandoverOutcomeDashboardOut(BaseModel):
+    """Handover-only dashboard totals, separated from maintenance."""
+
+    ready: ReadyGroupOut
+    complete: dict[str, int]
+    not_complete: dict[str, int]
