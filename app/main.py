@@ -20,6 +20,7 @@ from app.routers import (
     documents,
     handovers,
     health,
+    maintenance,
     pages,
     snipeit,
 )
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
     application.include_router(pages.router)
     application.include_router(agent.router)
     application.include_router(handovers.router)
+    application.include_router(maintenance.router)
     application.include_router(documents.router)
     application.include_router(dashboard.router)
     application.include_router(snipeit.router)

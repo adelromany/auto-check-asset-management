@@ -193,6 +193,7 @@ class HandoverService:
         ticket_ref: str | None = None,
         kind: CaseKind | str = CaseKind.HANDOVER,
         client: SnipeItClient | None = None,
+        exact_serial: bool = False,
     ) -> Handover:
         """Create a case with every operation pending, then log it once.
 
@@ -209,7 +210,9 @@ class HandoverService:
         if existing is not None:
             raise HandoverAlreadyExists(active_case_message(existing, serial))
 
-        device = await self._read_device_facts(serial, resolved_kind, client)
+        device = await self._read_device_facts(
+            serial, resolved_kind, client, exact_serial=exact_serial
+        )
 
         handover = Handover(
             ticket_ref=(ticket_ref or "").strip() or None,
@@ -231,7 +234,7 @@ class HandoverService:
             handover.device_category = device.category
             handover.snipeit_status_name = device.status
         if resolved_kind == CaseKind.MAINTENANCE:
-            handover.maintenance_state = MaintenanceState.NEEDS_MAINTENANCE.value
+            handover.maintenance_state = MaintenanceState.WITH_IT.value
             handover.maintenance = MaintenanceInfo(handover_id=handover.id)
         else:
             handover.maintenance = None
@@ -258,15 +261,15 @@ class HandoverService:
         serial: str,
         kind: CaseKind,
         client: SnipeItClient | None,
+        *,
+        exact_serial: bool = False,
     ):
-        """Read the device facts of a handover device from Snipe-IT.
-
-        Returns ``None`` when no client is available (maintenance cases and
-        callers that only use the local database).
-        """
-        if kind is not CaseKind.HANDOVER or client is None:
+        """Read device facts from Snipe-IT before storing a new case."""
+        if client is None:
             return None
         try:
+            if exact_serial:
+                return await client.get_asset_by_exact_serial(serial)
             return await client.get_asset_by_serial(serial)
         except SnipeItNotFound as exc:
             raise DeviceNotInSnipeIt() from exc

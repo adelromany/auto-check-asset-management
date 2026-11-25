@@ -26,15 +26,93 @@ async def test_create_maintenance_case(api: ApiHarness) -> None:
     data = response.json()
     assert data["kind"] == "maintenance"
     assert data["device_serial"] == "SN-MAINT-001"
-    assert data["maintenance_state"] == MaintenanceState.NEEDS_MAINTENANCE.value
+    assert data["maintenance_state"] == MaintenanceState.WITH_IT.value
 
     # Verify detail
     detail = await api.client.get(f"/api/handovers/{data['id']}")
     assert detail.status_code == 200
     body = detail.json()
     stages = [s["stage"] for s in body["stages"]]
-    assert stages == ["received", "diagnosis", "snipeit_status", "sent_out", "returned"]
+    assert stages == [
+        "received",
+        "diagnosis",
+        "snipeit_status",
+        "taken_back",
+        "sent_out",
+        "returned",
+        "ready_status",
+    ]
     assert all(s["status"] == "pending" for s in body["stages"])
+
+
+async def test_phase06_create_and_lookup_store_the_device_snapshot(
+    api: ApiHarness,
+) -> None:
+    lookup = await api.client.get(
+        "/api/maintenance/device-lookup", params={"serial": "SN-11"}
+    )
+    assert lookup.status_code == 200, lookup.text
+    assert lookup.json()["model"] == "ThinkPad T14"
+    assert lookup.json()["assigned_to"] == "Alice"
+
+    reasons = await api.client.get("/api/maintenance/reasons")
+    assert reasons.status_code == 200
+    reason = next(item for item in reasons.json() if item["name"] == "Screen")
+
+    created = await api.client.post(
+        "/api/maintenance/cases",
+        json={"serial": "SN-11", "reason_id": reason["id"]},
+    )
+    assert created.status_code == 201, created.text
+    body = created.json()
+    assert body["maintenance_state"] == "with_it"
+    assert body["device_model"] == "ThinkPad T14"
+    assert body["maintenance"]["diagnosis_category"] == "Screen"
+    assert body["maintenance"]["received_date"] is not None
+    operations = {item["stage"]: item["status"] for item in body["stages"]}
+    assert operations["received"] == "passed"
+    assert operations["diagnosis"] == "passed"
+
+
+async def test_phase06_create_rejects_unknown_serial(api: ApiHarness) -> None:
+    response = await api.client.post(
+        "/api/maintenance/cases", json={"serial": "SN-DOES-NOT-EXIST"}
+    )
+    assert response.status_code == 422, response.text
+    assert response.json()["detail"] == "Serial not found in Snipe-IT"
+
+
+async def test_phase06_create_rejects_a_second_active_case(api: ApiHarness) -> None:
+    first = await api.client.post(
+        "/api/maintenance/cases", json={"serial": "SN-10"}
+    )
+    assert first.status_code == 201, first.text
+    second = await api.client.post(
+        "/api/maintenance/cases", json={"serial": "SN-10"}
+    )
+    assert second.status_code == 409, second.text
+    detail = second.json()["detail"]
+    assert detail["case_id"] == first.json()["id"]
+
+
+async def test_phase06_other_reason_requires_details(api: ApiHarness) -> None:
+    reasons = await api.client.get("/api/maintenance/reasons")
+    other = next(item for item in reasons.json() if item["name"] == "Other")
+    response = await api.client.post(
+        "/api/maintenance/cases",
+        json={"serial": "SN-10", "reason_id": other["id"]},
+    )
+    assert response.status_code == 422, response.text
+    assert response.json()["detail"] == "Details are required for Other."
+
+
+async def test_phase06_reasons_are_ordered_with_other_last(api: ApiHarness) -> None:
+    response = await api.client.get("/api/maintenance/reasons")
+    assert response.status_code == 200
+    names = [item["name"] for item in response.json()]
+    assert names[0] == "Screen"
+    assert names[-1] == "Other"
+    assert "Charger / power" in names
 
 
 async def test_update_maintenance_info_and_vendors(api: ApiHarness) -> None:

@@ -394,6 +394,24 @@ class SnipeItClient:
             raise SnipeItNotFound(f"No device found for serial: {serial}")
         return _asset_from_json(row)
 
+    async def get_asset_by_exact_serial(self, serial: str) -> SnipeItAsset:
+        """Return only an asset whose serial matches exactly."""
+        needle = serial.strip()
+        data = await self._get_json(
+            "/api/v1/hardware", params={"search": needle, "limit": 50}
+        )
+        row = next(
+            (
+                row
+                for row in _rows(data)
+                if str(row.get("serial") or "").strip() == needle
+            ),
+            None,
+        )
+        if row is None:
+            raise SnipeItNotFound(f"No device found for serial: {serial}")
+        return _asset_from_json(row)
+
     async def get_asset(self, asset_id: int) -> SnipeItAsset:
         data = await self._get_json(f"/api/v1/hardware/{asset_id}")
         row = _single_row(data)

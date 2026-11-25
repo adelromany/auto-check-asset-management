@@ -30,6 +30,7 @@ from app.domain.errors import (
     HandoverNotFound,
     InputMissing,
     InvalidStage,
+    MaintenanceCaseExists,
     MaintenanceFieldInvalid,
     ManualStageRequired,
     NotDoneReasonRequired,
@@ -64,6 +65,11 @@ _UNPROCESSABLE_ERRORS = (
 
 
 def handover_http_error(exc: HandoverError) -> HTTPException:
+    if isinstance(exc, MaintenanceCaseExists):
+        return HTTPException(
+            status_code=409,
+            detail={"message": str(exc), "case_id": exc.case_id},
+        )
     if isinstance(
         exc,
         (HandoverNotFound, DocumentNotFound, AgentReportNotFound, FormTemplateNotFound),

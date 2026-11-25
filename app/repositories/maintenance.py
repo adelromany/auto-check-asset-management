@@ -42,10 +42,22 @@ _FIELD_NAMES: tuple[str, ...] = (
 DEFAULT_VENDORS: tuple[str, ...] = ("FixTech",)
 DEFAULT_CATEGORIES: tuple[str, ...] = (
     "Screen",
-    "Battery",
     "Keyboard",
+    "Battery",
+    "Charger / power",
+    "Won't power on",
+    "Overheating",
+    "Slow",
+    "Disk",
+    "RAM",
     "Motherboard",
-    "Software",
+    "Network",
+    "Ports",
+    "Speaker / mic / webcam",
+    "Hinge / body",
+    "Liquid damage",
+    "OS / software",
+    "BIOS / boot",
     "Other",
 )
 
@@ -71,11 +83,34 @@ class MaintenanceRepository:
 
     async def list_diagnosis_categories(self) -> list[DiagnosisCategory]:
         result = await self._session.execute(
-            select(DiagnosisCategory)
-            .where(DiagnosisCategory.active.is_(True))
-            .order_by(DiagnosisCategory.name)
+            select(DiagnosisCategory).where(DiagnosisCategory.active.is_(True))
         )
-        return list(result.scalars().all())
+        categories = list(result.scalars().all())
+        order = {name.casefold(): index for index, name in enumerate(DEFAULT_CATEGORIES)}
+        categories.sort(
+            key=lambda item: (
+                1 if item.name_key == "other" else 0,
+                order.get(item.name_key, len(order)),
+                item.name.casefold(),
+            )
+        )
+        return categories
+
+    async def get_diagnosis_category(self, category_id: int) -> DiagnosisCategory | None:
+        return await self._session.scalar(
+            select(DiagnosisCategory).where(
+                DiagnosisCategory.id == category_id,
+                DiagnosisCategory.active.is_(True),
+            )
+        )
+
+    async def get_destination(self, destination_id: int) -> MaintenanceDestination | None:
+        return await self._session.scalar(
+            select(MaintenanceDestination).where(
+                MaintenanceDestination.id == destination_id,
+                MaintenanceDestination.active.is_(True),
+            )
+        )
 
     async def ensure_destination(self, name: str) -> MaintenanceDestination:
         """Return the case-insensitive list row, creating it when new."""

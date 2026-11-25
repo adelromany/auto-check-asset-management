@@ -114,6 +114,8 @@ class CategoryOut(BaseModel):
 class MaintenanceInfoOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
+    received_date: date | None = None
+    reason_text: str | None = None
     reported_issue: str | None = None
     priority: str | None = None
     condition_notes: str | None = None
@@ -168,6 +170,8 @@ class MaintenanceInfoOut(BaseModel):
                 pass
             vendor_name = dest.name if dest is not None else None
             return {
+                "received_date": getattr(data, "received_date", None),
+                "reason_text": getattr(data, "reason_text", None),
                 "reported_issue": getattr(data, "reported_issue", None),
                 "priority": getattr(data, "priority", None),
                 "condition_notes": getattr(data, "condition_notes", None),

@@ -142,6 +142,22 @@ class DeviceNotInSnipeIt(HandoverError):
         super().__init__(reason)
 
 
+class MaintenanceCaseExists(HandoverError):
+    """An active maintenance case already exists for the serial."""
+
+    def __init__(self, case_id: str):
+        self.case_id = case_id
+        super().__init__("An active maintenance case already exists for this device.")
+
+
+class MaintenanceReasonInvalid(HandoverError):
+    """The selected reason or reason text is invalid."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
 class SnipeItUnreachable(HandoverError):
     """Snipe-IT could not be reached (503)."""
 
