@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,6 +52,38 @@ async def create_case(
             engineer_email=user["email"],
             engineer_name=user.get("name") or "",
             client=client,
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.post("/cases/{case_id}/set-status", response_model=HandoverDetail)
+async def set_status(
+    case_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> HandoverDetail:
+    try:
+        view = await MaintenanceService(session).set_status(
+            case_id, engineer_email=user["email"], client=client
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.post("/cases/{case_id}/take-back", response_model=HandoverDetail)
+async def take_back(
+    case_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> HandoverDetail:
+    try:
+        view = await MaintenanceService(session).take_back(
+            case_id, engineer_email=user["email"], client=client
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc

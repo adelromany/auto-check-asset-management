@@ -162,10 +162,8 @@ MANUAL_OPERATIONS: frozenset[Operation] = frozenset(
         Operation.RECEIVED,
         Operation.DIAGNOSIS,
         Operation.SNIPEIT_STATUS,
-        Operation.TAKEN_BACK,
         Operation.SENT_OUT,
         Operation.RETURNED,
-        Operation.READY_STATUS,
     }
 )
 

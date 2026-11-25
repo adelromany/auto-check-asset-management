@@ -115,6 +115,68 @@ async def test_phase06_reasons_are_ordered_with_other_last(api: ApiHarness) -> N
     assert "Charger / power" in names
 
 
+async def test_phase06_set_status_and_take_back(api: ApiHarness) -> None:
+    created = await api.client.post(
+        "/api/maintenance/cases", json={"serial": "SN-11"}
+    )
+    assert created.status_code == 201, created.text
+    case_id = created.json()["id"]
+
+    status = await api.client.post(f"/api/maintenance/cases/{case_id}/set-status")
+    assert status.status_code == 200, status.text
+    operations = {item["stage"]: item["status"] for item in status.json()["stages"]}
+    assert operations["snipeit_status"] == "passed"
+    assert api.fake.assets[11]["status_label"]["name"] == "Maintenance"
+
+    taken = await api.client.post(f"/api/maintenance/cases/{case_id}/take-back")
+    assert taken.status_code == 200, taken.text
+    operations = {item["stage"]: item["status"] for item in taken.json()["stages"]}
+    assert operations["taken_back"] == "passed"
+    assert api.fake.assets[11]["assigned_to"] is None
+
+
+async def test_phase06_take_back_records_not_done_when_unassigned(
+    api: ApiHarness,
+) -> None:
+    created = await api.client.post(
+        "/api/maintenance/cases", json={"serial": "SN-10"}
+    )
+    case_id = created.json()["id"]
+    response = await api.client.post(f"/api/maintenance/cases/{case_id}/take-back")
+    assert response.status_code == 200, response.text
+    operation = next(
+        item for item in response.json()["stages"] if item["stage"] == "taken_back"
+    )
+    assert operation["status"] == "not_done"
+    assert operation["reason"] == "Not assigned"
+
+
+async def test_phase06_set_status_reports_a_missing_label(api: ApiHarness) -> None:
+    created = await api.client.post(
+        "/api/maintenance/cases", json={"serial": "SN-10"}
+    )
+    case_id = created.json()["id"]
+    api.fake.status_labels = []
+    response = await api.client.post(f"/api/maintenance/cases/{case_id}/set-status")
+    assert response.status_code == 422, response.text
+    assert response.json()["detail"] == 'Status label "Maintenance" not found in Snipe-IT'
+
+
+async def test_phase06_take_back_records_a_snipeit_error(api: ApiHarness) -> None:
+    created = await api.client.post(
+        "/api/maintenance/cases", json={"serial": "SN-11"}
+    )
+    case_id = created.json()["id"]
+    api.fake.fail_post_statuses = [500, 500, 500]
+    response = await api.client.post(f"/api/maintenance/cases/{case_id}/take-back")
+    assert response.status_code == 200, response.text
+    operation = next(
+        item for item in response.json()["stages"] if item["stage"] == "taken_back"
+    )
+    assert operation["status"] == "failed"
+    assert operation["reason"]
+
+
 async def test_update_maintenance_info_and_vendors(api: ApiHarness) -> None:
     created = await api.client.post(
         "/api/handovers",

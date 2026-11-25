@@ -11,12 +11,14 @@ from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import config
 from app.clients.snipeit import SnipeItClient, SnipeItError, SnipeItNotFound
 from app.domain.catalog import Operation
 from app.domain.errors import (
     DeviceNotInSnipeIt,
     HandoverAlreadyExists,
     MaintenanceCaseExists,
+    MaintenanceLabelNotFound,
     MaintenanceReasonInvalid,
     SnipeItUnreachable,
 )
@@ -145,3 +147,125 @@ class MaintenanceService:
                 input_checks=False,
             )
         return view
+
+    async def set_status(
+        self,
+        case_id: uuid.UUID,
+        *,
+        engineer_email: str,
+        client: SnipeItClient,
+    ) -> HandoverDetailView:
+        """Set and verify the Snipe-IT Maintenance status label."""
+        handover = await self._core.get(case_id, with_details=True)
+        if handover.snipeit_asset_id is None:
+            raise MaintenanceReasonInvalid("The case has no Snipe-IT device.")
+        label = config.SNIPEIT_STATUS_MAINTENANCE
+        try:
+            label_id = await client.find_status_label_id(label)
+        except SnipeItError as exc:
+            return await self._core.record_operation(
+                case_id,
+                Operation.SNIPEIT_STATUS,
+                status=StageStatus.FAILED,
+                reason=str(exc),
+                detail={"label": label},
+                actor=engineer_email,
+                input_checks=False,
+            )
+        if label_id is None:
+            raise MaintenanceLabelNotFound(label)
+        try:
+            result = await client.update_asset_status(handover.snipeit_asset_id, label_id)
+            asset = await client.get_asset(handover.snipeit_asset_id)
+        except SnipeItError as exc:
+            return await self._core.record_operation(
+                case_id,
+                Operation.SNIPEIT_STATUS,
+                status=StageStatus.FAILED,
+                reason=str(exc),
+                detail={"label": label},
+                actor=engineer_email,
+                input_checks=False,
+            )
+        matched = str(asset.status or "").strip().casefold() == label.strip().casefold()
+        if matched and result.status == "success":
+            handover.snipeit_status_name = asset.status
+            await self._session.flush()
+            return await self._core.record_operation(
+                case_id,
+                Operation.SNIPEIT_STATUS,
+                status=StageStatus.PASSED,
+                reason=None,
+                detail={"label": label, "status": asset.status},
+                actor=engineer_email,
+                input_checks=False,
+            )
+        reason = f"Status is {asset.status}"
+        return await self._core.record_operation(
+            case_id,
+            Operation.SNIPEIT_STATUS,
+            status=StageStatus.FAILED,
+            reason=reason,
+            detail={"label": label, "status": asset.status},
+            actor=engineer_email,
+            input_checks=False,
+        )
+
+    async def take_back(
+        self,
+        case_id: uuid.UUID,
+        *,
+        engineer_email: str,
+        client: SnipeItClient,
+    ) -> HandoverDetailView:
+        """Check in an assigned device, or record not done when unassigned."""
+        handover = await self._core.get(case_id, with_details=True)
+        if handover.snipeit_asset_id is None:
+            raise MaintenanceReasonInvalid("The case has no Snipe-IT device.")
+        try:
+            asset = await client.get_asset(handover.snipeit_asset_id)
+        except SnipeItError as exc:
+            return await self._core.record_operation(
+                case_id,
+                Operation.TAKEN_BACK,
+                status=StageStatus.FAILED,
+                reason=str(exc),
+                detail={},
+                actor=engineer_email,
+                input_checks=False,
+            )
+        if asset.assigned_to_id is None:
+            return await self._core.record_operation(
+                case_id,
+                Operation.TAKEN_BACK,
+                status=StageStatus.NOT_DONE,
+                reason="Not assigned",
+                detail={},
+                actor=engineer_email,
+                input_checks=False,
+            )
+        try:
+            result = await client.checkin_asset(
+                handover.snipeit_asset_id, "Taken back for maintenance"
+            )
+            refreshed = await client.get_asset(handover.snipeit_asset_id)
+        except SnipeItError as exc:
+            return await self._core.record_operation(
+                case_id,
+                Operation.TAKEN_BACK,
+                status=StageStatus.FAILED,
+                reason=str(exc),
+                detail={},
+                actor=engineer_email,
+                input_checks=False,
+            )
+        passed = result.status == "success" and refreshed.assigned_to_id is None
+        return await self._core.record_operation(
+            case_id,
+            Operation.TAKEN_BACK,
+            status=StageStatus.PASSED if passed else StageStatus.FAILED,
+            reason=None if passed else "Device is still assigned",
+            detail={"previous_assignee": asset.assigned_to_name},
+            actor=engineer_email,
+            input_checks=False,
+        )

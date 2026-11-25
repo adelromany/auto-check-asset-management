@@ -32,6 +32,7 @@ from app.domain.errors import (
     InvalidStage,
     MaintenanceCaseExists,
     MaintenanceFieldInvalid,
+    MaintenanceLabelNotFound,
     ManualStageRequired,
     NotDoneReasonRequired,
     OperationNotInKind,
@@ -61,6 +62,7 @@ _UNPROCESSABLE_ERRORS = (
     OperationNotInKind,
     ClosingConfirmationRequired,
     MaintenanceFieldInvalid,
+    MaintenanceLabelNotFound,
 )
 
 

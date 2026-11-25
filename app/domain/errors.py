@@ -158,6 +158,14 @@ class MaintenanceReasonInvalid(HandoverError):
         super().__init__(reason)
 
 
+class MaintenanceLabelNotFound(HandoverError):
+    """The configured Snipe-IT status label does not exist."""
+
+    def __init__(self, label: str):
+        self.label = label
+        super().__init__(f'Status label "{label}" not found in Snipe-IT')
+
+
 class SnipeItUnreachable(HandoverError):
     """Snipe-IT could not be reached (503)."""
 
