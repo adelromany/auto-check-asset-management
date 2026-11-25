@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import re
+import zipfile
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 
 import httpx
@@ -130,6 +132,18 @@ async def docs(tmp_path, monkeypatch):
 
     await http_client.aclose()
     await engine.dispose()
+
+
+def _write_template(path: Path) -> None:
+    output = BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        archive.writestr("[Content_Types].xml", b"content types")
+        archive.writestr(
+            "word/document.xml",
+            b"<w:document><w:body><w:p><w:r><w:t>{{ENGINEER}}</w:t></w:r>"
+            b"</w:p></w:body></w:document>",
+        )
+    path.write_bytes(output.getvalue())
 
 
 async def _create(api: DocsHarness, serial: str = "SN-10") -> str:
@@ -564,3 +578,47 @@ async def test_push_requires_an_uploaded_document(
 
     assert response.status_code == 422
     assert "Attach the signed scan first" in response.json()["detail"]
+
+
+async def test_form_endpoint_returns_filled_company_template(
+    docs: DocsHarness, tmp_path: Path, monkeypatch
+) -> None:
+    _write_template(tmp_path / "B.tech.docx")
+    monkeypatch.setattr(config, "FORMS_DIR", str(tmp_path))
+    handover_id = await _create(docs)
+
+    response = await docs.client.get(f"/api/handovers/{handover_id}/form")
+
+    assert response.status_code == 200
+    assert "B.tech-SN-10.docx" in response.headers["content-disposition"]
+    with zipfile.ZipFile(BytesIO(response.content)) as archive:
+        document = archive.read("word/document.xml").decode()
+    assert "Engineer One" in document
+
+
+async def test_form_endpoint_missing_template_records_failure(
+    docs: DocsHarness, tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(config, "FORMS_DIR", str(tmp_path))
+    handover_id = await _create(docs)
+
+    response = await docs.client.get(f"/api/handovers/{handover_id}/form")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "No form template for B.tech"
+    detail = await docs.client.get(f"/api/handovers/{handover_id}")
+    assert _stage(detail.json(), "report_printed")["status"] == "failed"
+
+
+async def test_form_endpoint_without_company_returns_404(
+    docs: DocsHarness, tmp_path: Path, monkeypatch
+) -> None:
+    _write_template(tmp_path / "B.tech.docx")
+    monkeypatch.setattr(config, "FORMS_DIR", str(tmp_path))
+    docs.fake.assets[10]["company"] = None
+    handover_id = await _create(docs)
+
+    response = await docs.client.get(f"/api/handovers/{handover_id}/form")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "No form template for unknown company"

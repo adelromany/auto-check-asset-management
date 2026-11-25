@@ -100,6 +100,10 @@ class DocumentNotFound(HandoverError):
     """No stored document exists for this handover."""
 
 
+class FormTemplateNotFound(HandoverError):
+    """No handover form template exists for the device company."""
+
+
 class DocumentTooLarge(HandoverError):
     """The uploaded document exceeds DOCUMENT_MAX_BYTES."""
 

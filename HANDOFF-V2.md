@@ -29,3 +29,4 @@ PHASE 03 DONE - company rule, recipient modes/search, recipient current items/ch
 Next: `04-handover-form-and-outcome.md` (read only its steps; `00-README` A and B1).
 STEP 4.1 DONE pure `app/domain/form_fill.py` fills `{{ENGINEER}}` in document/header/footer XML, handles split runs, escapes names, and preserves valid DOCX ZIP structure; 5 tests in `tests/test_form_fill.py`; `pytest tests/test_form_fill.py -q` = 5 passed.
 STEP 4.2 DONE `FORMS_DIR` config, company-normalized `find_template` service, `forms/README.md`, `tools/check_forms.py`, and 3 lookup tests; `pytest tests/test_form_fill.py tests/test_forms_service.py -q` = 8 passed.
+STEP 4.3 DONE `GET /api/handovers/{id}/form` generates the company DOCX with the opening engineer name, returns it as an attachment, and records REPORT_PRINTED passed/failed (404 on missing/unknown company); 3 tests added; `pytest tests/test_documents.py -q` = 23 passed.

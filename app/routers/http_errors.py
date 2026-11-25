@@ -22,6 +22,7 @@ from app.domain.errors import (
     DeviceNotInSnipeIt,
     DocumentNotFound,
     DocumentTooLarge,
+    FormTemplateNotFound,
     HandoverAlreadyExists,
     HandoverCancelled,
     HandoverCompleted,
@@ -63,7 +64,10 @@ _UNPROCESSABLE_ERRORS = (
 
 
 def handover_http_error(exc: HandoverError) -> HTTPException:
-    if isinstance(exc, (HandoverNotFound, DocumentNotFound, AgentReportNotFound)):
+    if isinstance(
+        exc,
+        (HandoverNotFound, DocumentNotFound, AgentReportNotFound, FormTemplateNotFound),
+    ):
         return HTTPException(status_code=404, detail=str(exc))
     if isinstance(exc, DeviceNotInSnipeIt):
         return HTTPException(status_code=422, detail=str(exc))

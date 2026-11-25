@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,7 @@ from app.routers.http_errors import (
     snipeit_http_error,
 )
 from app.services.documents import DocumentService
+from app.services.forms import FormService
 
 router = APIRouter(prefix="/api/handovers", tags=["documents"])
 
@@ -54,6 +55,28 @@ async def printable_report(
     template = _environment.get_template("handover_report.html")
     return HTMLResponse(
         template.render(handover=data.handover, payload=data.payload)
+    )
+
+
+@router.get("/{handover_id}/form")
+async def download_form(
+    handover_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    service = FormService(session, forms_dir=config.FORMS_DIR)
+    try:
+        form = await service.generate(
+            handover_id,
+            actor=user["email"],
+            fallback_engineer_name=user.get("name") or "",
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return Response(
+        content=form.content,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{form.filename}"'},
     )
 
 
