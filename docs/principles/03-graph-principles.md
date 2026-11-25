@@ -44,6 +44,7 @@ The project graph is a map of what depends on what, so any change can be assesse
   | module | app/domain/stages.py | domain | operation keys, four outcome statuses and six case statuses |
 | module | app/domain/handover_rules.py | domain | pure derive_status, missing_steps, advice and gap rules |
 | module | app/domain/company_rules.py | domain | pure company normalization and recipient-company conflict rules |
+| module | app/domain/form_fill.py | domain | pure Word template engineer-placeholder replacement |
 | module | app/domain/maintenance_rules.py | domain | pure maintenance state derivation, turnaround days and due dates |
   | module | app/domain/software_rules.py | domain | pure hardware, required software and activation evaluators |
 | module | app/domain/errors.py | domain | typed handover workflow exceptions |
@@ -62,6 +63,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/services/software_check.py | service | override and re-evaluation of software checks |
 | module | app/services/snipeit_ops.py | service | recipient search/confirm, preview, checkin and verified checkout |
 | module | app/services/documents.py | service | printable report, safe scan storage, download and verified push |
+| module | app/services/forms.py | service | company template lookup and generated handover form |
 | module | app/services/dashboard.py | service | database-side dashboard aggregates and page-sized handover rows |
 | module | app/services/sessions.py | service | in-memory short-code session store |
 | module | app/routers/pages.py | router | four-screen shell (dashboard, handovers, maintenance, sync), case pages/history, legacy 308 redirects, /api/me |

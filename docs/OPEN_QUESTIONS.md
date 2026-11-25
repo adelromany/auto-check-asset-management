@@ -306,3 +306,25 @@ answer `308` and preserve the query string; `/device-check?handover_id=` lands o
 `/sync?handover_id=` and offers "Return to case".
 
 Owner: product/UI owner.
+
+## Q-25 — When will the Nexta handover template be supplied? (OPEN)
+
+Context: the portal selects Word templates by Snipe-IT company name. The owner
+supplies `B.tech.docx` and `Mylo.docx`; no Nexta template is available yet.
+
+Conservative option taken: a Nexta device returns the plain 404 line `No form
+template for Nexta` and records the form operation as failed. No template is
+invented or substituted from another company.
+
+Owner: handover process owner.
+
+## Q-26 — How should engineers print the generated form? (OPEN)
+
+Context: the portal runs on a server and cannot print to the office printer.
+The form operation now passes when the filled Word file is generated and
+downloaded; printing happens from the engineer's own PC.
+
+Conservative option taken: generate and download the company DOCX only. No
+server-side print service or office-printer integration is added.
+
+Owner: handover process owner.

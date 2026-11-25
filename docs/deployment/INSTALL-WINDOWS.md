@@ -82,6 +82,7 @@ The repository is `https://github.com/adelromany/auto-check-asset-management.git
    | `ENABLE_DIAG` | `false` or `true` for clipboard diagnostics | Set only for local diagnosis | Safe default false |
    | `DATABASE_URL` | `sqlite+aiosqlite:///./data/handover.db` | SQLite local; PostgreSQL URL from database administrator | Safe SQLite default |
    | `DOCUMENTS_DIR` | `./data/documents` | Set storage path if needed | Safe default |
+   | `FORMS_DIR` | `forms` | Folder containing company Word templates | Safe default |
    | `DOCUMENT_MAX_BYTES` | `10485760` (10 MiB) | Set by operator | Safe default |
    | `SNIPEIT_TIMEOUT_SECONDS` | `10` | Set by operator | Safe default |
    | `SNIPEIT_URL` | `http://localhost:8081` | Snipe-IT administrator | Optional for portal-only setup |
