@@ -504,7 +504,7 @@ async def test_checkout_requires_a_snipeit_recipient(ops: OpsHarness) -> None:
     assert response.json()["detail"] == "Choose a Snipe-IT recipient first"
 
 
-async def test_checkout_rejects_a_recipient_company_mismatch(
+async def test_checkout_allows_a_recipient_company_mismatch(
     ops: OpsHarness,
 ) -> None:
     ops.fake.users[1]["company"]["name"] = "Mylo"
@@ -512,11 +512,9 @@ async def test_checkout_rejects_a_recipient_company_mismatch(
 
     response = await ops.client.post(f"/api/handovers/{handover_id}/checkout")
 
-    assert response.status_code == 422, response.text
-    assert response.json() == {
-        "code": "company_mismatch",
-        "message": "Recipient company differs from the device company",
-    }
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert "company_mismatch" in [item["code"] for item in body["warnings"]]
 
 
 async def test_checkout_fails_cleanly_when_the_serial_is_unknown(

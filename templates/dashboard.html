@@ -1,31 +1,145 @@
 {% extends "base.html" %}
 {% block content %}
 <h1 class="sr-only">Handover</h1>
-<div class="page-head">
+<div class="dashboard-head">
   <div class="row-between">
     <p class="page-intro">Handover</p>
-    <button type="button" class="btn btn-default" data-new-handover>New handover</button>
+    <div class="dash-controls">
+      <div class="segmented" role="group" aria-label="Period">
+        <button type="button" data-period="today" aria-pressed="false">Today</button>
+        <button type="button" data-period="7d" aria-pressed="false">7 days</button>
+        <button type="button" data-period="30d" aria-pressed="true">30 days</button>
+        <button type="button" data-period="all" aria-pressed="false">All</button>
+      </div>
+      <div class="chip-row" role="group" aria-label="Company">
+        <button type="button" class="chip chip-active" data-company="all" aria-pressed="true">All</button>
+        <button type="button" class="chip" data-company="B.tech" aria-pressed="false">B.tech</button>
+        <button type="button" class="chip" data-company="Nexta" aria-pressed="false">Nexta</button>
+        <button type="button" class="chip" data-company="Mylo" aria-pressed="false">Mylo</button>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" data-refresh aria-label="Refresh">↻</button>
+      <button type="button" class="btn btn-default" data-new-handover>New handover</button>
+    </div>
   </div>
 </div>
-<section class="tiles handover-tiles" aria-label="Handover overview">
-  <button type="button" class="tile tile-button" data-outcome="ready">
-    <span class="tile-value" data-ready-count>—</span>
+
+<section class="kpi-grid" aria-label="Handover totals">
+  <button type="button" class="tile kpi" data-kpi="ready">
+    <span class="tile-value" data-tile="ready">0</span>
     <span class="tile-label">Ready labs</span>
-    <span class="tile-chips" data-ready-companies></span>
+    <span class="spark" data-spark="ready" aria-hidden="true"></span>
   </button>
-  <button type="button" class="tile tile-button" data-outcome="complete">
-    <span class="tile-value" data-complete-count>—</span>
+  <button type="button" class="tile kpi" data-kpi="complete">
+    <span class="tile-value" data-tile="complete">0</span>
     <span class="tile-label">Complete</span>
+    <span class="spark" data-spark="complete" aria-hidden="true"></span>
   </button>
-  <button type="button" class="tile tile-button" data-outcome="not_complete">
-    <span class="tile-value" data-not-complete-count>—</span>
-    <span class="tile-label">Not complete yet</span>
+  <button type="button" class="tile kpi" data-kpi="not_complete">
+    <span class="tile-value" data-tile="not_complete">0</span>
+    <span class="tile-label">Not complete</span>
+    <span class="spark" data-spark="not_complete" aria-hidden="true"></span>
+  </button>
+  <button type="button" class="tile kpi" data-kpi="waiting_user">
+    <span class="tile-value" data-tile="waiting_user">0</span>
+    <span class="tile-label">Waiting for user</span>
+  </button>
+  <button type="button" class="tile kpi" data-kpi="stalled">
+    <span class="tile-value" data-tile="stalled">0</span>
+    <span class="tile-label">Stalled</span>
+  </button>
+  <button type="button" class="tile kpi" data-kpi="warnings">
+    <span class="tile-value" data-tile="warnings">0</span>
+    <span class="tile-label">Warnings</span>
   </button>
 </section>
+
+<div class="dash-row dash-row-2">
+  <section class="card" aria-labelledby="per-day-title">
+    <div class="card-header"><h2 class="card-title" id="per-day-title">Handovers per day</h2></div>
+    <div class="card-content">
+      <div data-chart="per-day"></div>
+      <div class="chart-legend">
+        <span class="chart-legend-item"><span class="chart-swatch chart-series-started"></span>Started</span>
+        <span class="chart-legend-item"><span class="chart-swatch chart-series-completed"></span>Completed</span>
+      </div>
+    </div>
+  </section>
+  <section class="card" aria-labelledby="time-title">
+    <div class="card-header"><h2 class="card-title" id="time-title">Average time to complete</h2></div>
+    <div class="card-content">
+      <div class="metric-row">
+        <div class="metric">
+          <span class="metric-value" data-metric="median">—</span>
+          <span class="metric-label">Median</span>
+        </div>
+        <div class="metric">
+          <span class="metric-value" data-metric="average">—</span>
+          <span class="metric-label">Average</span>
+        </div>
+        <div class="metric">
+          <span class="metric-value" data-metric="within">—</span>
+          <span class="metric-label">Within 24 h</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="dash-row dash-row-3">
+  <section class="card" aria-labelledby="ready-title">
+    <div class="card-header"><h2 class="card-title" id="ready-title">Ready labs</h2></div>
+    <div class="card-content">
+      <div class="bar-list" data-ready-bars></div>
+      <div class="model-list" data-ready-models></div>
+    </div>
+  </section>
+  <section class="card" aria-labelledby="company-title">
+    <div class="card-header"><h2 class="card-title" id="company-title">By company</h2></div>
+    <div class="card-content">
+      <table class="table table-compact">
+        <thead><tr><th scope="col">Company</th><th scope="col">Ready</th><th scope="col">Done</th><th scope="col">Open</th><th scope="col">Waiting</th></tr></thead>
+        <tbody data-company-table></tbody>
+      </table>
+    </div>
+  </section>
+  <section class="card" aria-labelledby="missing-title">
+    <div class="card-header"><h2 class="card-title" id="missing-title">Missing parts</h2></div>
+    <div class="card-content"><div class="bar-list" data-missing-bars></div></div>
+  </section>
+</div>
+
+<div class="dash-row dash-row-4">
+  <section class="card attention-card" aria-labelledby="attention-title">
+    <div class="card-header"><h2 class="card-title" id="attention-title">Needs attention</h2></div>
+    <div class="card-content"><div class="attention-list" data-attention></div></div>
+  </section>
+  <section class="card" aria-labelledby="activity-title">
+    <div class="card-header"><h2 class="card-title" id="activity-title">Recent activity</h2></div>
+    <div class="card-content"><div class="activity-list" data-activity></div></div>
+  </section>
+</div>
+
+<section class="card" aria-labelledby="engineer-title">
+  <div class="card-header"><h2 class="card-title" id="engineer-title">By engineer</h2></div>
+  <div class="card-content">
+    <table class="table table-compact">
+      <thead><tr><th scope="col">Engineer</th><th scope="col">Open now</th><th scope="col">Completed in period</th></tr></thead>
+      <tbody data-engineer-table></tbody>
+    </table>
+  </div>
+</section>
+
 <section class="card handover-results" aria-label="Handover cases">
+  <div class="card-header">
+    <h2 class="card-title" data-panel-title>Needs attention</h2>
+    <button type="button" class="btn btn-outline btn-sm" data-panel-clear>Clear</button>
+  </div>
   <div class="card-content">
     <div class="handover-list" data-handover-list><div class="empty" data-empty><span>—</span></div></div>
   </div>
 </section>
 {% endblock %}
-{% block scripts %}<script src="/static/js/dashboard.js" defer></script>{% endblock %}
+{% block scripts %}
+<script src="/static/js/dashboard_charts.js" defer></script>
+<script src="/static/js/dashboard.js" defer></script>
+{% endblock %}

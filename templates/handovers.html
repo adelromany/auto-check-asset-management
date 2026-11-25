@@ -32,7 +32,7 @@
         <tr class="table-row" data-row data-company="{{ row.company }}">
           <td class="table-cell"><a class="row-link mono" href="/handovers/{{ row.id }}">{{ row.serial }}</a></td>
           <td class="table-cell">{{ row.model or '—' }}</td>
-          <td class="table-cell"><span class="badge badge-secondary">{{ row.company or '—' }}</span></td>
+          <td class="table-cell"><span class="badge badge-secondary">{{ row.company or '—' }}</span>{% if row.warnings %}<span class="warn-mark" title="{{ row.company or '—' }} / {{ row.recipient_company or '—' }}">!</span>{% endif %}</td>
           <td class="table-cell">{{ row.recipient or 'No recipient' }}</td>
           <td class="table-cell"><div class="case-chips">{% for part in row.missing[:3] %}<span class="badge badge-outline">{{ part }}</span>{% endfor %}{% if row.missing|length > 3 %}<span class="badge badge-secondary">+{{ row.missing|length - 3 }}</span>{% endif %}</div></td>
           <td class="table-cell mono">{{ row.age_days }}d</td>

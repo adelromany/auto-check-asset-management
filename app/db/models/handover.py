@@ -95,6 +95,7 @@ class Handover(Base):
     recipient_snipeit_username: Mapped[str | None] = mapped_column(String(200))
     recipient_snipeit_name: Mapped[str | None] = mapped_column(String(200))
     recipient_snipeit_email: Mapped[str | None] = mapped_column(String(320))
+    recipient_company: Mapped[str | None] = mapped_column(String(120))
     recipient_confirmed_by: Mapped[str | None] = mapped_column(String(320))
     recipient_confirmed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)

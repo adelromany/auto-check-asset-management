@@ -26,7 +26,6 @@ from app.clients.snipeit import (
 from app.db.models.handover import Handover
 from app.domain.errors import (
     CaseStateConflict,
-    CompanyMismatch,
     InputMissing,
     RecipientConfirmationConflict,
 )
@@ -174,8 +173,6 @@ class SnipeItHandoverService:
         if mode == "snipeit":
             assert user_id is not None
             user = await client.get_user(user_id)
-            if company_conflict(handover.device_company, user.company):
-                raise CompanyMismatch()
 
         new_name = ""
         detail: dict[str, Any]
@@ -190,7 +187,9 @@ class SnipeItHandoverService:
                 "name": user.name,
                 "company": user.company,
             }
-            if not company_known(user.company):
+            if company_conflict(handover.device_company, user.company):
+                detail["warning"] = "company_mismatch"
+            elif not company_known(user.company):
                 detail["warning"] = "company_unknown"
             status = StageStatus.PASSED
             reason = None
@@ -212,6 +211,7 @@ class SnipeItHandoverService:
             handover.recipient_snipeit_username = user.username
             handover.recipient_snipeit_name = user.name
             handover.recipient_snipeit_email = user.email
+            handover.recipient_company = user.company
             handover.recipient_confirmed_by = actor
             handover.recipient_confirmed_at = _utcnow()
         elif mode == "not_in_snipeit":
@@ -233,6 +233,19 @@ class SnipeItHandoverService:
                 actor=actor,
                 type="recipient_changed",
                 detail={"old_name": old_name, "new_name": new_name},
+            )
+        if mode == "snipeit" and company_conflict(
+            handover.device_company, handover.recipient_company
+        ):
+            await self._events.add(
+                handover_id=handover.id,
+                actor=actor,
+                type="company_mismatch_warning",
+                detail={
+                    "device_company": handover.device_company,
+                    "recipient_company": handover.recipient_company,
+                    "engineer": actor,
+                },
             )
 
         view = await self._core.record_operation(
@@ -351,6 +364,7 @@ class SnipeItHandoverService:
         handover.recipient_snipeit_username = None
         handover.recipient_snipeit_name = None
         handover.recipient_snipeit_email = None
+        handover.recipient_company = None
         handover.recipient_free_name = None
         handover.recipient_free_email = None
         handover.recipient_confirmed_by = None
@@ -409,21 +423,28 @@ class SnipeItHandoverService:
         handover.recipient_snipeit_username = user.username or user.name
         handover.recipient_snipeit_name = user.name
         handover.recipient_snipeit_email = user.email
+        handover.recipient_company = user.company
         handover.recipient_confirmed_by = actor
         handover.recipient_confirmed_at = _utcnow()
         await self._session.flush()
+
+        detail = {
+            "snipeit_user_id": user.id,
+            "username": user.username,
+            "name": user.name,
+            "company": user.company,
+        }
+        if company_conflict(handover.device_company, user.company):
+            detail["warning"] = "company_mismatch"
+        elif not company_known(user.company):
+            detail["warning"] = "company_unknown"
 
         return await self._core.record_operation(
             handover.id,
             Operation.RECIPIENT_CHECK,
             status=StageStatus.PASSED,
             reason=None,
-            detail={
-                "snipeit_user_id": user.id,
-                "username": user.username,
-                "name": user.name,
-                "company": user.company,
-            },
+            detail=detail,
             actor=actor,
             input_checks=False,
         )
@@ -435,6 +456,7 @@ class SnipeItHandoverService:
         handover.recipient_snipeit_username = None
         handover.recipient_snipeit_name = None
         handover.recipient_snipeit_email = None
+        handover.recipient_company = None
         handover.recipient_confirmed_by = actor
         handover.recipient_confirmed_at = _utcnow()
         await self._session.flush()
@@ -749,11 +771,6 @@ class SnipeItHandoverService:
         recipient_id = handover.recipient_snipeit_id
         if recipient_id is None:
             raise InputMissing("Choose a Snipe-IT recipient first")
-
-        recipient_row = stage_row(handover, Operation.RECIPIENT_CHECK)
-        recipient_company = (recipient_row.detail or {}).get("company")
-        if company_conflict(handover.device_company, recipient_company):
-            raise CompanyMismatch()
 
         try:
             asset = await client.get_asset_by_serial(

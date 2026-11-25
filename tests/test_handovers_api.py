@@ -204,7 +204,7 @@ async def test_recipient_snipeit_same_company_passes(api: ApiHarness) -> None:
     assert recipient["status"] == "passed"
 
 
-async def test_recipient_company_mismatch_stores_nothing(api: ApiHarness) -> None:
+async def test_recipient_company_mismatch_is_a_warning(api: ApiHarness) -> None:
     api.fake.users[3] = {
         "id": 3,
         "username": "carol",
@@ -219,13 +219,18 @@ async def test_recipient_company_mismatch_stores_nothing(api: ApiHarness) -> Non
         json={"mode": "snipeit", "user_id": 3},
     )
 
-    assert response.status_code == 422, response.text
-    assert response.json() == {
-        "code": "company_mismatch",
-        "message": "Recipient company differs from the device company",
-    }
-    detail = await api.client.get(f"/api/handovers/{case['id']}")
-    assert detail.json()["recipient_mode"] is None
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["recipient_mode"] == "snipeit"
+    assert body["recipient_company"] == "Mylo"
+    assert [item["code"] for item in body["warnings"]] == ["company_mismatch"]
+    recipient = next(
+        item for item in body["stages"] if item["stage"] == "recipient_check"
+    )
+    assert recipient["status"] == "passed"
+    assert recipient["detail"]["warning"] == "company_mismatch"
+    event_types = [event["type"] for event in body["events"]]
+    assert "company_mismatch_warning" in event_types
 
 
 async def test_recipient_none_is_not_done(api: ApiHarness) -> None:

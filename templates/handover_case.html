@@ -8,6 +8,7 @@
       <span class="badge badge-secondary" data-case-company>{{ handover.device_company or '—' }}</span>
       <span class="badge badge-outline" data-case-model>{{ handover.device_model or '—' }}</span>
       <span class="badge {% if outcome == 'complete' %}badge-success{% elif outcome == 'ready' %}badge-accent{% else %}badge-warning{% endif %}" data-case-outcome>{{ {'complete': 'Complete', 'ready': 'Ready', 'not_complete': 'Not complete yet'}.get(outcome, 'Not complete yet') }}</span>
+      <span class="case-chips" data-header-warning></span>
     </div>
   </div>
   <a href="/handovers/{{ handover.id }}/history" class="btn btn-outline">History</a>

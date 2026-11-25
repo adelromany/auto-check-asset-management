@@ -128,3 +128,98 @@ class MaintenanceCaseOut(BaseModel):
     received_date: date | None = None
     sent_date: date | None = None
     returned_date: date | None = None
+
+
+# -- Round 2: full handover operations dashboard -----------------------------
+
+
+class HandoverTilesOut(BaseModel):
+    ready: int = 0
+    complete: int = 0
+    not_complete: int = 0
+    waiting_user: int = 0
+    stalled: int = 0
+    warnings: int = 0
+    avg_hours_to_complete: float | None = None
+    median_hours_to_complete: float | None = None
+    within_24h_percent: float | None = None
+
+
+class HandoverCompanyRowOut(BaseModel):
+    company: str
+    ready: int = 0
+    complete: int = 0
+    not_complete: int = 0
+    waiting_user: int = 0
+
+
+class ReadyModelCompanyOut(BaseModel):
+    company: str
+    count: int
+
+
+class ReadyModelOut(BaseModel):
+    model: str
+    total: int
+    by_company: list[ReadyModelCompanyOut] = Field(default_factory=list)
+
+
+class HandoverPerDayOut(BaseModel):
+    day: date
+    started: int = 0
+    completed: int = 0
+
+
+class HandoverMissingPartOut(BaseModel):
+    stage: str
+    title: str
+    count: int
+
+
+class HandoverEngineerOut(BaseModel):
+    name: str
+    open: int = 0
+    completed_in_period: int = 0
+
+
+class HandoverAttentionOut(BaseModel):
+    id: uuid.UUID
+    serial: str
+    model: str | None = None
+    company: str | None = None
+    recipient: str | None = None
+    reason: str
+    age_hours: float = 0
+    filter: str = "attention"
+    stage: str | None = None
+
+
+class HandoverActivityOut(BaseModel):
+    time: datetime
+    text: str
+    case_id: uuid.UUID
+    serial: str
+    engineer: str | None = None
+
+
+class HandoverDashboardOut(BaseModel):
+    """Everything the handover dashboard renders, in one JSON document."""
+
+    period: str = "30d"
+    company: str = "all"
+    tiles: HandoverTilesOut = Field(default_factory=HandoverTilesOut)
+    by_company: list[HandoverCompanyRowOut] = Field(default_factory=list)
+    ready_by_model: list[ReadyModelOut] = Field(default_factory=list)
+    per_day: list[HandoverPerDayOut] = Field(default_factory=list)
+    missing_parts: list[HandoverMissingPartOut] = Field(default_factory=list)
+    by_engineer: list[HandoverEngineerOut] = Field(default_factory=list)
+    attention: list[HandoverAttentionOut] = Field(default_factory=list)
+    activity: list[HandoverActivityOut] = Field(default_factory=list)
+
+
+class HandoverCaseListOut(BaseModel):
+    """The bottom panel: cases for the clicked tile, bar, cell or part."""
+
+    filter: str
+    items: list[HandoverSummary] = Field(default_factory=list)
+    total: int = 0

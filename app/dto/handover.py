@@ -7,7 +7,7 @@ from datetime import date, datetime
 from typing import Any, Literal
 
 from app.domain.catalog import Operation
-from app.domain.handover_rules import StageState, case_outcome, missing_parts
+from app.domain.handover_rules import StageState, case_outcome, case_warnings, missing_parts
 from app.domain.stages import StageStatus
 
 from pydantic import (
@@ -220,8 +220,15 @@ class MaintenanceUpdate(BaseModel):
     warranty: str | None = None
 
 
+def _value(item: Any, key: str) -> Any:
+    """Read a field from an ORM row or a plain mapping."""
+    if isinstance(item, dict):
+        return item.get(key)
+    return getattr(item, key, None)
+
+
 def _outcome_fields(data: Any) -> dict[str, Any]:
-    """Derive outcome and missing parts from loaded operation rows."""
+    """Derive outcome, missing parts and warnings from loaded operation rows."""
     stages = data.get("stages") if isinstance(data, dict) else getattr(data, "stages", None)
     recipient_mode = (
         data.get("recipient_mode")
@@ -241,11 +248,22 @@ def _outcome_fields(data: Any) -> dict[str, Any]:
         )
         for row in (stages or [])
     ]
+    company_unknown = any(
+        _value(row, "stage") == Operation.RECIPIENT_CHECK.value
+        and (_value(row, "detail") or {}).get("warning") == "company_unknown"
+        for row in (stages or [])
+    )
+    warnings = case_warnings(
+        _value(data, "device_company"),
+        _value(data, "recipient_company"),
+        company_unknown=company_unknown,
+    )
     return {
         "outcome": case_outcome(
             states, recipient_mode=recipient_mode, cancelled=cancelled
         ).value,
         "missing": missing_parts(states),
+        "warnings": [{"code": item.code, "text": item.text} for item in warnings],
     }
 
 
@@ -286,6 +304,7 @@ class HandoverSummary(BaseModel):
     status: str
     outcome: str
     missing: list[str]
+    warnings: list[dict[str, str]] = Field(default_factory=list)
     maintenance_state: str | None = None
     engineer_email: str
     engineer_name: str
@@ -304,6 +323,7 @@ class HandoverSummary(BaseModel):
     recipient_snipeit_username: str | None = None
     recipient_snipeit_name: str | None = None
     recipient_snipeit_email: str | None = None
+    recipient_company: str | None = None
     recipient_confirmed_by: str | None = None
     recipient_confirmed_at: datetime | None = None
     created_at: datetime

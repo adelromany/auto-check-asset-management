@@ -31,7 +31,13 @@ from app import config
 from app.dependencies import current_user, get_session
 from app.domain.catalog import CaseKind, Operation, OPERATION_TITLES, lanes_for
 from app.domain.errors import HandoverNotFound
-from app.domain.handover_rules import StageState, case_outcome, missing_parts, stalled_by_age
+from app.domain.handover_rules import (
+    StageState,
+    case_outcome,
+    case_warnings,
+    missing_parts,
+    stalled_by_age,
+)
 from app.domain.maintenance_rules import (
     MAINTENANCE_OVERDUE_DAYS,
     MaintenanceState,
@@ -155,9 +161,14 @@ def _row_context(handover) -> dict:
             or handover.recipient_snipeit_username
             or handover.recipient_reported_username
         ),
+        "recipient_company": getattr(handover, "recipient_company", None),
         "status": handover.status,
         "outcome": case_outcome(handover_states, recipient_mode=handover.recipient_mode, cancelled=handover.status == "cancelled").value,
         "missing": missing_parts(handover_states),
+        "warnings": case_warnings(
+            handover.device_company,
+            getattr(handover, "recipient_company", None),
+        ),
         "display_status": _display_status(handover),
         "maintenance_state": handover.maintenance_state,
         "states": states,

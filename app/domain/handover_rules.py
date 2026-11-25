@@ -15,12 +15,46 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 
 from .catalog import HANDOVER_OPERATIONS, RECOMMENDED_AFTER, Operation, operation_title
+from .company_rules import company_conflict
 from .stages import (
     SATISFIED_STATUSES,
     HandoverStatus,
     StageStatus,
 )
 from .timeutil import as_utc
+
+
+@dataclass(frozen=True)
+class Warning:
+    """A non-blocking note shown next to a case (never changes the outcome)."""
+
+    code: str
+    text: str
+
+
+COMPANY_MISMATCH_WARNING = Warning(
+    code="company_mismatch",
+    text="Recipient company differs from device company",
+)
+COMPANY_UNKNOWN_WARNING = Warning(
+    code="company_unknown",
+    text="Recipient company is unknown",
+)
+
+
+def case_warnings(
+    device_company: str | None,
+    recipient_company: str | None,
+    *,
+    company_unknown: bool = False,
+) -> list[Warning]:
+    """Return the warnings for a case; a warning never changes its outcome."""
+    warnings: list[Warning] = []
+    if company_conflict(device_company, recipient_company):
+        warnings.append(COMPANY_MISMATCH_WARNING)
+    elif company_unknown:
+        warnings.append(COMPANY_UNKNOWN_WARNING)
+    return warnings
 
 
 @dataclass(frozen=True)

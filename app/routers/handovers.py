@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import config
 from app.clients.snipeit import SnipeItClient, SnipeItError
 from app.dependencies import current_user, get_session, get_snipeit_client
-from app.domain.errors import CompanyMismatch, HandoverError
+from app.domain.errors import HandoverError
 from app.domain.stages import HandoverStatus
 from app.dto.handover import (
     AgentReportAttach,
@@ -321,11 +321,6 @@ async def choose_recipient(
             actor=_actor(user),
             client=client,
         )
-    except CompanyMismatch as exc:
-        return JSONResponse(
-            status_code=422,
-            content={"code": exc.code, "message": str(exc)},
-        )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
     except SnipeItError as exc:
@@ -505,11 +500,6 @@ async def checkout_handover(
     try:
         view = await service.checkout(
             handover_id, actor=_actor(user), client=client
-        )
-    except CompanyMismatch as exc:
-        return JSONResponse(
-            status_code=422,
-            content={"code": exc.code, "message": str(exc)},
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc

@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import current_user, get_session
 from app.dto.dashboard import (
     DashboardSummaryOut,
-    HandoverOutcomeDashboardOut,
+    HandoverCaseListOut,
+    HandoverDashboardOut,
     HandoverRowListOut,
     MaintenanceDashboardOut,
 )
@@ -37,12 +38,38 @@ async def handovers_summary(
     )
 
 
-@router.get("/handover", response_model=HandoverOutcomeDashboardOut)
+@router.get("/handover", response_model=HandoverDashboardOut)
 async def handover_outcome_summary(
+    period: str = Query(default="30d", pattern="^(today|7d|30d|all)$"),
+    company: str | None = Query(default="all", max_length=100),
     user: dict = Depends(current_user),
     session: AsyncSession = Depends(get_session),
-) -> HandoverOutcomeDashboardOut:
-    return await DashboardService(session).handover_outcomes()
+) -> HandoverDashboardOut:
+    return await DashboardService(session).handover_dashboard(
+        period=period, company=company
+    )
+
+
+@router.get("/handover/cases", response_model=HandoverCaseListOut)
+async def handover_dashboard_cases(
+    filter: str = Query(
+        default="attention",
+        pattern="^(attention|ready|complete|not_complete|waiting_user|stalled|warnings|missing|engineer)$",
+    ),
+    period: str = Query(default="30d", pattern="^(today|7d|30d|all)$"),
+    company: str | None = Query(default="all", max_length=100),
+    stage: str | None = Query(default=None, max_length=40),
+    engineer: str | None = Query(default=None, max_length=200),
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> HandoverCaseListOut:
+    return await DashboardService(session).handover_cases(
+        filter=filter,
+        period=period,
+        company=company,
+        stage=stage,
+        engineer=engineer,
+    )
 
 
 @router.get("/maintenance", response_model=MaintenanceDashboardOut)

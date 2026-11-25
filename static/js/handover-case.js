@@ -20,6 +20,20 @@
     if (node) node.textContent = value == null ? "—" : String(value);
   }
 
+  function hasCompanyMismatch(data) {
+    return (data.warnings || []).some(function (warning) { return warning.code === "company_mismatch"; });
+  }
+
+  function companyMismatchTitle(data) {
+    return (data.device_company || "—") + " / " + (data.recipient_company || "—");
+  }
+
+  function warningChip(data) {
+    var chip = portal.el("span", "badge badge-warning", "! Company differs");
+    chip.title = companyMismatchTitle(data);
+    return chip;
+  }
+
   function renderDetail(data) {
     detail = data;
     var outcome = document.querySelector("[data-case-outcome]");
@@ -29,6 +43,11 @@
     }
     setText("[data-case-company]", data.device_company || "—");
     setText("[data-case-model]", data.device_model || "—");
+    var headerWarning = document.querySelector("[data-header-warning]");
+    if (headerWarning) {
+      headerWarning.textContent = "";
+      if (hasCompanyMismatch(data)) headerWarning.appendChild(warningChip(data));
+    }
     var status = document.querySelector("[data-device-status]");
     if (status) {
       status.textContent = data.snipeit_status_name || "—";
@@ -44,7 +63,18 @@
     var canCheckout = data.recipient_mode === "snipeit" && !!data.recipient_snipeit_id;
     var checkout = document.querySelector("[data-checkout]");
     var reason = document.querySelector("[data-checkout-reason]");
-    if (checkout) checkout.disabled = !canCheckout;
+    if (checkout) {
+      checkout.disabled = !canCheckout;
+      var oldMark = checkout.querySelector("[data-checkout-warn]");
+      if (oldMark) oldMark.remove();
+      if (hasCompanyMismatch(data)) {
+        var mark = portal.el("span", "warn-mark", "!");
+        mark.setAttribute("data-checkout-warn", "");
+        mark.title = companyMismatchTitle(data);
+        checkout.appendChild(document.createTextNode(" "));
+        checkout.appendChild(mark);
+      }
+    }
     if (reason) reason.hidden = canCheckout;
     var card = document.querySelector("[data-recipient-card]");
     if (card) {
@@ -52,6 +82,7 @@
       card.classList.remove("hidden");
       card.appendChild(portal.el("strong", "", data.recipient_snipeit_name || data.recipient_free_name || "No recipient"));
       card.appendChild(portal.el("div", "muted", data.recipient_snipeit_email || data.recipient_free_email || ""));
+      if (hasCompanyMismatch(data)) card.appendChild(warningChip(data));
       var change = portal.actionButton("Change", "btn-outline btn-sm");
       change.addEventListener("click", function () { card.classList.add("hidden"); });
       card.appendChild(change);
@@ -90,20 +121,22 @@
       var info = portal.el("div", "stack-sm");
       info.appendChild(portal.el("strong", "", candidate.name || candidate.username || "—"));
       info.appendChild(portal.el("span", "muted", candidate.email || ""));
-      info.appendChild(portal.el("span", "badge badge-secondary", candidate.company || "—"));
+      var company = portal.el("div", "case-chips");
+      company.appendChild(portal.el("span", "badge badge-secondary", candidate.company || "—"));
+      if (candidate.same_company === false) {
+        var mark = portal.el("span", "warn-mark", "!");
+        mark.title = "Other company";
+        company.appendChild(mark);
+        company.appendChild(portal.el("span", "badge badge-warning", "Other company"));
+      }
+      info.appendChild(company);
       row.appendChild(info);
       var pick = portal.actionButton("Choose", "btn-default btn-sm");
-      if (candidate.same_company === false) {
-        pick.disabled = true;
-        pick.title = "Other company";
-        pick.textContent = "Other company";
-      } else {
-        pick.addEventListener("click", function () {
-          portal.setBusy(row, true);
-          portal.apiJson(base + "/recipient", { method: "POST", body: JSON.stringify({ mode: "snipeit", user_id: candidate.id }) })
-            .then(loadDetail).catch(function (error) { portal.setBusy(row, false); portal.toast(error.message, "error"); });
-        });
-      }
+      pick.addEventListener("click", function () {
+        portal.setBusy(row, true);
+        portal.apiJson(base + "/recipient", { method: "POST", body: JSON.stringify({ mode: "snipeit", user_id: candidate.id }) })
+          .then(loadDetail).catch(function (error) { portal.setBusy(row, false); portal.toast(error.message, "error"); });
+      });
       row.appendChild(pick);
       results.appendChild(row);
     });

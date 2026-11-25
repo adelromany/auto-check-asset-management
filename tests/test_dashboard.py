@@ -19,7 +19,7 @@ import app.dependencies
 import app.main
 from app import config
 from app.db.base import Base
-from app.db.models.handover import Handover, HandoverStage
+from app.db.models.handover import Event, Handover, HandoverStage
 from app.db.models.maintenance import MaintenanceDestination, MaintenanceInfo
 from app.domain.stages import STAGE_ORDER, Stage, StageStatus
 from app.services.sessions import SessionStore
@@ -65,12 +65,14 @@ def _handover(
     company: str | None = None,
     kind: str = "handover",
     recipient_mode: str | None = None,
+    recipient_company: str | None = None,
 ) -> Handover:
     return Handover(
         status=status,
         kind=kind,
         device_company=company,
         recipient_mode=recipient_mode,
+        recipient_company=recipient_company,
         engineer_email=engineer[1],
         engineer_name=engineer[0],
         device_serial=serial,
@@ -440,11 +442,13 @@ async def test_dashboard_page_renders_seeded_data(
     assert "Handover" in body
     assert "Ready labs" in body
     assert "Complete" in body
-    assert "Not complete yet" in body
-    assert 'data-outcome="ready"' in body
-    assert 'data-outcome="complete"' in body
-    assert 'data-outcome="not_complete"' in body
+    assert "Not complete" in body
+    for name in ("ready", "complete", "not_complete", "waiting_user", "stalled", "warnings"):
+        assert f'data-kpi="{name}"' in body
     assert 'data-handover-list' in body
+    assert 'data-chart="per-day"' in body
+    assert 'data-attention' in body
+    assert 'data-activity' in body
     assert 'data-rail' in body and 'data-topbar' in body and 'data-bottomnav' in body
 
 
@@ -456,10 +460,13 @@ async def test_dashboard_tiles_expose_outcome_filters(
     assert response.status_code == 200, response.text
     body = response.text
     assert "Ready labs" in body
-    assert "Not complete yet" in body
-    assert 'data-ready-count' in body
-    assert 'data-complete-count' in body
-    assert 'data-not-complete-count' in body
+    assert "Not complete" in body
+    for name in ("ready", "complete", "not_complete", "waiting_user", "stalled", "warnings"):
+        assert f'data-tile="{name}"' in body
+    for period in ("today", "7d", "30d", "all"):
+        assert f'data-period="{period}"' in body
+    for company in ("all", "B.tech", "Nexta", "Mylo"):
+        assert f'data-company="{company}"' in body
 
 
 async def test_handovers_page_renders_and_filters(
@@ -616,17 +623,17 @@ async def test_handover_outcome_dashboard_excludes_maintenance(
         stages=_stages(passed=ALL_PASSED),
     )
 
-    response = await dashboard.client.get("/api/dashboard/handover")
+    response = await dashboard.client.get("/api/dashboard/handover?period=all")
 
     assert response.status_code == 200
     body = response.json()
-    assert body["ready"]["total"] == 3
-    assert body["ready"]["by_company"] == [
-        {"company": "B.tech", "count": 2},
-        {"company": "Mylo", "count": 1},
-    ]
-    assert body["complete"]["total"] == 2
-    assert body["not_complete"]["total"] == 3
+    assert body["tiles"]["ready"] == 3
+    companies = {row["company"]: row for row in body["by_company"]}
+    assert companies["B.tech"]["ready"] == 2
+    assert companies["Mylo"]["ready"] == 1
+    assert sum(row["ready"] for row in body["by_company"]) == body["tiles"]["ready"]
+    assert body["tiles"]["complete"] == 2
+    assert body["tiles"]["not_complete"] == 3
 
 
 async def test_case_history_page_renders_the_audit_trail(
@@ -826,3 +833,194 @@ async def test_maintenance_dashboard_groups_only_maintenance_cases(
     assert sum(item["count"] for item in body["in_maintenance"]["by_company"]) == 2
     assert len(body["devices"]) == 4
     assert all(item["serial"] != "H-1" for item in body["devices"])
+
+
+# -- Round 2: full handover operations dashboard ----------------------------
+
+
+async def _seed_round_two(harness: DashboardHarness) -> None:
+    async with harness.factory() as session:
+        ready_b = _handover(
+            serial="SN-R2-READY-B",
+            engineer=ENGINEER_A,
+            status="ready",
+            created=NOW - timedelta(hours=3),
+            company="B.tech",
+            recipient_mode="none",
+        )
+        ready_b.device_model = "Latitude 5440"
+        ready_m = _handover(
+            serial="SN-R2-READY-M",
+            engineer=ENGINEER_B,
+            status="ready",
+            created=NOW - timedelta(hours=5),
+            company="Mylo",
+            recipient_mode="none",
+        )
+        ready_m.device_model = "Latitude 5440"
+        waiting = _handover(
+            serial="SN-R2-WAITING",
+            engineer=ENGINEER_A,
+            status="in_progress",
+            created=NOW - timedelta(days=3),
+            updated=NOW - timedelta(days=2),
+            company="B.tech",
+            recipient_mode="pending_user",
+        )
+        warning = _handover(
+            serial="SN-R2-WARNING",
+            engineer=ENGINEER_B,
+            status="in_progress",
+            created=NOW - timedelta(hours=8),
+            company="B.tech",
+            recipient_mode="snipeit",
+            recipient_company="Mylo",
+            stages=_stages(failed=(Stage.SOFTWARE_CHECK,)),
+        )
+        session.add_all([ready_b, ready_m, waiting, warning])
+        await session.flush()
+        session.add_all(
+            [
+                Event(
+                    handover_id=warning.id,
+                    actor=ENGINEER_B[1],
+                    type="company_mismatch_warning",
+                    detail={
+                        "device_company": "B.tech",
+                        "recipient_company": "Mylo",
+                        "engineer": ENGINEER_B[1],
+                    },
+                ),
+                Event(
+                    handover_id=ready_b.id,
+                    actor=ENGINEER_A[1],
+                    type="handover_created",
+                    detail={},
+                ),
+                Event(
+                    handover_id=waiting.id,
+                    actor=ENGINEER_A[1],
+                    type="pending_user_found",
+                    detail={"username": "ali.hassan"},
+                ),
+            ]
+        )
+        await session.commit()
+
+
+async def test_handover_dashboard_has_every_block_and_sums(
+    dashboard: DashboardHarness,
+) -> None:
+    await _seed_round_two(dashboard)
+
+    response = await dashboard.client.get("/api/dashboard/handover?period=all")
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert set(body) == {
+        "period",
+        "company",
+        "tiles",
+        "by_company",
+        "ready_by_model",
+        "per_day",
+        "missing_parts",
+        "by_engineer",
+        "attention",
+        "activity",
+    }
+    tiles = body["tiles"]
+    assert tiles["ready"] == 2
+    assert tiles["complete"] == 2
+    assert tiles["not_complete"] == 5
+    assert tiles["waiting_user"] == 1
+    assert tiles["warnings"] == 1
+    assert tiles["stalled"] >= 1
+    assert tiles["avg_hours_to_complete"] is not None
+    assert tiles["median_hours_to_complete"] is not None
+    assert 0 <= tiles["within_24h_percent"] <= 100
+
+    def total(field: str) -> int:
+        return sum(row[field] for row in body["by_company"])
+
+    assert total("ready") == tiles["ready"]
+    assert total("complete") == tiles["complete"]
+    assert total("not_complete") == tiles["not_complete"]
+    assert total("waiting_user") == tiles["waiting_user"]
+
+    assert body["ready_by_model"][0]["total"] == 2
+    assert body["per_day"]
+    assert body["missing_parts"]
+    assert body["by_engineer"]
+    assert body["attention"]
+    assert body["activity"]
+    assert body["attention"][0]["reason"]
+    assert body["activity"][0]["text"]
+
+
+async def test_handover_dashboard_period_shapes(
+    dashboard: DashboardHarness,
+) -> None:
+    expected = {"today": 1, "7d": 7, "30d": 30, "all": 30}
+    for period, points in expected.items():
+        response = await dashboard.client.get(
+            f"/api/dashboard/handover?period={period}"
+        )
+        assert response.status_code == 200, response.text
+        assert len(response.json()["per_day"]) == points
+
+
+async def test_handover_dashboard_company_filter_applies_everywhere(
+    dashboard: DashboardHarness,
+) -> None:
+    await _seed_round_two(dashboard)
+
+    response = await dashboard.client.get(
+        "/api/dashboard/handover?period=all&company=Mylo"
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["company"] == "Mylo"
+    assert body["tiles"]["ready"] == 1
+    assert body["tiles"]["warnings"] == 0
+    assert all(
+        row["company"] == "Mylo" or not any(row[key] for key in ("ready", "complete", "not_complete", "waiting_user"))
+        for row in body["by_company"]
+    )
+
+
+async def test_handover_dashboard_cases_panel_filters(
+    dashboard: DashboardHarness,
+) -> None:
+    await _seed_round_two(dashboard)
+
+    ready = await dashboard.client.get(
+        "/api/dashboard/handover/cases?filter=ready&period=all"
+    )
+    assert ready.status_code == 200, ready.text
+    assert {item["device_serial"] for item in ready.json()["items"]} >= {
+        "SN-R2-READY-B",
+        "SN-R2-READY-M",
+    }
+
+    warnings = await dashboard.client.get(
+        "/api/dashboard/handover/cases?filter=warnings&period=all"
+    )
+    assert "SN-R2-WARNING" in {
+        item["device_serial"] for item in warnings.json()["items"]
+    }
+
+    waiting = await dashboard.client.get(
+        "/api/dashboard/handover/cases?filter=waiting_user&period=all"
+    )
+    assert "SN-R2-WAITING" in {
+        item["device_serial"] for item in waiting.json()["items"]
+    }
+
+    missing = await dashboard.client.get(
+        "/api/dashboard/handover/cases?filter=missing&stage=software_check&period=all"
+    )
+    assert "SN-R2-WARNING" in {
+        item["device_serial"] for item in missing.json()["items"]
+    }
