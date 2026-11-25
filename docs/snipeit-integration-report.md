@@ -30,3 +30,16 @@ No tokens or secrets are recorded here.
 | 4 | Maintenance label fails the device-status part | PASS | status='failed' reason='Status is Maintenance' |
 | 5 | Ready to deploy passes the device-status part | PASS | status='passed' reason=None |
 | 6 | case cancelled (cleanup) | PASS |  |
+
+## Phase 03
+
+| # | Check | Result | Detail |
+|---|---|---|---|
+| 1 | user search marks Mylo false and B.tech true | PASS | mylo={'id': 6, 'name': 'TEST Mylo1', 'email': 'test.mylo1@example.test', 'username': 'test.mylo1', 'company': 'Mylo', 'same_company': False} btech={'id': 5, 'name': 'TEST Btech2', 'email': 'test.btech2@example.test', 'username': 'test.btech2', 'company': 'B.tech', 'same_company': True} |
+| 2 | Mylo recipient is rejected by the company rule | PASS |  |
+| 3 | B.tech recipient is accepted | PASS | status='passed' |
+| 4 | recipient items include TEST-SN-0005 | PASS | items=[{'asset_id': 7, 'asset_tag': 'TEST-SN-0005', 'serial': 'TEST-SN-0005', 'model': 'Latitude 5440', 'status': 'Ready to Deploy'}] |
+| 5 | TEST-SN-0005 is checked in | PASS | outcome='checked_in' assignee=None |
+| 6 | recipient items are confirmed | PASS | status='passed' detail={'checked_in': ['TEST-SN-0005'], 'kept': []} |
+| 7 | device is checked out with Deployed status | PASS | stage='passed' assignee=5 status='Deployed' |
+| 8 | case cancelled (cleanup) | PASS |  |

@@ -793,8 +793,17 @@ class SnipeItHandoverService:
             f"case {handover.id}"
         )
         try:
+            labels = await client.list_status_labels()
+            deployed_id = next(
+                (
+                    label_id
+                    for label_id, name in labels
+                    if name.strip().casefold() == "deployed"
+                ),
+                None,
+            )
             result = await client.checkout_asset_to_user(
-                asset.id, recipient_id, note
+                asset.id, recipient_id, note, status_id=deployed_id
             )
         except SnipeItError as exc:
             return await self._fail_checkout(
