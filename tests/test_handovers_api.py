@@ -259,6 +259,96 @@ async def test_recipient_change_after_checkout_is_rejected(api: ApiHarness) -> N
     assert "already checked out" in response.json()["detail"]
 
 
+async def test_recipient_items_exclude_the_case_device(api: ApiHarness) -> None:
+    api.fake.assets[10]["assigned_to"] = {
+        "id": 1,
+        "name": "Alice",
+        "username": "alice",
+    }
+    case = await _create(api, serial="SN-1")
+    chosen = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient",
+        json={"mode": "snipeit", "user_id": 1},
+    )
+    assert chosen.status_code == 200, chosen.text
+
+    response = await api.client.get(f"/api/handovers/{case['id']}/recipient/items")
+
+    assert response.status_code == 200, response.text
+    assert response.json() == [
+        {
+            "asset_id": 11,
+            "asset_tag": "A-11",
+            "serial": "SN-11",
+            "model": "ThinkPad T14",
+            "status": "Ready to deploy",
+        }
+    ]
+
+
+async def test_recipient_items_auto_pass_when_empty(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-1")
+
+    response = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient",
+        json={"mode": "snipeit", "user_id": 2},
+    )
+
+    assert response.status_code == 200, response.text
+    items = next(
+        item for item in response.json()["stages"] if item["stage"] == "recipient_items"
+    )
+    assert items["status"] == "passed"
+    assert items["detail"] == {"none": True}
+
+
+async def test_recipient_items_checkin_accepts_only_owned_items(api: ApiHarness) -> None:
+    api.fake.assets[10]["assigned_to"] = {
+        "id": 1,
+        "name": "Alice",
+        "username": "alice",
+    }
+    case = await _create(api, serial="SN-1")
+    chosen = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient",
+        json={"mode": "snipeit", "user_id": 1},
+    )
+    assert chosen.status_code == 200, chosen.text
+
+    refused = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient/items/checkin",
+        json={"asset_ids": [10]},
+    )
+    checked_in = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient/items/checkin",
+        json={"asset_ids": [11]},
+    )
+
+    assert refused.status_code == 422, refused.text
+    assert checked_in.status_code == 200, checked_in.text
+    assert checked_in.json()["results"][0]["status"] == "checked_in"
+
+
+async def test_recipient_items_confirm_records_kept_items(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-1")
+    chosen = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient",
+        json={"mode": "snipeit", "user_id": 1},
+    )
+    assert chosen.status_code == 200, chosen.text
+
+    response = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient/items/confirm"
+    )
+
+    assert response.status_code == 200, response.text
+    items = next(
+        item for item in response.json()["stages"] if item["stage"] == "recipient_items"
+    )
+    assert items["status"] == "passed"
+    assert items["detail"] == {"checked_in": [], "kept": ["SN-11"]}
+
+
 async def test_create_stores_the_device_facts_read_from_snipeit(
     api: ApiHarness,
 ) -> None:

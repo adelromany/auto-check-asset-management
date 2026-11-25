@@ -234,7 +234,7 @@ class SnipeItHandoverService:
                 detail={"old_name": old_name, "new_name": new_name},
             )
 
-        return await self._core.record_operation(
+        view = await self._core.record_operation(
             handover.id,
             Operation.RECIPIENT_CHECK,
             status=status,
@@ -243,6 +243,106 @@ class SnipeItHandoverService:
             actor=actor,
             input_checks=False,
         )
+        if mode == "snipeit":
+            items = await self._recipient_items(handover, client=client)
+            if not items:
+                view = await self._core.record_operation(
+                    handover.id,
+                    Operation.RECIPIENT_ITEMS,
+                    status=StageStatus.PASSED,
+                    reason=None,
+                    detail={"none": True},
+                    actor=actor,
+                    input_checks=False,
+                )
+        return view
+
+    async def list_recipient_items(
+        self,
+        handover_id: uuid.UUID,
+        *,
+        client: SnipeItClient,
+    ) -> list[dict[str, Any]]:
+        """List the selected recipient's current assets, excluding this case."""
+        handover = await self._core.get(handover_id, with_details=True)
+        if handover.recipient_mode != "snipeit" or handover.recipient_snipeit_id is None:
+            return []
+        return await self._recipient_items(handover, client=client)
+
+    async def checkin_recipient_items(
+        self,
+        handover_id: uuid.UUID,
+        asset_ids: list[int],
+        *,
+        actor: str,
+        client: SnipeItClient,
+    ) -> list[CheckinOutcome]:
+        """Check in assets only when they belong to the selected recipient."""
+        handover = await self._core.get(handover_id, with_details=True)
+        items = await self.list_recipient_items(handover_id, client=client)
+        owned_ids = {item["asset_id"] for item in items}
+        invalid_ids = [asset_id for asset_id in asset_ids if asset_id not in owned_ids]
+        if invalid_ids:
+            raise InputMissing(
+                "Only the recipient's current items can be checked in."
+            )
+        outcomes = await self.checkin_assets(
+            handover_id, asset_ids, actor=actor, client=client
+        )
+        row = stage_row(handover, Operation.RECIPIENT_ITEMS)
+        checked_in = list((row.detail or {}).get("checked_in", []))
+        for outcome in outcomes:
+            if outcome.status == "checked_in" and outcome.serial:
+                if outcome.serial not in checked_in:
+                    checked_in.append(outcome.serial)
+        row.detail = {**(row.detail or {}), "checked_in": checked_in}
+        await self._session.flush()
+        return outcomes
+
+    async def confirm_recipient_items(
+        self,
+        handover_id: uuid.UUID,
+        *,
+        actor: str,
+        client: SnipeItClient,
+    ) -> HandoverDetailView:
+        """Pass recipient-items after checking in selected assets."""
+        handover = await self._core.get(handover_id, with_details=True)
+        row = stage_row(handover, Operation.RECIPIENT_ITEMS)
+        items = await self.list_recipient_items(handover_id, client=client)
+        detail = {
+            "checked_in": list((row.detail or {}).get("checked_in", [])),
+            "kept": [item["serial"] for item in items if item["serial"]],
+        }
+        return await self._core.record_operation(
+            handover.id,
+            Operation.RECIPIENT_ITEMS,
+            status=StageStatus.PASSED,
+            reason=None,
+            detail=detail,
+            actor=actor,
+            input_checks=False,
+        )
+
+    async def _recipient_items(
+        self, handover: Handover, *, client: SnipeItClient
+    ) -> list[dict[str, Any]]:
+        recipient_id = handover.recipient_snipeit_id
+        if recipient_id is None:
+            return []
+        assets = await client.list_user_assets(recipient_id)
+        return [
+            {
+                "asset_id": asset.id,
+                "asset_tag": asset.asset_tag,
+                "serial": asset.serial,
+                "model": asset.model,
+                "status": asset.status,
+            }
+            for asset in assets
+            if asset.id != handover.snipeit_asset_id
+            and asset.serial != handover.device_serial
+        ]
 
     @staticmethod
     def _clear_recipient_fields(handover: Handover) -> None:

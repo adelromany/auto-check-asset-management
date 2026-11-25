@@ -424,6 +424,16 @@ class HandoverPreview(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class RecipientItemOut(BaseModel):
+    """One Snipe-IT asset currently assigned to the selected recipient."""
+
+    asset_id: int
+    asset_tag: str | None = None
+    serial: str | None = None
+    model: str | None = None
+    status: str | None = None
+
+
 class CheckinRequest(BaseModel):
     asset_ids: list[int] = Field(min_length=1, max_length=50)
 

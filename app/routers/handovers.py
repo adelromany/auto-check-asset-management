@@ -33,6 +33,7 @@ from app.dto.handover import (
     MaintenanceUpdate,
     NotDoneRequest,
     RecipientConfirm,
+    RecipientItemOut,
     RecipientSearchResult,
     RecipientSelectionRequest,
     SoftwareCheckOverride,
@@ -303,6 +304,74 @@ async def choose_recipient(
         return JSONResponse(
             status_code=422,
             content={"code": exc.code, "message": str(exc)},
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    except SnipeItError as exc:
+        raise snipeit_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.get(
+    "/{handover_id}/recipient/items",
+    response_model=list[RecipientItemOut],
+)
+async def list_recipient_items(
+    handover_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> list[RecipientItemOut]:
+    service = SnipeItHandoverService(session)
+    try:
+        items = await service.list_recipient_items(handover_id, client=client)
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    except SnipeItError as exc:
+        raise snipeit_http_error(exc) from exc
+    return [RecipientItemOut.model_validate(item) for item in items]
+
+
+@router.post(
+    "/{handover_id}/recipient/items/checkin",
+    response_model=CheckinResult,
+)
+async def checkin_recipient_items(
+    handover_id: uuid.UUID,
+    payload: CheckinRequest,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> CheckinResult:
+    service = SnipeItHandoverService(session)
+    try:
+        outcomes = await service.checkin_recipient_items(
+            handover_id,
+            payload.asset_ids,
+            actor=_actor(user),
+            client=client,
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    except SnipeItError as exc:
+        raise snipeit_http_error(exc) from exc
+    return CheckinResult(handover_id=handover_id, results=outcomes)
+
+
+@router.post(
+    "/{handover_id}/recipient/items/confirm",
+    response_model=HandoverDetail,
+)
+async def confirm_recipient_items(
+    handover_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> HandoverDetail:
+    service = SnipeItHandoverService(session)
+    try:
+        view = await service.confirm_recipient_items(
+            handover_id, actor=_actor(user), client=client
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
