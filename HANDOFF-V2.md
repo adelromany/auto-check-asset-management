@@ -39,3 +39,4 @@ PHASE 04 DONE - company form generation, signed paper upload/push, Complete/Not 
 Next: `05-handover-ui.md` (read only its steps; `00-README` A and B1).
 STEP 5.1 DONE Navigation grouped into Handover and Maintenance; Sync removed from nav while /sync remains; /maintenance/devices route added; `pytest tests/test_dashboard.py -q -p no:cacheprovider` = 29 passed.
 STEP 5.2 DONE Handover dashboard rebuilt with Ready/Complete/Not complete tiles, company chips, API-filtered case rows, New handover drawer; changed tests: test_dashboard page assertions now match the Phase 05 handover-only dashboard; `pytest tests/test_dashboard.py -q -p no:cacheprovider` = 29 passed; CSS rebuilt.
+STEP 5.3 DONE New handover drawer has one Serial field, creates only on Start/Enter, shows the plain API error, and links Open when an active case exists; `pytest tests/test_phase05_ui.py -q -p no:cacheprovider` = 2 passed.

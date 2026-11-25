@@ -104,10 +104,15 @@
           portal.setBusy(actions, false);
           error.textContent = err.message;
           error.hidden = false;
-          var open = portal.el("a", "link-quiet", "Open");
-          open.href = "/handovers/" + (err.active_handover_id || "");
-          open.hidden = !err.active_handover_id;
-          error.appendChild(open);
+          if (/active case|already exists/i.test(err.message)) {
+            portal.request("/api/handovers/active?serial=" + encodeURIComponent(serial)).then(function (active) {
+              if (!active || !active.id) return;
+              var open = portal.el("a", "link-quiet", "Open");
+              open.href = "/handovers/" + active.id;
+              error.appendChild(document.createTextNode(" "));
+              error.appendChild(open);
+            }).catch(function () { /* the plain error remains */ });
+          }
         });
     }
     form.addEventListener("submit", function (event) { event.preventDefault(); submit(); });
