@@ -31,7 +31,7 @@ from app import config
 from app.dependencies import current_user, get_session
 from app.domain.catalog import CaseKind, Operation, OPERATION_TITLES, lanes_for
 from app.domain.errors import HandoverNotFound
-from app.domain.handover_rules import stalled_by_age
+from app.domain.handover_rules import StageState, case_outcome, missing_parts, stalled_by_age
 from app.domain.maintenance_rules import (
     MAINTENANCE_OVERDUE_DAYS,
     MaintenanceState,
@@ -687,7 +687,14 @@ async def _case_response(request: Request, view, nav: str, session: AsyncSession
         stall_hours=config.STALL_HOURS,
         OPERATION_TITLES=OPERATION_TITLES,
     )
-    return templates.TemplateResponse(request=request, name="case.html", context=ctx)
+    template = "handover_case.html" if nav == "handovers" else "case.html"
+    if template == "handover_case.html":
+        states = [StageState(Operation(stage.stage), StageStatus(stage.status), stage.reason) for stage in view.stages]
+        ctx.update(
+            outcome=case_outcome(states, recipient_mode=handover.recipient_mode, cancelled=handover.status == "cancelled").value,
+            missing_parts=missing_parts(states),
+        )
+    return templates.TemplateResponse(request=request, name=template, context=ctx)
 
 
 @router.get("/handovers/{handover_id}/history", response_class=HTMLResponse)

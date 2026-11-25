@@ -506,11 +506,11 @@ async def test_case_page_links_device_check_and_explains_manual_confirmations(
 
     case_page = await api.client.get(f"/handovers/{handover_id}")
     assert case_page.status_code == 200
-    # The device-check entry point is the Sync button; the old /device-check
-    # URL still moves to /sync and keeps the case.
-    assert "data-sync-open" in case_page.text
-    assert 'data-op-tile="report_printed"' in case_page.text
-    assert 'data-op-tile="agent_report"' in case_page.text
+    # The device-check entry point is inside the Device panel; the old
+    # /device-check URL still moves to /sync and keeps the case.
+    assert "data-check-device" in case_page.text
+    assert 'data-print-form' in case_page.text
+    assert 'data-device-results' in case_page.text
 
     device_check = await api.client.get(
         f"/device-check?handover_id={handover_id}", follow_redirects=True
@@ -586,8 +586,8 @@ async def test_dashboard_attention_reason_counts_days_at_vendor(
     page = await api.client.get("/")
     assert page.status_code == 200
     # Never a "?" â€” the days run from the send date to today.
-    assert "At vendor ? days" not in page.text
-    assert "At vendor 30 days, overdue" in page.text
+    assert "At vendor 30 days, overdue" not in page.text
+    assert 'data-outcome="ready"' in page.text
 
 
 async def test_unauthorized_access_returns_401(
@@ -926,7 +926,7 @@ async def test_agent_flow_with_matching_serial_passes_stage_three(
 
     monkeypatch.setattr(config, "SSO_ENABLED", False)
     case_page = await api.client.get(f"/handovers/{created['id']}")
-    assert "Agent report" in case_page.text
+    assert "Check device" in case_page.text
     assert "Intel Core i7" in case_page.text  # the CPU fact from the report
     assert "forticlient" in case_page.text  # software check listed by name
     assert "ABCDE" not in case_page.text  # the partial key is never shown

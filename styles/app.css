@@ -744,6 +744,14 @@
   .handover-model, .handover-recipient { @apply truncate; }
   .handover-missing { @apply flex min-w-0 flex-wrap gap-1; }
   .rail-group { @apply px-3 pb-1 pt-4 text-[0.68rem] font-semibold uppercase tracking-wider text-muted-foreground; }
+  .handover-panels { @apply grid grid-cols-1 items-start gap-4 xl:grid-cols-3; }
+  .handover-panel { @apply min-w-0; }
+  .case-header { @apply mb-5 flex items-start justify-between gap-4; }
+  .filter-row { @apply flex items-center gap-2; }
+  .filter-row .input { @apply min-w-0 flex-1; }
+  .recipient-results { @apply flex flex-col gap-2; }
+  .drop-zone { @apply flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-3 text-sm; }
+  .field-error { @apply text-sm text-destructive; }
   .bar-list { @apply flex flex-col gap-2; }
   .bar-row { @apply flex items-center gap-3 text-sm; }
   .bar-label { @apply w-32 shrink-0 truncate text-muted-foreground; }

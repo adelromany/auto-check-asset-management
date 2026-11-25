@@ -521,20 +521,19 @@ async def test_case_page_renders_the_case(
     body = response.text
     assert "SN-STALLED" in body
     assert "Recipient" in body
-    assert "Not done" in body
+    assert "Handover" in body
+    assert "Not complete yet" in body
     assert f'href="/handovers/{handover_id}/history"' in body
-    assert 'data-case-cancel' in body
+    assert 'data-check-device' in body
     assert f'data-case-id="{handover_id}"' in body
 
     draft_id = await _id_for(dashboard, "SN-DRAFT")
     draft = await dashboard.client.get(f"/handovers/{draft_id}")
     assert draft.status_code == 200
-    # A draft case still offers the agent report tile (the sync entry point).
-    assert 'data-op-tile="agent_report"' in draft.text
-    assert 'data-active="true"' in draft.text
+    assert 'data-check-device' in draft.text
 
 
-async def test_case_board_keeps_secondary_information_collapsed(
+async def test_handover_case_uses_three_independent_panels(
     dashboard: DashboardHarness,
 ) -> None:
     handover_id = await _id_for(dashboard, "SN-DRAFT")
@@ -543,10 +542,9 @@ async def test_case_board_keeps_secondary_information_collapsed(
 
     assert response.status_code == 200, response.text
     body = response.text
-    # 10 operation tiles across 3 lanes; secondary information is kept in the
-    # side-sheet drawer that shell.js builds on demand.
-    assert body.count("data-op-tile=") == 9
-    assert 'data-drawer-root' not in body  # drawers are never server-rendered
+    assert 'data-status-select' in body
+    assert 'data-recipient-search' in body
+    assert 'data-print-form' in body
     assert f'href="/handovers/{handover_id}/history"' in body
 
 
@@ -563,22 +561,17 @@ async def test_pages_carry_no_inline_scripts_or_styles(
         assert "javascript:" not in html, f"{path} has a javascript: URL"
 
 
-async def test_case_board_shows_all_passed_only_when_every_operation_passed(
+async def test_handover_case_outcome_is_rendered_from_server_state(
     dashboard: DashboardHarness,
 ) -> None:
     complete_id = await _id_for(dashboard, "SN-COMP-1")
     complete = await dashboard.client.get(f"/handovers/{complete_id}")
     assert complete.status_code == 200
-    assert "All operations passed" in complete.text
+    assert 'data-case-outcome' in complete.text
 
-    # A case with a not_done operation or with no operations never claims it.
     stalled_id = await _id_for(dashboard, "SN-STALLED")
     stalled = await dashboard.client.get(f"/handovers/{stalled_id}")
-    assert "All operations passed" not in stalled.text
-
-    draft_id = await _id_for(dashboard, "SN-DRAFT")
-    draft = await dashboard.client.get(f"/handovers/{draft_id}")
-    assert "All operations passed" not in draft.text
+    assert "Not complete yet" in stalled.text
 
 
 async def test_handover_outcome_dashboard_excludes_maintenance(
