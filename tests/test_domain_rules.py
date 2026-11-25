@@ -8,6 +8,11 @@ from app.domain.catalog import (
     RECOMMENDED_AFTER,
     Operation,
 )
+from app.domain.company_rules import (
+    company_conflict,
+    company_known,
+    normalize_company,
+)
 from app.domain.handover_rules import (
     StageState,
     advice,
@@ -220,6 +225,27 @@ def test_next_operation_is_the_first_unfinished_suggestion() -> None:
 def test_stage_from_key_accepts_handover_and_maintenance_keys() -> None:
     assert stage_from_key("checkout") is Stage.CHECKOUT
     assert stage_from_key("sent_out") is Operation.SENT_OUT
+
+
+def test_company_normalization_ignores_case_and_punctuation() -> None:
+    assert normalize_company("B.tech") == "btech"
+    assert normalize_company(" B.TECH ") == "btech"
+    assert company_known("B.tech")
+    assert not company_known(" -- ")
+
+
+def test_company_same_name_does_not_conflict() -> None:
+    assert not company_conflict("B.tech", "btech")
+    assert not company_conflict("B.tech", "B.TECH")
+
+
+def test_company_unknown_side_does_not_conflict() -> None:
+    assert not company_conflict("B.tech", None)
+    assert not company_conflict(None, "Mylo")
+
+
+def test_company_different_known_names_conflict() -> None:
+    assert company_conflict("B.tech", "Mylo")
 
 
 def test_stage_from_key_rejects_unknown_keys() -> None:
