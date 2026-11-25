@@ -177,6 +177,27 @@ async def test_phase06_take_back_records_a_snipeit_error(api: ApiHarness) -> Non
     assert operation["reason"]
 
 
+async def test_phase06_vendor_list_and_create(api: ApiHarness) -> None:
+    created = await api.client.post(
+        "/api/maintenance/vendors", json={"name": "  TEST-Vendor  "}
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["name"] == "TEST-Vendor"
+
+    repeated = await api.client.post(
+        "/api/maintenance/vendors", json={"name": "test-vendor"}
+    )
+    assert repeated.status_code == 201
+    assert repeated.json()["id"] == created.json()["id"]
+
+    listed = await api.client.get("/api/maintenance/vendors")
+    assert listed.status_code == 200
+    assert any(item["name"] == "TEST-Vendor" for item in listed.json())
+
+    invalid = await api.client.post("/api/maintenance/vendors", json={"name": " "})
+    assert invalid.status_code == 422
+
+
 async def test_update_maintenance_info_and_vendors(api: ApiHarness) -> None:
     created = await api.client.post(
         "/api/handovers",

@@ -15,6 +15,8 @@ from app.dto.maintenance import (
     MaintenanceCaseCreate,
     MaintenanceDeviceLookup,
     MaintenanceReason,
+    MaintenanceVendor,
+    MaintenanceVendorCreate,
 )
 from app.repositories.maintenance import MaintenanceRepository
 from app.routers.http_errors import handover_detail, handover_http_error
@@ -88,6 +90,26 @@ async def take_back(
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
     return handover_detail(view)
+
+
+@router.get("/vendors", response_model=list[MaintenanceVendor])
+async def list_vendors(
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[MaintenanceVendor]:
+    vendors = await MaintenanceRepository(session).list_vendors()
+    return [MaintenanceReason.model_validate(vendor) for vendor in vendors]
+
+
+@router.post("/vendors", response_model=MaintenanceVendor, status_code=201)
+async def create_vendor(
+    payload: MaintenanceVendorCreate,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> MaintenanceVendor:
+    vendor = await MaintenanceRepository(session).ensure_vendor(payload.name)
+    await session.flush()
+    return MaintenanceVendor.model_validate(vendor)
 
 
 @router.get("/reasons", response_model=list[MaintenanceReason])
