@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
+import uuid
 
 from pydantic import BaseModel, Field
 
@@ -80,3 +81,46 @@ class HandoverOutcomeDashboardOut(BaseModel):
     ready: ReadyGroupOut
     complete: dict[str, int]
     not_complete: dict[str, int]
+
+
+class MaintenanceGroupOut(BaseModel):
+    name: str
+    count: int
+
+
+class MaintenanceSectionOut(BaseModel):
+    total: int = 0
+    by_model: list[MaintenanceGroupOut] = Field(default_factory=list)
+    by_company: list[MaintenanceGroupOut] = Field(default_factory=list)
+    by_vendor: list[MaintenanceGroupOut] = Field(default_factory=list)
+    avg_days: float = 0
+
+
+class MaintenanceDeviceOut(BaseModel):
+    case_id: uuid.UUID
+    serial: str
+    model: str
+    company: str
+    vendor: str | None = None
+    state: str
+    days: int = 0
+    reason: str | None = None
+
+
+class MaintenanceDashboardOut(BaseModel):
+    needs: MaintenanceSectionOut
+    in_maintenance: MaintenanceSectionOut
+    devices: list[MaintenanceDeviceOut] = Field(default_factory=list)
+
+
+class MaintenanceCaseOut(BaseModel):
+    case_id: uuid.UUID
+    serial: str
+    model: str
+    company: str
+    vendor: str | None = None
+    state: str
+    days: int = 0
+    reason: str | None = None
+    received_date: date | None = None
+    returned_date: date | None = None

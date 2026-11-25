@@ -283,6 +283,33 @@ async def test_phase06_batch_ready_status_failure_can_be_retried(api: ApiHarness
     assert operation["status"] == "passed"
 
 
+async def test_phase06_cases_list_filters(api: ApiHarness) -> None:
+    vendor = await api.client.post(
+        "/api/maintenance/vendors", json={"name": "List Vendor"}
+    )
+    created = await api.client.post(
+        "/api/maintenance/cases", json={"serial": "SN-10"}
+    )
+    case_id = created.json()["id"]
+    await api.client.post(
+        "/api/maintenance/batches/send",
+        json={
+            "case_ids": [case_id],
+            "vendor_id": vendor.json()["id"],
+            "sent_date": date.today().isoformat(),
+        },
+    )
+    listed = await api.client.get(
+        "/api/maintenance/cases", params={"state": "at_vendor"}
+    )
+    assert listed.status_code == 200, listed.text
+    assert [item["case_id"] for item in listed.json()] == [case_id]
+    filtered = await api.client.get(
+        "/api/maintenance/cases", params={"vendor_id": vendor.json()["id"]}
+    )
+    assert [item["case_id"] for item in filtered.json()] == [case_id]
+
+
 async def test_update_maintenance_info_and_vendors(api: ApiHarness) -> None:
     created = await api.client.post(
         "/api/handovers",

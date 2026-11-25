@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clients.snipeit import SnipeItClient
 from app.dependencies import current_user, get_session, get_snipeit_client
 from app.domain.errors import HandoverError
+from app.dto.dashboard import MaintenanceCaseOut
 from app.dto.handover import HandoverDetail
 from app.dto.maintenance import (
     MaintenanceBatchReceive,
@@ -39,6 +40,20 @@ async def lookup_device(
         return await MaintenanceService(session).lookup_device(serial, client=client)
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
+
+
+@router.get("/cases", response_model=list[MaintenanceCaseOut])
+async def list_cases(
+    state: str | None = Query(default=None, pattern="^(with_it|at_vendor|returned)$"),
+    company: str | None = Query(default=None, max_length=120),
+    model: str | None = Query(default=None, max_length=120),
+    vendor_id: int | None = Query(default=None),
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[MaintenanceCaseOut]:
+    return await MaintenanceService(session).list_cases(
+        state=state, company=company, model=model, vendor_id=vendor_id
+    )
 
 
 @router.post("/cases", response_model=HandoverDetail, status_code=201)

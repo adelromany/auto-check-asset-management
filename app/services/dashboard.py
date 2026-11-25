@@ -11,7 +11,7 @@ derive each row's missing steps. No endpoint loads the whole table.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,13 +31,19 @@ from app.dto.dashboard import (
     HandoverOutcomeDashboardOut,
     HandoverRowListOut,
     HandoverRowOut,
+    MaintenanceDashboardOut,
+    MaintenanceDeviceOut,
+    MaintenanceGroupOut,
+    MaintenanceSectionOut,
     MissingStepCountOut,
     ReadyCompanyOut,
     ReadyGroupOut,
     StageCountsOut,
     StageProgressOut,
 )
+from app.domain.maintenance_rules import days_in_maintenance
 from app.dto.handover import HandoverSummary, MissingStepOut
+from app.repositories.maintenance import MaintenanceRepository
 from app.services.handovers import HandoverService, stage_states
 
 _INACTIVE_STATUSES = (
@@ -94,6 +100,52 @@ class DashboardService:
             ready=ReadyGroupOut(total=ready_total, by_company=by_company),
             complete={"total": int(complete or 0)},
             not_complete={"total": int(not_complete or 0)},
+        )
+
+    async def maintenance(
+        self, *, today: date | None = None
+    ) -> MaintenanceDashboardOut:
+        """Return maintenance-only groups and open devices."""
+        current_day = today or date.today()
+        rows = await MaintenanceRepository(self._session).all_case_rows()
+        open_rows = [row for row in rows if row["state"] in ("with_it", "at_vendor")]
+        needs = [row for row in open_rows if row["state"] == "with_it"]
+        at_vendor = [row for row in open_rows if row["state"] == "at_vendor"]
+
+        def section(items: list[dict], include_average: bool = False) -> MaintenanceSectionOut:
+            days = [
+                days_in_maintenance(
+                    item["received_date"], item["returned_date"], current_day
+                )
+                for item in items
+            ]
+            return MaintenanceSectionOut(
+                total=len(items),
+                by_model=_maintenance_groups(items, "model"),
+                by_company=_maintenance_groups(items, "company"),
+                by_vendor=_maintenance_groups(items, "vendor"),
+                avg_days=round(sum(days) / len(days), 1) if include_average and days else 0,
+            )
+
+        devices = [
+            MaintenanceDeviceOut(
+                case_id=row["case_id"],
+                serial=row["serial"],
+                model=row["model"],
+                company=row["company"],
+                vendor=row["vendor"],
+                state=row["state"],
+                days=days_in_maintenance(
+                    row["received_date"], row["returned_date"], current_day
+                ),
+                reason=row["reason"],
+            )
+            for row in open_rows
+        ]
+        return MaintenanceDashboardOut(
+            needs=section(needs),
+            in_maintenance=section(at_vendor, include_average=True),
+            devices=devices,
         )
 
     # -- summary ----------------------------------------------------------
@@ -313,6 +365,19 @@ class DashboardService:
             ),
             Handover.updated_at < cutoff,
         )
+
+
+def _maintenance_groups(
+    rows: list[dict], key: str
+) -> list[MaintenanceGroupOut]:
+    counts: dict[str, int] = {}
+    for row in rows:
+        value = row.get(key) or ("Not assigned" if key == "vendor" else "Unknown")
+        counts[value] = counts.get(value, 0) + 1
+    return [
+        MaintenanceGroupOut(name=name, count=count)
+        for name, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
 
 
 def _created_filters(

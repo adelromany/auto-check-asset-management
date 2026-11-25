@@ -16,6 +16,7 @@ from app.dto.dashboard import (
     DashboardSummaryOut,
     HandoverOutcomeDashboardOut,
     HandoverRowListOut,
+    MaintenanceDashboardOut,
 )
 from app.services.dashboard import DashboardService
 
@@ -42,6 +43,14 @@ async def handover_outcome_summary(
     session: AsyncSession = Depends(get_session),
 ) -> HandoverOutcomeDashboardOut:
     return await DashboardService(session).handover_outcomes()
+
+
+@router.get("/maintenance", response_model=MaintenanceDashboardOut)
+async def maintenance_summary(
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> MaintenanceDashboardOut:
+    return await DashboardService(session).maintenance()
 
 
 @router.get("/handovers", response_model=HandoverRowListOut)

@@ -25,7 +25,9 @@ from app.domain.errors import (
     MaintenanceReasonInvalid,
     SnipeItUnreachable,
 )
+from app.domain.maintenance_rules import days_in_maintenance
 from app.domain.stages import StageStatus
+from app.dto.dashboard import MaintenanceCaseOut
 from app.dto.maintenance import (
     MaintenanceBatchResult,
     MaintenanceDeviceLookup,
@@ -275,6 +277,28 @@ class MaintenanceService:
             actor=engineer_email,
             input_checks=False,
         )
+
+    async def list_cases(
+        self,
+        *,
+        state: str | None = None,
+        company: str | None = None,
+        model: str | None = None,
+        vendor_id: int | None = None,
+    ) -> list[MaintenanceCaseOut]:
+        rows = await self._repository.list_case_rows(
+            state=state, company=company, model=model, vendor_id=vendor_id
+        )
+        today = date.today()
+        return [
+            MaintenanceCaseOut(
+                **row,
+                days=days_in_maintenance(
+                    row["received_date"], row["returned_date"], today
+                ),
+            )
+            for row in rows
+        ]
 
     async def batch_send(
         self,

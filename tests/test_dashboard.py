@@ -20,6 +20,7 @@ import app.main
 from app import config
 from app.db.base import Base
 from app.db.models.handover import Handover, HandoverStage
+from app.db.models.maintenance import MaintenanceDestination, MaintenanceInfo
 from app.domain.stages import STAGE_ORDER, Stage, StageStatus
 from app.services.sessions import SessionStore
 
@@ -760,3 +761,68 @@ def test_pages_and_static_assets_work_outside_the_repository_cwd(
     assert error.status_code == 404 and "Page not found" in error.text
     assert diagnostic.status_code == 200
     assert static.status_code == 200
+
+
+async def test_maintenance_dashboard_groups_only_maintenance_cases(
+    dashboard: DashboardHarness,
+) -> None:
+    async with dashboard.factory() as session:
+        vendor_a = MaintenanceDestination(name="Vendor A", name_key="vendor a")
+        vendor_b = MaintenanceDestination(name="Vendor B", name_key="vendor b")
+        session.add_all([vendor_a, vendor_b])
+        await session.flush()
+        rows = [
+            ("M-1", "Model A", "B.tech", "with_it", vendor_a, date(2026, 11, 20)),
+            ("M-2", "Model B", "Nexta", "with_it", vendor_b, date(2026, 11, 21)),
+            ("M-3", "Model A", "Mylo", "at_vendor", vendor_a, date(2026, 11, 10)),
+            ("M-4", "Model B", "B.tech", "at_vendor", vendor_b, date(2026, 11, 15)),
+        ]
+        for serial, model, company, state, vendor, received in rows:
+            handover = Handover(
+                kind="maintenance",
+                status="in_progress",
+                maintenance_state=state,
+                engineer_email=ENGINEER_A[1],
+                engineer_name=ENGINEER_A[0],
+                device_serial=serial,
+                device_model=model,
+                device_company=company,
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            handover.maintenance = MaintenanceInfo(
+                handover_id=handover.id,
+                received_date=received,
+                destination_id=vendor.id,
+                destination=vendor,
+                diagnosis_category="Screen",
+            )
+            session.add(handover)
+        session.add(
+            _handover(
+                serial="H-1",
+                engineer=ENGINEER_A,
+                status="in_progress",
+                created=NOW,
+                company="B.tech",
+            )
+        )
+        await session.commit()
+
+    response = await dashboard.client.get("/api/dashboard/maintenance")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["needs"]["total"] == 2
+    assert body["in_maintenance"]["total"] == 2
+    assert body["needs"]["by_company"] == [
+        {"name": "B.tech", "count": 1},
+        {"name": "Nexta", "count": 1},
+    ]
+    assert body["in_maintenance"]["by_vendor"] == [
+        {"name": "Vendor A", "count": 1},
+        {"name": "Vendor B", "count": 1},
+    ]
+    assert sum(item["count"] for item in body["needs"]["by_model"]) == 2
+    assert sum(item["count"] for item in body["in_maintenance"]["by_company"]) == 2
+    assert len(body["devices"]) == 4
+    assert all(item["serial"] != "H-1" for item in body["devices"])

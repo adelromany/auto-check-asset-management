@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.handover import Handover
 from app.db.models.maintenance import (
     DiagnosisCategory,
     MaintenanceDestination,
@@ -223,3 +224,54 @@ class MaintenanceRepository:
             await self.ensure_diagnosis_category(info.diagnosis_category)
 
         return changed
+
+    async def list_case_rows(
+        self,
+        *,
+        state: str | None = None,
+        company: str | None = None,
+        model: str | None = None,
+        vendor_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        statement = (
+            select(Handover, MaintenanceInfo)
+            .outerjoin(MaintenanceInfo, MaintenanceInfo.handover_id == Handover.id)
+            .where(Handover.kind == "maintenance")
+        )
+        if state:
+            statement = statement.where(Handover.maintenance_state == state)
+        if company:
+            statement = statement.where(Handover.device_company == company)
+        if model:
+            statement = statement.where(Handover.device_model == model)
+        if vendor_id is not None:
+            statement = statement.where(MaintenanceInfo.destination_id == vendor_id)
+        result = await self._session.execute(
+            statement.order_by(Handover.created_at.desc(), Handover.id)
+        )
+        return [self._case_row(handover, info) for handover, info in result.all()]
+
+    async def all_case_rows(self) -> list[dict[str, Any]]:
+        return await self.list_case_rows()
+
+    @staticmethod
+    def _case_row(
+        handover: Handover, info: MaintenanceInfo | None
+    ) -> dict[str, Any]:
+        vendor = info.destination.name if info is not None and info.destination else None
+        return {
+            "case_id": handover.id,
+            "serial": handover.device_serial,
+            "model": handover.device_model or "Unknown",
+            "company": handover.device_company or "Unknown",
+            "vendor": vendor,
+            "state": handover.maintenance_state or "with_it",
+            "received_date": info.received_date if info is not None else None,
+            "returned_date": info.returned_date if info is not None else None,
+            "reason": (
+                (info.reason_text or info.diagnosis_category)
+                if info is not None
+                else None
+            ),
+        }
+
