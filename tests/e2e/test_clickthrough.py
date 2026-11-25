@@ -613,10 +613,13 @@ def test_clickthrough(portal, browser):
     nav_targets = {}
     page.goto(BASE + "/", wait_until="load")
     page.wait_for_timeout(400)
-    nav_links = page.locator("a[data-nav]")
+    nav_links = page.locator("[data-rail] a[data-nav]:visible")
     count = nav_links.count()
-    if count < 4:
-        problems.append(f"nav: only {count} nav items (want 4)")
+    if count != 4:
+        problems.append(f"nav: only {count} visible rail items (want 4)")
+    groups = page.locator("[data-rail] .rail-group").all_inner_texts()
+    if groups != ["Handover", "Maintenance"]:
+        problems.append(f"nav: unexpected groups {groups}")
     for i in range(min(count, 4)):
         link = nav_links.nth(i)
         href = absolutize(link.get_attribute("href") or "", BASE)

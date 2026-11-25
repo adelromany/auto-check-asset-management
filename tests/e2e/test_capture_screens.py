@@ -69,6 +69,8 @@ def _shot(page, name: str, viewport: dict) -> None:
     suffix = "desktop" if viewport is DESKTOP else "mobile"
     page.set_viewport_size(viewport)
     page.wait_for_timeout(250)
+    overflow = page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    assert overflow, f"{name}-{suffix} has horizontal overflow"
     page.screenshot(path=str(OUT / f"{name}-{suffix}.png"), full_page=False)
 
 
@@ -121,7 +123,7 @@ def test_capture(seeded):
                 portal.base + f"/handovers/{portal.click_handover_id}",
                 wait_until="networkidle",
             )
-            page.locator('[data-op-tile="agent_report"]').click()
+            page.locator('[data-check-device]').click()
             _both(page, f"drawer-open-{theme}")
             page.keyboard.press("Escape")
 
