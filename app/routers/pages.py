@@ -144,6 +144,8 @@ def _row_context(handover) -> dict:
         "kind": handover.kind or CaseKind.HANDOVER.value,
         "serial": handover.device_serial,
         "ticket_ref": handover.ticket_ref,
+        "model": handover.device_model or "",
+        "company": handover.device_company or "",
         "engineer_name": handover.engineer_name or handover.engineer_email,
         "recipient": (
             handover.recipient_snipeit_name
@@ -548,6 +550,20 @@ async def maintenance_page(
         MAINTENANCE_STATE_LABELS={s.value: maintenance_label(s) for s in MaintenanceState},
     )
     return templates.TemplateResponse(request=request, name="maintenance.html", context=ctx)
+
+
+@router.get("/maintenance/devices", response_class=HTMLResponse)
+async def maintenance_devices_page(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+):
+    redirect = _login_redirect(request)
+    if redirect is not None:
+        return redirect
+    rows = await _list_rows(session, kind=CaseKind.MAINTENANCE.value)
+    ctx = _common_ctx(request, "Devices", "maintenance_devices")
+    ctx.update(rows=rows)
+    return templates.TemplateResponse(request=request, name="maintenance_devices.html", context=ctx)
 
 
 # -- sync screen --------------------------------------------------------------

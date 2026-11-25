@@ -37,3 +37,4 @@ STEP 4.7 DONE `tools/v2_probe_handover_full.py` against the real Snipe-IT dev st
 STEP 4.8 DONE full suite after fixing FORMS_DIR deployment guide and LIVE GRAPH rows: `pytest -q -p no:cacheprovider --deselect tests/test_clipboard_playwright.py` = 459 passed, 11 skipped, 3 errors in tests/e2e (Playwright browser service HTTP 503; environment/no browser). Regenerated `docs/principles/visual/*`; open questions Q-25 (Nexta template missing) and Q-26 (printing from the hosted server) added.
 PHASE 04 DONE - company form generation, signed paper upload/push, Complete/Not complete/Ready outcomes, filters, handover-only dashboard data, live probe 5/5 PASS.
 Next: `05-handover-ui.md` (read only its steps; `00-README` A and B1).
+STEP 5.1 DONE Navigation grouped into Handover and Maintenance; Sync removed from nav while /sync remains; /maintenance/devices route added; `pytest tests/test_dashboard.py -q -p no:cacheprovider` = 29 passed.

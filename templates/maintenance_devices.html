@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="sr-only">Devices</h1>
+<div class="page-head">
+  <p class="page-intro">Devices</p>
+</div>
+<section class="card">
+  <div class="card-content">
+    {% if rows %}
+    <ul class="attention-list">
+      {% for row in rows %}
+      <li class="attention-row">
+        <span class="mono attention-serial">{{ row.serial }}</span>
+        <span>{{ row.model or '—' }}</span>
+        <a href="/maintenance/{{ row.id }}" class="btn btn-outline btn-sm">Open</a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<div class="empty" data-empty><span>—</span></div>{% endif %}
+  </div>
+</section>
+{% endblock %}
