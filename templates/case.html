@@ -11,10 +11,10 @@
 
 <div class="case-topbar">
   <div class="case-chips">
-    {% if row.display_status == 'stalled' %}<span class="badge badge-warning">Stalled</span>
+    {% if row.kind == 'handover' %}<span class="badge {% if row.outcome == 'complete' %}badge-success{% elif row.outcome == 'ready' %}badge-accent{% else %}badge-warning{% endif %}">{{ {'complete': 'Complete', 'ready': 'Ready lab'}.get(row.outcome, 'Not complete') }}</span>
+    {% if row.display_status == 'stalled' %}<span class="badge badge-secondary">Stale</span>{% endif %}
     {% elif row.status == 'completed' %}<span class="badge badge-success">Completed</span>
     {% elif row.status == 'cancelled' %}<span class="badge badge-secondary">Cancelled</span>
-    {% elif row.status == 'closed_with_gaps' %}<span class="badge badge-secondary">Closed with gaps</span>
     {% else %}<span class="badge badge-outline">{{ row.status.replace('_',' ')|title }}</span>{% endif %}
     {% if row.all_passed %}<span class="badge badge-success" data-all-passed>All operations passed</span>{% endif %}
     {% if row.kind == 'maintenance' %}

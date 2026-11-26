@@ -244,7 +244,7 @@ def _attention_from_rows(rows: list[dict]) -> list[dict]:
             returned=maintenance.returned_date is not None,
         )
         if row["display_status"] == HandoverStatus.STALLED.value:
-            reason = f"Stalled {config.STALL_HOURS} h"
+            reason = f"Stale {config.STALL_HOURS} h"
             urgency = 2
         elif failed:
             reason = f"{OPERATION_TITLES.get(Operation(failed[0]), failed[0])} failed"
@@ -267,7 +267,7 @@ def _attention_from_rows(rows: list[dict]) -> list[dict]:
             reason = f"{OPERATION_TITLES.get(Operation(not_done[0]), not_done[0])} not done"
             urgency = 3
         elif row["status"] == HandoverStatus.CLOSED_WITH_GAPS.value:
-            reason = "Closed with gaps"
+            reason = "Not complete"
             urgency = 4
         else:
             continue

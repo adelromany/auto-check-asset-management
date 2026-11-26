@@ -37,24 +37,17 @@
 
 
 {%- macro handover_status_label(status) -%}
-{%- if status == "completed" -%}Completed
-{%- elif status == "in_progress" -%}In progress
-{%- elif status == "stalled" -%}Stalled
-{%- elif status == "closed_with_gaps" -%}Closed with gaps
-{%- elif status == "draft" -%}Draft
-{%- elif status == "cancelled" -%}Cancelled
-{%- else -%}{{ status }}
+{%- if status == "completed" -%}Complete
+{%- elif status == "ready" -%}Ready lab
+{%- else -%}Not complete
 {%- endif -%}
 {%- endmacro -%}
 
 
 {%- macro handover_badge(status) -%}
-{%- if status == "completed" -%}<span class="badge badge-success">Completed</span>
-{%- elif status == "in_progress" -%}<span class="badge badge-default">In progress</span>
-{%- elif status == "stalled" -%}<span class="badge badge-warning">Stalled</span>
-{%- elif status == "closed_with_gaps" -%}<span class="badge badge-warning">Closed with gaps</span>
-{%- elif status == "cancelled" -%}<span class="badge badge-outline">Cancelled</span>
-{%- else -%}<span class="badge badge-secondary">Draft</span>
+{%- if status == "completed" -%}<span class="badge badge-success">Complete</span>
+{%- elif status == "ready" -%}<span class="badge badge-accent">Ready lab</span>
+{%- else -%}<span class="badge badge-warning">Not complete</span>
 {%- endif -%}
 {%- endmacro -%}
 
@@ -82,7 +75,7 @@
 
 {%- macro missing_text(missing, status) -%}
 {%- if status == "cancelled" -%}Cancelled
-{%- elif status == "closed_with_gaps" -%}Closed with gaps
+{%- elif status == "closed_with_gaps" -%}Not complete
 {%- elif missing -%}{{ missing[0].hint }}
 {%- else -%}Complete
 {%- endif -%}

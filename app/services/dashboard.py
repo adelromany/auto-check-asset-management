@@ -913,7 +913,7 @@ def _attention(
             reason = f"{_operation_title(failed_stage)} missing"
         elif pending:
             priority = 1
-            reason = f"Waiting for user {days} days"
+            reason = f"Waiting user {days} days"
         elif row["status"] in _OPEN_STATUSES and _row_is_stalled(row, current):
             priority = 2
             reason = f"Stale {days} days"
@@ -995,7 +995,7 @@ def _activity_text(
     if event_type == "handover_cancelled":
         return "Cancelled"
     if event_type == "case_closed_with_gaps":
-        return "Closed with gaps"
+        return "Not complete"
     if event_type == "case_reopened":
         return "Reopened"
     return event_type.replace("_", " ").capitalize()
