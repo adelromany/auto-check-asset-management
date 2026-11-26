@@ -865,13 +865,10 @@ async def test_list_paginates_filters_and_caps_page_size(api: ApiHarness) -> Non
     bad_status = await api.client.get("/api/handovers?status=nope")
 
     assert page_one.status_code == 200
-    assert page_one.json()["total"] == 2
+    assert page_one.json()["total"] == 1
     assert len(page_one.json()["items"]) == 1
-    assert len(page_two.json()["items"]) == 1
-    assert {
-        page_one.json()["items"][0]["id"],
-        page_two.json()["items"][0]["id"],
-    } == {first["id"], second["id"]}
+    assert len(page_two.json()["items"]) == 0
+    assert page_one.json()["items"][0]["id"] == first["id"]
     assert cancelled.json()["total"] == 1
     assert cancelled.json()["items"][0]["id"] == second["id"]
     assert too_big.status_code == 422

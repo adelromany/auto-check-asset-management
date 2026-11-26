@@ -110,6 +110,8 @@ def build_case_filters(
     status_filter = _status_condition(status, stall_cutoff)
     if status_filter is not None:
         filters.append(status_filter)
+    if status != HandoverStatus.CANCELLED.value:
+        filters.append(Handover.status != HandoverStatus.CANCELLED.value)
     if engineer:
         filters.append(Handover.engineer_email == engineer)
     if kind:

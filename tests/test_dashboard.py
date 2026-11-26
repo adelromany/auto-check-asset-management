@@ -483,6 +483,7 @@ async def test_handovers_page_renders_and_filters(
     assert "Handovers" in body
     assert "SN-COMP-1" in body
     assert "SN-STALLED" in body
+    assert "SN-CANCEL" not in body
     assert 'name="company"' in body
     assert 'name="outcome"' in body
     assert 'name="q"' in body
