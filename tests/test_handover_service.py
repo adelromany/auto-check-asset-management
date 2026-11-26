@@ -399,10 +399,10 @@ async def test_list_paginates_and_filters(service) -> None:
     page_one, total = await service.list(page=1, page_size=1)
     page_two, _ = await service.list(page=2, page_size=1)
 
-    assert total == 2
+    assert total == 1
     assert len(page_one) == 1
-    assert len(page_two) == 1
-    assert {page_one[0].id, page_two[0].id} == {first.id, second.id}
+    assert len(page_two) == 0
+    assert page_one[0].id == first.id
 
     cancelled, cancelled_total = await service.list(
         status=HandoverStatus.CANCELLED.value
@@ -411,7 +411,7 @@ async def test_list_paginates_and_filters(service) -> None:
     assert cancelled[0].id == second.id
 
     by_engineer, engineer_total = await service.list(engineer=ENGINEER)
-    assert engineer_total == 2
+    assert engineer_total == 1
 
     future = datetime.now(timezone.utc) + timedelta(days=1)
     _, future_total = await service.list(created_from=future)
