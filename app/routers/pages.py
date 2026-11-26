@@ -398,9 +398,14 @@ async def handovers_page(
     if redirect is not None:
         return redirect
     status = status if status in [s.value for s in HandoverStatus] else None
+    if outcome not in ("complete", "not_complete", "ready") and status:
+        outcome = {
+            HandoverStatus.COMPLETED.value: "complete",
+            HandoverStatus.READY.value: "ready",
+        }.get(status, "not_complete")
     query = (q or "").strip()[:100]
     rows = await _list_rows(
-        session, kind=CaseKind.HANDOVER.value, status=status, engineer=engineer,
+        session, kind=CaseKind.HANDOVER.value, engineer=engineer,
         q=query or None,
         outcome=outcome if outcome in ("complete", "not_complete", "ready") else None,
         company=company or None,

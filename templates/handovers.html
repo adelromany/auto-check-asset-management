@@ -15,8 +15,8 @@
     </select>
     <label class="sr-only" for="handover-outcome">Outcome</label>
     <select id="handover-outcome" name="outcome" class="input input-inline">
-      <option value="">Outcome: all</option>
-      {% for value, label in [('ready', 'Ready'), ('complete', 'Complete'), ('not_complete', 'Not complete yet')] %}<option value="{{ value }}" {% if active_outcome == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      <option value="">All</option>
+      {% for value, label in [('ready', 'Ready lab'), ('complete', 'Complete'), ('not_complete', 'Not complete')] %}<option value="{{ value }}" {% if active_outcome == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
     </select>
     <label class="sr-only" for="handover-search">Search</label>
     <input id="handover-search" name="q" value="{{ query }}" class="input input-inline" placeholder="Serial or recipient">

@@ -443,8 +443,10 @@ async def test_dashboard_page_renders_seeded_data(
     assert "Ready labs" in body
     assert "Complete" in body
     assert "Not complete" in body
-    for name in ("ready", "complete", "not_complete", "waiting_user", "stalled", "warnings"):
+    for name in ("ready", "complete", "not_complete"):
         assert f'data-kpi="{name}"' in body
+    for name in ("waiting_user", "stalled", "warnings"):
+        assert f'data-kpi="{name}"' not in body
     assert 'data-handover-list' in body
     assert 'data-chart="per-day"' in body
     assert 'data-attention' in body
@@ -461,8 +463,10 @@ async def test_dashboard_tiles_expose_outcome_filters(
     body = response.text
     assert "Ready labs" in body
     assert "Not complete" in body
-    for name in ("ready", "complete", "not_complete", "waiting_user", "stalled", "warnings"):
+    for name in ("ready", "complete", "not_complete"):
         assert f'data-tile="{name}"' in body
+    for name in ("waiting_user", "stalled", "warnings"):
+        assert f'data-tile="{name}"' not in body
     for period in ("today", "7d", "30d", "all"):
         assert f'data-period="{period}"' in body
     for company in ("all", "B.tech", "Nexta", "Mylo"):
@@ -482,6 +486,10 @@ async def test_handovers_page_renders_and_filters(
     assert 'name="company"' in body
     assert 'name="outcome"' in body
     assert 'name="q"' in body
+    assert '<option value="">All</option>' in body
+    for label in ("Ready lab", "Complete", "Not complete"):
+        assert f">{label}</option>" in body
+    assert "Not complete yet</option>" not in body
 
     searched = await dashboard.client.get("/handovers?q=STALLED")
     assert searched.status_code == 200
