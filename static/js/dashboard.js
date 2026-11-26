@@ -18,9 +18,6 @@
     ready: "Ready labs",
     complete: "Complete",
     not_complete: "Not complete",
-    waiting_user: "Waiting for user",
-    stalled: "Stalled",
-    warnings: "Warnings",
     missing: "Missing part",
     engineer: "Engineer",
   };
@@ -121,9 +118,6 @@
     setTile("ready", tiles.ready, tiles.ready ? "tile-accent" : "tile-muted");
     setTile("complete", tiles.complete, tiles.complete ? "tile-success" : "tile-muted");
     setTile("not_complete", tiles.not_complete, tiles.not_complete ? "tile-amber" : "tile-muted");
-    setTile("waiting_user", tiles.waiting_user, tiles.waiting_user ? "tile-amber" : "tile-muted");
-    setTile("stalled", tiles.stalled, tiles.stalled ? "tile-amber" : "tile-muted");
-    setTile("warnings", tiles.warnings, tiles.warnings ? "tile-red" : "tile-muted");
 
     var perDay = data.per_day || [];
     if (charts.sparkline) {

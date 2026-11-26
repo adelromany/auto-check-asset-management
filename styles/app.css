@@ -809,7 +809,7 @@
   .segmented { @apply inline-flex overflow-hidden rounded-lg border bg-card; }
   .segmented button { @apply min-h-9 border-0 px-3 text-sm text-muted-foreground; }
   .segmented button[aria-pressed="true"] { @apply bg-accent font-medium text-accent-foreground; }
-  .kpi-grid { @apply grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6; }
+  .kpi-grid { @apply grid grid-cols-1 gap-3 sm:grid-cols-3; }
   .kpi { @apply min-h-28; }
   .tile-muted .tile-value { @apply text-muted-foreground; }
   .tile-success .tile-value { @apply text-success; }
