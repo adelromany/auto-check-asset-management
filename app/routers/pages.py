@@ -169,6 +169,7 @@ def _row_context(handover) -> dict:
             or handover.recipient_reported_username
         ),
         "recipient_company": getattr(handover, "recipient_company", None),
+        "recipient_mode": handover.recipient_mode,
         "status": handover.status,
         "outcome": case_outcome(handover_states, recipient_mode=handover.recipient_mode, cancelled=handover.status == "cancelled").value,
         "missing": missing_parts(handover_states),

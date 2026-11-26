@@ -51,11 +51,20 @@
     row.appendChild(serial);
     row.appendChild(portal.el("span", "handover-model", item.device_model || "—"));
     row.appendChild(badge(item.device_company || "—", "badge badge-secondary"));
-    if ((item.warnings || []).some(function (warning) { return warning.code === "company_mismatch"; })) {
-      var warn = portal.el("span", "warn-mark", "!");
-      warn.title = (item.device_company || "—") + " / " + (item.recipient_company || "—");
-      row.appendChild(warn);
+    var states = portal.el("span", "case-chips");
+    var outcomeText = item.outcome === "complete" ? "Complete" : item.outcome === "ready" ? "Ready lab" : "Not complete";
+    var outcomeClass = item.outcome === "complete" ? "badge badge-success" : item.outcome === "ready" ? "badge badge-accent" : "badge badge-warning";
+    states.appendChild(badge(outcomeText, outcomeClass));
+    if (["pending_user", "not_in_snipeit"].indexOf(item.recipient_mode) >= 0) {
+      states.appendChild(badge("Waiting user", "badge badge-secondary"));
     }
+    if ((item.warnings || []).some(function (warning) { return warning.code === "company_mismatch"; })) {
+      var warn = badge("Company differs !", "badge badge-secondary");
+      warn.title = (item.device_company || "—") + " / " + (item.recipient_company || "—");
+      states.appendChild(warn);
+    }
+    if (item.status === "stalled") states.appendChild(badge("Stale", "badge badge-secondary"));
+    row.appendChild(states);
     row.appendChild(portal.el("span", "handover-recipient", item.recipient_snipeit_name || item.recipient_free_name || "No recipient"));
     var missing = portal.el("span", "handover-missing");
     (item.missing || []).slice(0, 3).forEach(function (part) {
@@ -232,7 +241,7 @@
     }
     rows.forEach(function (row) {
       var line = portal.el("div", "attention-row");
-      var level = /missing/.test(row.reason) ? "attention-0" : /Waiting/.test(row.reason) ? "attention-1" : /Stalled/.test(row.reason) ? "attention-2" : "attention-3";
+      var level = /missing/.test(row.reason) ? "attention-0" : /Waiting/.test(row.reason) ? "attention-1" : /Stale/.test(row.reason) ? "attention-2" : "attention-3";
       line.appendChild(portal.el("span", "attention-icon " + level, "!"));
       var link = portal.el("a", "attention-serial mono", row.serial);
       link.href = "/handovers/" + row.id;

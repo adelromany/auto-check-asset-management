@@ -242,9 +242,16 @@ class DashboardService:
                 engineer=engineer,
             )
         ]
+        summaries = []
+        for item in items:
+            if self._row_stalled(
+                {"status": item.status, "updated_at": item.updated_at}
+            ):
+                item.status = HandoverStatus.STALLED.value
+            summaries.append(HandoverSummary.model_validate(item))
         return HandoverCaseListOut(
             filter=filter,
-            items=[HandoverSummary.model_validate(item) for item in items],
+            items=summaries,
             total=len(items),
         )
 
@@ -266,7 +273,10 @@ class DashboardService:
                 Handover.updated_at,
                 Handover.closed_at,
             )
-            .where(Handover.kind == "handover")
+            .where(
+                Handover.kind == "handover",
+                Handover.status != HandoverStatus.CANCELLED.value,
+            )
             .order_by(Handover.created_at.desc())
         )
         return [dict(row._mapping) for row in result.all()]
@@ -346,7 +356,10 @@ class DashboardService:
                 Handover.recipient_free_name,
             )
             .join(Handover, Handover.id == Event.handover_id)
-            .where(Handover.kind == "handover")
+            .where(
+                Handover.kind == "handover",
+                Handover.status != HandoverStatus.CANCELLED.value,
+            )
             .order_by(Event.at.desc(), Event.id.desc())
             .limit(ACTIVITY_LIMIT)
         )
@@ -903,7 +916,7 @@ def _attention(
             reason = f"Waiting for user {days} days"
         elif row["status"] in _OPEN_STATUSES and _row_is_stalled(row, current):
             priority = 2
-            reason = f"Stalled {days} days"
+            reason = f"Stale {days} days"
         elif conflict:
             priority = 3
             reason = "Company differs"

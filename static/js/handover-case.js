@@ -8,7 +8,7 @@
   var items = [];
 
   function outcomeLabel(value) {
-    return value === "complete" ? "Complete" : value === "ready" ? "Ready" : "Not complete yet";
+    return value === "complete" ? "Complete" : value === "ready" ? "Ready lab" : "Not complete";
   }
 
   function outcomeClass(value) {

@@ -780,7 +780,7 @@
   .tile-button { @apply flex min-h-36 flex-col items-start text-left; }
   .tile-chips { @apply mt-3 flex flex-wrap gap-1; }
   .handover-list { @apply flex flex-col divide-y; }
-  .handover-row { @apply flex flex-wrap items-center gap-3 py-3 md:grid md:grid-cols-[minmax(9rem,1fr)_minmax(8rem,1fr)_auto_minmax(9rem,1fr)_minmax(8rem,1fr)_auto_auto]; }
+  .handover-row { @apply flex flex-wrap items-center gap-3 py-3 md:grid md:grid-cols-[minmax(8rem,1fr)_minmax(7rem,1fr)_auto_minmax(10rem,1.2fr)_minmax(8rem,1fr)_minmax(7rem,1fr)_auto_auto]; }
   .handover-serial { @apply font-medium; }
   .handover-model, .handover-recipient { @apply min-w-0 truncate; }
   .handover-missing { @apply order-last flex w-full min-w-0 flex-wrap gap-1 md:order-none md:w-auto; }

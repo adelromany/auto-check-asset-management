@@ -539,7 +539,7 @@ async def test_case_page_renders_the_case(
     assert "SN-STALLED" in body
     assert "Recipient" in body
     assert "Handover" in body
-    assert "Not complete yet" in body
+    assert "Not complete" in body
     assert f'href="/handovers/{handover_id}/history"' in body
     assert 'data-check-device' in body
     assert f'data-case-id="{handover_id}"' in body
@@ -588,7 +588,7 @@ async def test_handover_case_outcome_is_rendered_from_server_state(
 
     stalled_id = await _id_for(dashboard, "SN-STALLED")
     stalled = await dashboard.client.get(f"/handovers/{stalled_id}")
-    assert "Not complete yet" in stalled.text
+    assert "Not complete" in stalled.text
 
 
 async def test_handover_outcome_dashboard_excludes_maintenance(
