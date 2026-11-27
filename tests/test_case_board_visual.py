@@ -123,7 +123,7 @@ def case_board(tmp_path_factory: pytest.TempPathFactory):
                 time.sleep(0.25)
         else:
             pytest.skip("the case-board UI server did not start")
-        yield base, handover_id
+        yield base, handover_id, db_path
     finally:
         process.terminate()
         try:
@@ -155,7 +155,7 @@ def _words(page) -> list[str]:
 
 
 def test_case_board_meets_the_visible_word_budgets(headless_chrome, case_board) -> None:
-    base, handover_id = case_board
+    base, handover_id, _ = case_board
     for width, height, budget in BUDGETS:
         page = headless_chrome.new_page(viewport={"width": width, "height": height})
         try:
@@ -176,7 +176,7 @@ def test_case_board_meets_the_visible_word_budgets(headless_chrome, case_board) 
 
 
 def test_handover_case_has_three_panels_and_device_drawer(headless_chrome, case_board) -> None:
-    base, handover_id = case_board
+    base, handover_id, _ = case_board
     page = headless_chrome.new_page(viewport={"width": 1440, "height": 900})
     try:
         page.goto(f"{base}/handovers/{handover_id}", wait_until="networkidle")
@@ -198,8 +198,47 @@ def test_handover_case_has_three_panels_and_device_drawer(headless_chrome, case_
         page.close()
 
 
+def test_handover_types_switch_panels_and_ready_lab(
+    headless_chrome, case_board
+) -> None:
+    import sqlite3
+
+    base, handover_id, db_path = case_board
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "UPDATE handover_stages SET status='passed' WHERE handover_id=? "
+            "AND stage IN ('device_status','agent_report','software_check')",
+            (handover_id.replace("-", ""),),
+        )
+    page = headless_chrome.new_page(viewport={"width": 1440, "height": 900})
+    try:
+        page.goto(f"{base}/handovers/{handover_id}", wait_until="networkidle")
+        with page.expect_response("**/mode"):
+            page.locator('[data-case-mode="pending_user"]').click()
+        assert page.locator("[data-device-panel]").is_visible()
+        assert page.locator("[data-waiting-user-panel]").is_visible()
+        assert page.locator("[data-handover-panel]").is_visible()
+        assert not page.locator("[data-recipient-panel]").is_visible()
+        with page.expect_response("**/mode"):
+            page.locator('[data-case-mode="snipeit"]').click()
+        assert page.locator("[data-recipient-panel]").is_visible()
+        assert not page.locator("[data-waiting-user-panel]").is_visible()
+        with page.expect_response("**/mode"):
+            page.locator('[data-case-mode="none"]').click()
+        assert page.locator("[data-device-panel]").is_visible()
+        assert not page.locator("[data-recipient-panel]").is_visible()
+        assert not page.locator("[data-waiting-user-panel]").is_visible()
+        assert not page.locator("[data-handover-panel]").is_visible()
+        assert page.locator("[data-case-outcome]").inner_text() == "Ready lab"
+        output = REPO_ROOT / "docs" / "review" / "v2" / "p2-case-lab.png"
+        output.parent.mkdir(parents=True, exist_ok=True)
+        page.screenshot(path=str(output), full_page=True)
+    finally:
+        page.close()
+
+
 def test_dashboard_and_registration_meet_word_budgets(headless_chrome, case_board) -> None:
-    base, _ = case_board
+    base, _, _ = case_board
     page = headless_chrome.new_page(viewport={"width": 1440, "height": 900})
     try:
         page.goto(f"{base}/", wait_until="networkidle")
