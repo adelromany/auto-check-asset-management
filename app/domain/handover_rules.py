@@ -75,6 +75,30 @@ class Outcome(StrEnum):
     CANCELLED = "cancelled"
 
 
+def _mode(recipient_mode: str | None) -> str:
+    if recipient_mode == "not_in_snipeit":
+        return "pending_user"
+    return recipient_mode or "snipeit"
+
+
+def required_operations(recipient_mode: str | None) -> tuple[Operation, ...]:
+    """Return exactly the parts required by the chosen handover type."""
+    if _mode(recipient_mode) == "none":
+        return (
+            Operation.DEVICE_STATUS,
+            Operation.AGENT_REPORT,
+            Operation.SOFTWARE_CHECK,
+        )
+    return tuple(HANDOVER_OPERATIONS)
+
+
+def kind_label(recipient_mode: str | None) -> str:
+    return {
+        "none": "Lab only",
+        "pending_user": "User not ready",
+    }.get(_mode(recipient_mode), "Lab + user")
+
+
 def case_outcome(
     states: Sequence[StageState],
     *,
@@ -85,30 +109,23 @@ def case_outcome(
     if cancelled:
         return Outcome.CANCELLED
     by_stage = _by_stage(states)
+    required = required_operations(recipient_mode)
     if all(
         _state_for(by_stage, operation).status is StageStatus.PASSED
-        for operation in HANDOVER_OPERATIONS
+        for operation in required
     ):
-        return Outcome.COMPLETE
-    ready_operations = (
-        Operation.DEVICE_STATUS,
-        Operation.AGENT_REPORT,
-        Operation.SOFTWARE_CHECK,
-    )
-    if recipient_mode == "none" and all(
-        _state_for(by_stage, operation).status is StageStatus.PASSED
-        for operation in ready_operations
-    ):
-        return Outcome.READY
+        return Outcome.READY if _mode(recipient_mode) == "none" else Outcome.COMPLETE
     return Outcome.NOT_COMPLETE
 
 
-def missing_parts(states: Sequence[StageState]) -> list[str]:
-    """Return the titles of handover operations that are not passed."""
+def missing_parts(
+    states: Sequence[StageState], recipient_mode: str | None = None
+) -> list[str]:
+    """Return the titles of required handover operations that are not passed."""
     by_stage = _by_stage(states)
     return [
         operation_title(operation)
-        for operation in HANDOVER_OPERATIONS
+        for operation in required_operations(recipient_mode)
         if _state_for(by_stage, operation).status is not StageStatus.PASSED
     ]
 
