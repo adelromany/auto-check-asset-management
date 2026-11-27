@@ -236,6 +236,8 @@ class HandoverService:
             handover.device_model = device.model
             handover.device_category = device.category
             handover.snipeit_status_name = device.status
+            handover.device_holder_id = device.assigned_to_id
+            handover.device_holder_name = device.assigned_to_name
         if resolved_kind == CaseKind.MAINTENANCE:
             handover.maintenance_state = MaintenanceState.WITH_IT.value
             handover.maintenance = MaintenanceInfo(handover_id=handover.id)

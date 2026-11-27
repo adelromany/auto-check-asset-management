@@ -29,6 +29,33 @@ from app.services.handovers import HandoverService
 router = APIRouter()
 
 
+@router.get("/api/snipeit/device-lookup")
+async def live_device_lookup(
+    serial: str = Query(min_length=3, max_length=100),
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+):
+    """Shared live card for the new-case drawer and device screens."""
+    from app.services.device_live import read_device
+
+    try:
+        device = await read_device(client, serial)
+        candidates = await client.search_assets(serial)
+        active = await HandoverService(session).find_active_by_serial(serial)
+    except SnipeItError as exc:
+        raise snipeit_http_error(exc) from exc
+    return {
+        **device,
+        "multiple": len(candidates) > 1,
+        "candidates": [
+            {"asset_id": item.id, "asset_tag": item.asset_tag, "serial": item.serial, "model": item.model}
+            for item in candidates
+        ] if len(candidates) > 1 else [],
+        "open_case": ({"id": str(active.id), "url": (f"/maintenance/{active.id}" if active.kind == "maintenance" else f"/handovers/{active.id}")} if active else None),
+    }
+
+
 def _client(user: dict) -> SnipeItClient:
     return SnipeItClient(
         config.SNIPEIT_URL,

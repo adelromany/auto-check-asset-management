@@ -108,6 +108,7 @@ class SnipeItAsset:
     company_id: int | None = None
     company: str | None = None
     status_id: int | None = None
+    status_deployable: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -213,6 +214,11 @@ def _asset_from_json(row: dict[str, Any]) -> SnipeItAsset:
         status_id=(
             _int_or_none(status_label.get("id"))
             if isinstance(status_label, dict)
+            else None
+        ),
+        status_deployable=(
+            bool(status_label.get("deployable"))
+            if isinstance(status_label, dict) and "deployable" in status_label
             else None
         ),
     )
@@ -372,6 +378,12 @@ class SnipeItClient:
                 "assigned_type": "App\\Models\\User",
                 "limit": 500,
             },
+        )
+        return [_asset_from_json(row) for row in _rows(data)]
+
+    async def search_assets(self, serial: str, *, limit: int = 10) -> list[SnipeItAsset]:
+        data = await self._get_json(
+            "/api/v1/hardware", params={"search": serial.strip(), "limit": limit}
         )
         return [_asset_from_json(row) for row in _rows(data)]
 

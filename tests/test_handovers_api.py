@@ -152,6 +152,37 @@ async def test_lab_only_refused_after_checkout(api: ApiHarness) -> None:
     assert refused.json()["detail"] == "The device is already checked out"
 
 
+async def test_device_live_and_checkin_refresh_the_holder(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-11")
+    live = await api.client.get(f"/api/handovers/{case['id']}/device-live")
+    assert live.status_code == 200, live.text
+    assert live.json()["assigned_to"] == {
+        "id": 1,
+        "name": "Alice",
+        "email": "alice@example.com",
+        "username": "alice",
+        "company": "B.tech",
+    }
+    assert live.json()["deployable"] is True
+    checked_in = await api.client.post(f"/api/handovers/{case['id']}/device/checkin")
+    assert checked_in.status_code == 200, checked_in.text
+    assert checked_in.json()["changed"] is True
+    assert checked_in.json()["assigned_to"] is None
+    detail = await api.client.get(f"/api/handovers/{case['id']}")
+    assert detail.json()["device_holder_name"] is None
+    assert any(event["type"] == "device_checked_in" for event in detail.json()["events"])
+    repeated = await api.client.post(f"/api/handovers/{case['id']}/device/checkin")
+    assert repeated.json()["changed"] is False
+
+
+async def test_device_live_for_unassigned_asset(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-10")
+    response = await api.client.get(f"/api/handovers/{case['id']}/device-live")
+    assert response.status_code == 200
+    assert response.json()["assigned_to"] is None
+    assert response.json()["status_id"] == 1
+
+
 async def test_attach_agent_report_accepts_validated_payload(api: ApiHarness) -> None:
     case = await _create(api, serial="SN-1")
 

@@ -302,13 +302,24 @@
       match.removeAttribute("data-state");
       var value = serial.value.trim();
       if (value.length < 3) return;
-      fetch("/api/snipeit/device?serial=" + encodeURIComponent(value), {
+      fetch("/api/snipeit/device-lookup?serial=" + encodeURIComponent(value), {
         credentials: "same-origin",
       }).then(function (res) { return res.ok ? res.json() : null; })
         .then(function (device) {
           if (!device) return;
           if (device.found) {
-            match.textContent = "Snipe-IT: " + (device.asset_tag || "") + " " + (device.model || "");
+            match.textContent = "";
+            match.appendChild(portal.el("strong", "", device.model || device.asset_tag || "Device"));
+            var chips = portal.el("div", "case-chips");
+            chips.appendChild(portal.el("span", "badge badge-secondary", device.company || "—"));
+            chips.appendChild(portal.el("span", "badge " + (device.status === "Ready to deploy" ? "badge-success" : device.deployable ? "badge-warning" : "badge-destructive"), device.status || "—"));
+            match.appendChild(chips);
+            match.appendChild(portal.el("div", "muted", device.assigned_to ? "With: " + (device.assigned_to.name || device.assigned_to.username) : "Not assigned"));
+            if (device.open_case) {
+              var open = portal.el("a", "btn btn-outline btn-sm", "Open case");
+              open.href = device.open_case.url;
+              match.appendChild(open);
+            }
             match.setAttribute("data-state", "ok");
           } else {
             match.textContent = "Not found in Snipe-IT";

@@ -98,6 +98,8 @@ class Handover(Base):
     device_model: Mapped[str | None] = mapped_column(String(120))
     device_category: Mapped[str | None] = mapped_column(String(120))
     snipeit_status_name: Mapped[str | None] = mapped_column(String(80))
+    device_holder_id: Mapped[int | None] = mapped_column(Integer)
+    device_holder_name: Mapped[str | None] = mapped_column(String(200))
     recipient_mode: Mapped[str | None] = mapped_column(String(20))
     recipient_free_name: Mapped[str | None] = mapped_column(String(200))
     recipient_free_email: Mapped[str | None] = mapped_column(String(200))

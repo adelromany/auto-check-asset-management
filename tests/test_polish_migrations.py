@@ -60,3 +60,17 @@ def test_case_type_migration_round_trip(tmp_path: Path) -> None:
     assert _mode(db) == "not_in_snipeit"
     _alembic(db, "0013_case_type")
     assert _mode(db) == "pending_user"
+
+
+def test_device_holder_migration_round_trip(tmp_path: Path) -> None:
+    db = tmp_path / "device-holder.db"
+    _alembic(db, "0013_case_type")
+    _alembic(db, "0014_device_holder")
+    with sqlite3.connect(db) as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(handovers)")}
+    assert {"device_holder_id", "device_holder_name"} <= columns
+    _downgrade(db, "0013_case_type")
+    with sqlite3.connect(db) as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(handovers)")}
+    assert "device_holder_id" not in columns
+    _alembic(db, "0014_device_holder")

@@ -50,6 +50,31 @@
     });
   }
 
+  function renderLiveDevice(device) {
+    if (detail) {
+      detail.snipeit_status_name = device.status;
+      detail.device_holder_id = device.assigned_to && device.assigned_to.id;
+      detail.device_holder_name = device.assigned_to && device.assigned_to.name;
+    }
+    var status = document.querySelector("[data-device-status]");
+    if (status) {
+      status.textContent = device.status || "—";
+      status.className = "badge " + (device.status === "Ready to deploy" ? "badge-success" : device.deployable ? "badge-warning" : "badge-destructive");
+    }
+    var holder = device.assigned_to;
+    setText("[data-device-holder]", holder ? "With: " + (holder.name || holder.username) + (holder.company ? " (" + holder.company + ")" : "") : "Not assigned");
+    var checkin = document.querySelector("[data-device-checkin]");
+    if (checkin) checkin.classList.toggle("hidden", !holder);
+    setText("[data-device-updated]", "Updated " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+  }
+
+  function refreshDevice() {
+    return portal.request(base + "/device-live").then(renderLiveDevice).catch(function (error) {
+      setText("[data-device-updated]", "Snipe-IT unavailable");
+      portal.toast(error.message, "error");
+    });
+  }
+
   function renderDetail(data) {
     detail = data;
     renderMode(data);
@@ -178,7 +203,9 @@
       items = data || [];
       var host = document.querySelector("[data-recipient-items]");
       host.textContent = "";
-      host.appendChild(portal.el("h3", "drawer-sub", "Current items"));
+      host.appendChild(portal.el("h3", "drawer-sub", "Other devices with this user"));
+      var itemActions = document.querySelector("[data-recipient-item-actions]");
+      if (itemActions) itemActions.classList.toggle("hidden", !items.length);
       if (!items.length) {
         host.appendChild(portal.el("p", "muted", "None"));
         return;
@@ -202,6 +229,16 @@
   function updateTakeBack() {
     var button = document.querySelector("[data-take-back-selected]");
     if (button) button.disabled = !document.querySelector("[data-take-back]:checked");
+  }
+
+  function finishRecipientItems(label) {
+    document.querySelectorAll("[data-take-back]").forEach(function (checkbox) {
+      var row = checkbox.closest("label");
+      checkbox.remove();
+      row.appendChild(portal.el("span", "badge badge-success", "✓ " + label));
+    });
+    var actions = document.querySelector("[data-recipient-item-actions]");
+    if (actions) actions.classList.add("hidden");
   }
 
   function renderPaper(data) {
@@ -234,8 +271,20 @@
     if (target.closest("[data-apply-status]")) {
       var select = document.querySelector("[data-status-select]");
       portal.apiJson(base + "/device-status", { method: "POST", body: JSON.stringify({ status_label_id: Number(select.value) }) })
-        .then(function (data) { renderDetail(data); portal.toast("Status applied.", "success"); })
+        .then(function (data) { renderDetail(data); refreshDevice(); portal.toast("Status applied.", "success"); })
         .catch(function (error) { portal.toast(error.message, "error"); });
+    }
+    if (target.closest("[data-device-refresh]")) {
+      refreshDevice();
+    }
+    if (target.closest("[data-device-checkin]")) {
+      var checkinButton = target.closest("[data-device-checkin]");
+      portal.setBusy(checkinButton.parentNode, true);
+      portal.apiJson(base + "/device/checkin", { method: "POST" })
+        .then(function (device) { renderLiveDevice(device); return loadDetail(); })
+        .then(function () { portal.toast("Checked in.", "success"); })
+        .catch(function (error) { portal.toast(error.message, "error"); })
+        .then(function () { portal.setBusy(checkinButton.parentNode, false); });
     }
     if (target.closest("[data-check-device]")) {
       if (window.syncFlow) window.syncFlow.open({ handoverId: caseId, expectedSerial: document.body.getAttribute("data-case-serial") });
@@ -252,11 +301,13 @@
     if (target.closest("[data-take-back-selected]")) {
       var selected = Array.prototype.slice.call(document.querySelectorAll("[data-take-back]:checked")).map(function (node) { return Number(node.value); });
       portal.apiJson(base + "/recipient/items/checkin", { method: "POST", body: JSON.stringify({ asset_ids: selected }) })
-        .then(loadRecipientItems).catch(function (error) { portal.toast(error.message, "error"); });
+        .then(function () { finishRecipientItems("Checked in"); return loadDetail(); })
+        .catch(function (error) { portal.toast(error.message, "error"); });
     }
     if (target.closest("[data-confirm-items]")) {
       portal.apiJson(base + "/recipient/items/confirm", { method: "POST" })
-        .then(loadDetail).catch(function (error) { portal.toast(error.message, "error"); });
+        .then(function (data) { finishRecipientItems("Kept"); renderDetail(data); })
+        .catch(function (error) { portal.toast(error.message, "error"); });
     }
     if (target.closest("[data-print-form]")) {
       fetch(base + "/form", { credentials: "same-origin" }).then(function (response) {
@@ -335,5 +386,5 @@
       });
   });
 
-  loadDetail().then(function () { loadStatuses(); loadRecipientItems(); });
+  loadDetail().then(function () { loadStatuses(); loadRecipientItems(); refreshDevice(); });
 })();

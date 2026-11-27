@@ -330,6 +330,8 @@ class HandoverSummary(BaseModel):
     device_model: str | None = None
     device_category: str | None = None
     snipeit_status_name: str | None = None
+    device_holder_id: int | None = None
+    device_holder_name: str | None = None
     recipient_mode: str | None = None
     mode: str = "snipeit"
     kind_label: str = "Lab + user"

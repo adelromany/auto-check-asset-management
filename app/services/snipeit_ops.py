@@ -935,6 +935,45 @@ class SnipeItHandoverService:
 
     # -- maintenance status label ---------------------------------------------
 
+    # -- live device state -------------------------------------------------
+    async def device_live(
+        self, handover_id: uuid.UUID, *, client: SnipeItClient
+    ) -> dict[str, Any]:
+        from app.services.device_live import read_device, store_device_snapshot
+
+        handover = await self._core.get(handover_id, with_details=False)
+        device = await read_device(client, handover.device_serial)
+        store_device_snapshot(handover, device)
+        await self._session.flush()
+        return device
+
+    async def checkin_device(
+        self, handover_id: uuid.UUID, *, actor: str, client: SnipeItClient
+    ) -> dict[str, Any]:
+        from app.services.device_live import read_device, store_device_snapshot
+
+        handover = await self._core.get(handover_id, with_details=True)
+        ensure_open(handover)
+        before = await read_device(client, handover.device_serial)
+        holder = before.get("assigned_to")
+        changed = holder is not None
+        if changed:
+            await client.checkin_asset(
+                handover.snipeit_asset_id or before["asset_id"],
+                f"Check in by {actor} via Handover Portal",
+            )
+        device = await read_device(client, handover.device_serial)
+        store_device_snapshot(handover, device)
+        if changed:
+            await self._events.add(
+                handover_id=handover.id,
+                actor=actor,
+                type="device_checked_in",
+                detail={"holder": holder.get("name")},
+            )
+        await self._session.flush()
+        return {**device, "changed": changed}
+
     # -- device status ----------------------------------------------------
     async def set_device_status(
         self,
@@ -993,6 +1032,8 @@ class SnipeItHandoverService:
         handover.device_model = asset.model
         handover.device_category = asset.category
         handover.snipeit_status_name = asset.status
+        handover.device_holder_id = asset.assigned_to_id
+        handover.device_holder_name = asset.assigned_to_name
         await self._session.flush()
 
         ready = str(config.SNIPEIT_STATUS_READY or "").strip().casefold()

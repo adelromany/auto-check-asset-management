@@ -186,6 +186,40 @@ async def confirm_stage(
     return handover_detail(view)
 
 
+@router.get("/{handover_id}/device-live")
+async def get_device_live(
+    handover_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> dict:
+    try:
+        return await SnipeItHandoverService(session).device_live(
+            handover_id, client=client
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    except SnipeItError as exc:
+        raise snipeit_http_error(exc) from exc
+
+
+@router.post("/{handover_id}/device/checkin")
+async def checkin_device(
+    handover_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+) -> dict:
+    try:
+        return await SnipeItHandoverService(session).checkin_device(
+            handover_id, actor=_actor(user), client=client
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    except SnipeItError as exc:
+        raise snipeit_http_error(exc) from exc
+
+
 @router.post("/{handover_id}/mode", response_model=HandoverDetail)
 async def change_handover_mode(
     handover_id: uuid.UUID,

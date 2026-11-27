@@ -22,7 +22,15 @@
   <section class="card handover-panel" data-device-panel aria-labelledby="device-title">
     <div class="card-header"><h2 class="card-title" id="device-title">Device</h2></div>
     <div class="card-content stack">
-      <div class="case-chips"><span class="badge badge-outline" data-device-status>—</span></div>
+      <div class="device-live-block">
+        <div class="case-chips"><span class="badge badge-outline" data-device-status>{{ handover.snipeit_status_name or '—' }}</span></div>
+        <strong data-device-holder>{{ 'With: ' ~ handover.device_holder_name if handover.device_holder_name else 'Not assigned' }}</strong>
+        <div class="button-row">
+          <button type="button" class="btn btn-outline{% if not handover.device_holder_name %} hidden{% endif %}" data-device-checkin>Check in</button>
+          <button type="button" class="btn btn-outline" data-device-refresh>Refresh</button>
+        </div>
+        <small class="muted" data-device-updated></small>
+      </div>
       <div class="filter-row">
         <select class="input" data-status-select aria-label="Snipe-IT status"></select>
         <button type="button" class="btn btn-default" data-apply-status>Apply</button>
@@ -67,9 +75,9 @@
         <div class="muted">{{ handover.recipient_snipeit_email or handover.recipient_free_email or '' }}</div>
       </div>
       <div class="stack" data-recipient-items></div>
-      <div class="button-row">
-        <button type="button" class="btn btn-outline" data-take-back-selected disabled>Take back selected</button>
-        <button type="button" class="btn btn-default" data-confirm-items>Continue</button>
+      <div class="button-row" data-recipient-item-actions>
+        <button type="button" class="btn btn-outline" data-take-back-selected disabled>Check in</button>
+        <button type="button" class="btn btn-default" data-confirm-items>Keep all</button>
       </div>
     </div>
   </section>
