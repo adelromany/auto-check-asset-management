@@ -107,6 +107,49 @@ async def test_create_returns_a_draft_summary(api: ApiHarness) -> None:
     assert body["engineer_name"] == ENGINEER["name"]
     assert body["closed_at"] is None
     assert "stages" not in body
+    assert body["mode"] == "snipeit"
+    assert body["kind_label"] == "Lab + user"
+    assert len(body["required"]) == 9
+
+
+@pytest.mark.parametrize(
+    ("mode", "label", "required_count"),
+    [("none", "Lab only", 3), ("snipeit", "Lab + user", 9), ("pending_user", "User not ready", 9)],
+)
+async def test_create_accepts_handover_type(
+    api: ApiHarness, mode: str, label: str, required_count: int
+) -> None:
+    body = await _create(api, serial=f"SN-MODE-{mode}", mode=mode)
+    assert body["recipient_mode"] == mode
+    assert body["kind_label"] == label
+    assert len(body["required"]) == required_count
+
+
+async def test_change_handover_type_preserves_operations(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-MODE-CHANGE", mode="none")
+    response = await api.client.post(
+        f"/api/handovers/{case['id']}/mode", json={"mode": "snipeit"}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["mode"] == "snipeit"
+    assert len(response.json()["stages"]) == 9
+    assert any(event["type"] == "mode_changed" for event in response.json()["events"])
+
+
+async def test_lab_only_refused_after_checkout(api: ApiHarness) -> None:
+    case = await _create(api, serial="SN-MODE-CHECKOUT")
+    selected = await api.client.post(
+        f"/api/handovers/{case['id']}/recipient",
+        json={"mode": "snipeit", "user_id": 1},
+    )
+    assert selected.status_code == 200
+    checked_out = await api.client.post(f"/api/handovers/{case['id']}/checkout")
+    assert checked_out.status_code == 200, checked_out.text
+    refused = await api.client.post(
+        f"/api/handovers/{case['id']}/mode", json={"mode": "none"}
+    )
+    assert refused.status_code == 409
+    assert refused.json()["detail"] == "The device is already checked out"
 
 
 async def test_attach_agent_report_accepts_validated_payload(api: ApiHarness) -> None:
@@ -265,7 +308,7 @@ async def test_recipient_not_in_snipeit_stores_free_fields(api: ApiHarness) -> N
 
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["recipient_mode"] == "not_in_snipeit"
+    assert body["recipient_mode"] == "pending_user"
     assert body["recipient_free_name"] == "New User"
     assert body["recipient_free_email"] == "new@example.com"
 

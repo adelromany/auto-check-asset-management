@@ -32,6 +32,7 @@ from app.dto.handover import (
     HandoverPreview,
     HandoverSummary,
     MaintenanceUpdate,
+    ModeRequest,
     NotDoneRequest,
     RecipientConfirm,
     RecipientItemOut,
@@ -72,6 +73,7 @@ async def create_handover(
             engineer_name=user.get("name") or "",
             ticket_ref=payload.ticket_ref,
             kind=payload.kind,
+            mode=payload.mode,
             client=client,
         )
     except HandoverError as exc:
@@ -178,6 +180,23 @@ async def confirm_stage(
     try:
         view = await service.confirm_manual_stage(
             handover_id, stage, actor=_actor(user)
+        )
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.post("/{handover_id}/mode", response_model=HandoverDetail)
+async def change_handover_mode(
+    handover_id: uuid.UUID,
+    payload: ModeRequest,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> HandoverDetail:
+    service = HandoverService(session)
+    try:
+        view = await service.change_mode(
+            handover_id, mode=payload.mode, actor=_actor(user)
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc

@@ -7,7 +7,14 @@ from datetime import date, datetime
 from typing import Any, Literal
 
 from app.domain.catalog import Operation
-from app.domain.handover_rules import StageState, case_outcome, case_warnings, missing_parts
+from app.domain.handover_rules import (
+    StageState,
+    case_outcome,
+    case_warnings,
+    kind_label,
+    missing_parts,
+    required_operations,
+)
 from app.domain.stages import StageStatus
 
 from pydantic import (
@@ -31,6 +38,7 @@ class HandoverCreate(BaseModel):
     device_serial: str = Field(min_length=1, max_length=100)
     ticket_ref: str | None = Field(default=None, max_length=100)
     kind: str = Field(default="handover", pattern="^(handover|maintenance)$")
+    mode: Literal["none", "snipeit", "pending_user"] = "snipeit"
 
     @field_validator("device_serial")
     @classmethod
@@ -47,6 +55,10 @@ class HandoverCreate(BaseModel):
             return None
         cleaned = value.strip()
         return cleaned or None
+
+
+class ModeRequest(BaseModel):
+    mode: Literal["none", "snipeit", "pending_user"]
 
 
 class SoftwareCheckOverride(BaseModel):
@@ -262,7 +274,10 @@ def _outcome_fields(data: Any) -> dict[str, Any]:
         "outcome": case_outcome(
             states, recipient_mode=recipient_mode, cancelled=cancelled
         ).value,
-        "missing": missing_parts(states),
+        "missing": missing_parts(states, recipient_mode),
+        "mode": "pending_user" if recipient_mode == "not_in_snipeit" else (recipient_mode or "snipeit"),
+        "kind_label": kind_label(recipient_mode),
+        "required": [operation.value for operation in required_operations(recipient_mode)],
         "warnings": [{"code": item.code, "text": item.text} for item in warnings],
     }
 
@@ -316,6 +331,9 @@ class HandoverSummary(BaseModel):
     device_category: str | None = None
     snipeit_status_name: str | None = None
     recipient_mode: str | None = None
+    mode: str = "snipeit"
+    kind_label: str = "Lab + user"
+    required: list[str] = Field(default_factory=list)
     recipient_free_name: str | None = None
     recipient_free_email: str | None = None
     recipient_reported_username: str | None = None

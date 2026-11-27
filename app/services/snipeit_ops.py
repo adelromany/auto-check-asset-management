@@ -204,7 +204,7 @@ class SnipeItHandoverService:
             reason = "Not in Snipe-IT yet"
 
         self._clear_recipient_fields(handover)
-        handover.recipient_mode = mode
+        handover.recipient_mode = "pending_user" if mode == "not_in_snipeit" else mode
         if mode == "snipeit":
             assert user is not None
             handover.recipient_snipeit_id = user.id
@@ -214,7 +214,7 @@ class SnipeItHandoverService:
             handover.recipient_company = user.company
             handover.recipient_confirmed_by = actor
             handover.recipient_confirmed_at = _utcnow()
-        elif mode == "not_in_snipeit":
+        elif mode in ("not_in_snipeit", "pending_user"):
             handover.recipient_free_name = new_name
             handover.recipient_free_email = (email or "").strip()
 

@@ -54,6 +54,7 @@ from app.domain.handover_rules import (
     gaps,
     missing_steps,
     performed_before,
+    required_operations,
 )
 from app.domain.company_rules import company_conflict, company_known
 from app.domain.redaction import redact_agent_payload
@@ -192,6 +193,7 @@ class HandoverService:
         engineer_name: str = "",
         ticket_ref: str | None = None,
         kind: CaseKind | str = CaseKind.HANDOVER,
+        mode: str = "snipeit",
         client: SnipeItClient | None = None,
         exact_serial: bool = False,
     ) -> Handover:
@@ -221,6 +223,7 @@ class HandoverService:
             engineer_email=engineer_email,
             engineer_name=engineer_name,
             device_serial=serial,
+            recipient_mode=mode if resolved_kind == CaseKind.HANDOVER else None,
             stages=[
                 HandoverStage(stage=operation.value, status=StageStatus.PENDING.value)
                 for operation in operations_for(resolved_kind)
@@ -255,6 +258,28 @@ class HandoverService:
         )
         await self.recompute_status(handover)
         return handover
+
+    async def change_mode(
+        self, handover_id: uuid.UUID, *, mode: str, actor: str
+    ) -> HandoverDetailView:
+        """Change the type without deleting any recorded operation."""
+        handover = await self.get(handover_id, with_details=True)
+        self._ensure_open(handover)
+        self._ensure_in_kind(handover, Operation.DEVICE_STATUS)
+        if mode == "none" and stage_row(handover, Operation.CHECKOUT).status == StageStatus.PASSED.value:
+            raise CaseStateConflict("The device is already checked out")
+        previous = handover.recipient_mode or "snipeit"
+        handover.recipient_mode = mode
+        await self._session.flush()
+        if previous != mode:
+            await self._events.add(
+                handover_id=handover.id,
+                actor=actor,
+                type="mode_changed",
+                detail={"from": previous, "to": mode},
+            )
+        await self.recompute_status(handover)
+        return await self.view(handover)
 
     async def _read_device_facts(
         self,
@@ -680,7 +705,16 @@ class HandoverService:
             handover=handover,
             stages=ordered,
             events=events,
-            missing_steps=missing_steps(states),
+            missing_steps=[
+                item for item in missing_steps(states)
+                if item["stage"] in {
+                    operation.value for operation in (
+                        required_operations(handover.recipient_mode)
+                        if handover.kind == CaseKind.HANDOVER.value
+                        else operations_for(handover.kind)
+                    )
+                }
+            ],
         )
 
     async def _recompute_and_view(self, handover_id: uuid.UUID) -> HandoverDetailView:

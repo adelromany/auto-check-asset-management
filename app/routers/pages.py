@@ -172,7 +172,7 @@ def _row_context(handover) -> dict:
         "recipient_mode": handover.recipient_mode,
         "status": handover.status,
         "outcome": case_outcome(handover_states, recipient_mode=handover.recipient_mode, cancelled=handover.status == "cancelled").value,
-        "missing": missing_parts(handover_states),
+        "missing": missing_parts(handover_states, handover.recipient_mode),
         "warnings": case_warnings(
             handover.device_company,
             getattr(handover, "recipient_company", None),
@@ -755,7 +755,7 @@ async def _case_response(request: Request, view, nav: str, session: AsyncSession
         states = [StageState(Operation(stage.stage), StageStatus(stage.status), stage.reason) for stage in view.stages]
         ctx.update(
             outcome=case_outcome(states, recipient_mode=handover.recipient_mode, cancelled=handover.status == "cancelled").value,
-            missing_parts=missing_parts(states),
+            missing_parts=missing_parts(states, handover.recipient_mode),
         )
     return templates.TemplateResponse(request=request, name=template, context=ctx)
 
