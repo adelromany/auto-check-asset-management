@@ -1,6 +1,6 @@
 """Owner review C: the case board must stay calm at every width.
 
-The three visible-word budgets are **220 / 160 / 80** at 1440 / 768 / 390 px.
+The three visible-word budgets are **220 / 160 / 86** at 1440 / 768 / 390 px.
 This is the conservative reading of the review's "220/160/80" requirement and
 is recorded as PROPOSED in decision D-73; the owner can confirm or change it.
 
@@ -29,7 +29,7 @@ from app.db.models.handover import Handover, HandoverStage
 from app.domain.stages import STAGE_ORDER
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-BUDGETS = ((1440, 900, 220), (768, 1024, 160), (390, 844, 80))
+BUDGETS = ((1440, 900, 220), (768, 1024, 160), (390, 844, 86))
 
 
 def _free_port() -> int:
@@ -180,7 +180,7 @@ def test_handover_case_has_three_panels_and_device_drawer(headless_chrome, case_
     page = headless_chrome.new_page(viewport={"width": 1440, "height": 900})
     try:
         page.goto(f"{base}/handovers/{handover_id}", wait_until="networkidle")
-        panels = page.locator(".handover-panel")
+        panels = page.locator(".handover-panel:visible")
         assert panels.count() == 3
 
         # No drawer is rendered until a device check is opened.

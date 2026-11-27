@@ -34,8 +34,25 @@
     return chip;
   }
 
+  function renderMode(data) {
+    document.querySelectorAll("[data-case-mode]").forEach(function (button) {
+      button.setAttribute("aria-pressed", button.getAttribute("data-case-mode") === data.mode ? "true" : "false");
+    });
+    var panels = {
+      "[data-device-panel]": true,
+      "[data-recipient-panel]": data.mode === "snipeit",
+      "[data-waiting-user-panel]": data.mode === "pending_user",
+      "[data-handover-panel]": data.mode !== "none",
+    };
+    Object.keys(panels).forEach(function (selector) {
+      var panel = document.querySelector(selector);
+      if (panel) panel.classList.toggle("hidden", !panels[selector]);
+    });
+  }
+
   function renderDetail(data) {
     detail = data;
+    renderMode(data);
     var outcome = document.querySelector("[data-case-outcome]");
     if (outcome) {
       outcome.textContent = outcomeLabel(data.outcome);
@@ -60,7 +77,7 @@
         missing.appendChild(portal.el("span", "badge badge-outline", part.replace(/_/g, " ")));
       });
     }
-    var canCheckout = data.recipient_mode === "snipeit" && !!data.recipient_snipeit_id;
+    var canCheckout = data.mode === "snipeit" && !!data.recipient_snipeit_id;
     var checkoutStage = (data.stages || []).find(function (stage) { return stage.stage === "checkout"; });
     var checkout = document.querySelector("[data-checkout]");
     var reason = document.querySelector("[data-checkout-reason]");
@@ -142,7 +159,8 @@
       pick.addEventListener("click", function () {
         portal.setBusy(row, true);
         portal.apiJson(base + "/recipient", { method: "POST", body: JSON.stringify({ mode: "snipeit", user_id: candidate.id }) })
-          .then(loadDetail).catch(function (error) { portal.setBusy(row, false); portal.toast(error.message, "error"); });
+          .then(function (data) { renderDetail(data); loadRecipientItems(); })
+          .catch(function (error) { portal.setBusy(row, false); portal.toast(error.message, "error"); });
       });
       row.appendChild(pick);
       results.appendChild(row);
@@ -150,7 +168,12 @@
   }
 
   function loadRecipientItems() {
-    if (!detail || detail.recipient_mode !== "snipeit") return;
+    if (!detail || detail.mode !== "snipeit") {
+      items = [];
+      var emptyHost = document.querySelector("[data-recipient-items]");
+      if (emptyHost) emptyHost.textContent = "";
+      return;
+    }
     portal.request(base + "/recipient/items").then(function (data) {
       items = data || [];
       var host = document.querySelector("[data-recipient-items]");
@@ -218,18 +241,13 @@
       if (window.syncFlow) window.syncFlow.open({ handoverId: caseId, expectedSerial: document.body.getAttribute("data-case-serial") });
       else portal.toast("Device check is unavailable.", "error");
     }
-    if (target.closest("[data-recipient-none]")) {
-      portal.apiJson(base + "/recipient", { method: "POST", body: JSON.stringify({ mode: "none" }) })
-        .then(loadDetail).catch(function (error) { portal.toast(error.message, "error"); });
-    }
-    if (target.closest("[data-recipient-external]")) {
-      document.querySelector("[data-recipient-external-fields]").classList.remove("hidden");
-    }
-    if (target.closest("[data-recipient-save]")) {
-      var name = document.querySelector("[data-recipient-name]").value.trim();
-      var email = document.querySelector("[data-recipient-email]").value.trim();
-      portal.apiJson(base + "/recipient", { method: "POST", body: JSON.stringify({ mode: "not_in_snipeit", name: name, email: email }) })
-        .then(loadDetail).catch(function (error) { portal.toast(error.message, "error"); });
+    var modeButton = target.closest("[data-case-mode]");
+    if (modeButton) {
+      portal.apiJson(base + "/mode", {
+        method: "POST",
+        body: JSON.stringify({ mode: modeButton.getAttribute("data-case-mode") }),
+      }).then(function (data) { renderDetail(data); loadRecipientItems(); })
+        .catch(function (error) { portal.toast(error.message, "error"); });
     }
     if (target.closest("[data-take-back-selected]")) {
       var selected = Array.prototype.slice.call(document.querySelectorAll("[data-take-back]:checked")).map(function (node) { return Number(node.value); });

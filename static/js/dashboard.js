@@ -365,39 +365,7 @@
   }
 
   function openNew() {
-    var drawer = portal.drawerForm("New handover", {});
-    var form = drawer.__form;
-    var input = portal.textInput("device_serial", "Serial", { maxlength: 100 });
-    var error = portal.el("p", "field-error");
-    error.setAttribute("data-new-error", "");
-    error.hidden = true;
-    var actions = portal.formActions("Start");
-    form.appendChild(portal.field("Serial", input));
-    form.appendChild(error);
-    form.appendChild(actions);
-    function submit() {
-      var serial = input.value.trim();
-      if (!serial) { error.textContent = "Enter a serial."; error.hidden = false; return; }
-      portal.setBusy(actions, true);
-      portal.apiJson("/api/handovers", { method: "POST", body: JSON.stringify({ device_serial: serial }) })
-        .then(function (created) { window.location.href = "/handovers/" + created.id; })
-        .catch(function (err) {
-          portal.setBusy(actions, false);
-          error.textContent = err.message;
-          error.hidden = false;
-          if (/active case|already exists/i.test(err.message)) {
-            portal.request("/api/handovers/active?serial=" + encodeURIComponent(serial)).then(function (active) {
-              if (!active || !active.id) return;
-              var open = portal.el("a", "link-quiet", "Open");
-              open.href = "/handovers/" + active.id;
-              error.appendChild(document.createTextNode(" "));
-              error.appendChild(open);
-            }).catch(function () { /* the plain error remains */ });
-          }
-        });
-    }
-    form.addEventListener("submit", function (event) { event.preventDefault(); submit(); });
-    actions.__primary.addEventListener("click", function (event) { event.preventDefault(); submit(); });
+    portal.openNewCase("handover");
   }
 
   document.addEventListener("click", function (event) {

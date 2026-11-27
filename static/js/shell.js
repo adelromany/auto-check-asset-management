@@ -323,9 +323,38 @@
     var priority = null;
     var notes = null;
     var engineer = null;
-    var actions = portal.formActions("Register");
+    var actions = portal.formActions(isMaintenance ? "Register" : "Start");
+    var selectedMode = null;
     form.appendChild(portal.field("Serial", serial, isMaintenance ? "The device that needs repair" : "The device leaving or returning"));
     form.appendChild(match);
+    if (!isMaintenance) {
+      var modes = portal.el("div", "case-mode-choices");
+      modes.setAttribute("role", "group");
+      modes.setAttribute("aria-label", "Handover type");
+      [
+        { mode: "none", label: "Lab only", icon: "▣" },
+        { mode: "snipeit", label: "Lab + user", icon: "👤" },
+        { mode: "pending_user", label: "User not ready", icon: "◷" },
+      ].forEach(function (item) {
+        var choice = portal.actionButton("", "btn btn-outline mode-choice");
+        choice.setAttribute("data-new-mode", item.mode);
+        choice.setAttribute("aria-pressed", "false");
+        var icon = portal.el("span", "mode-choice-icon", item.icon);
+        icon.setAttribute("aria-hidden", "true");
+        choice.appendChild(icon);
+        choice.appendChild(portal.el("span", "", item.label));
+        choice.addEventListener("click", function () {
+          selectedMode = item.mode;
+          modes.querySelectorAll("[data-new-mode]").forEach(function (button) {
+            button.setAttribute("aria-pressed", button === choice ? "true" : "false");
+          });
+          actions.__primary.disabled = false;
+        });
+        modes.appendChild(choice);
+      });
+      form.appendChild(modes);
+      actions.__primary.disabled = true;
+    }
     if (isMaintenance) {
       issue = portal.el("textarea", "input");
       issue.name = "reported_issue";
@@ -390,6 +419,7 @@
         kind: kind,
       };
       if (ticket.value.trim()) payload.ticket_ref = ticket.value.trim();
+      if (!isMaintenance) payload.mode = selectedMode;
       portal.apiJson("/api/handovers", { method: "POST", body: JSON.stringify(payload) })
         .then(function (created) {
           createdCase = created;

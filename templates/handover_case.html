@@ -13,8 +13,13 @@
   </div>
   <a href="/handovers/{{ handover.id }}/history" class="btn btn-outline">History</a>
 </header>
+<div class="segmented case-mode-control" role="group" aria-label="Handover type">
+  <button type="button" class="btn btn-outline" data-case-mode="none" aria-pressed="{{ 'true' if handover.recipient_mode == 'none' else 'false' }}">▣ Lab only</button>
+  <button type="button" class="btn btn-outline" data-case-mode="snipeit" aria-pressed="{{ 'true' if handover.recipient_mode in (none, 'snipeit') else 'false' }}">👤 Lab + user</button>
+  <button type="button" class="btn btn-outline" data-case-mode="pending_user" aria-pressed="{{ 'true' if handover.recipient_mode in ('pending_user', 'not_in_snipeit') else 'false' }}">◷ User not ready</button>
+</div>
 <div class="handover-panels">
-  <section class="card handover-panel" aria-labelledby="device-title">
+  <section class="card handover-panel" data-device-panel aria-labelledby="device-title">
     <div class="card-header"><h2 class="card-title" id="device-title">Device</h2></div>
     <div class="card-content stack">
       <div class="case-chips"><span class="badge badge-outline" data-device-status>—</span></div>
@@ -51,18 +56,12 @@
       </div>
     </div>
   </section>
-  <section class="card handover-panel" aria-labelledby="recipient-title">
+  <section class="card handover-panel{% if handover.recipient_mode not in (none, 'snipeit') %} hidden{% endif %}" data-recipient-panel aria-labelledby="recipient-title">
     <div class="card-header"><h2 class="card-title" id="recipient-title">Recipient</h2></div>
     <div class="card-content stack">
       <label class="sr-only" for="recipient-search">Search recipient</label>
       <input id="recipient-search" class="input" data-recipient-search placeholder="Search" autocomplete="off">
       <div class="recipient-results" data-recipient-results></div>
-      <div class="button-row"><button type="button" class="link-quiet" data-recipient-none>None for now</button><button type="button" class="link-quiet" data-recipient-external>Not in Snipe-IT yet</button></div>
-      <div class="stack-sm hidden" data-recipient-external-fields>
-        <input class="input" data-recipient-name placeholder="Name" aria-label="Recipient name">
-        <input class="input" type="email" data-recipient-email placeholder="Email" aria-label="Recipient email">
-        <button type="button" class="btn btn-default" data-recipient-save>Save</button>
-      </div>
       <div class="recipient-card {% if not (handover.recipient_snipeit_name or handover.recipient_free_name or handover.recipient_snipeit_username) %}hidden{% endif %}" data-recipient-card>
         <strong>{{ handover.recipient_snipeit_name or handover.recipient_free_name or handover.recipient_snipeit_username or 'No recipient' }}</strong>
         <div class="muted">{{ handover.recipient_snipeit_email or handover.recipient_free_email or '' }}</div>
@@ -74,7 +73,11 @@
       </div>
     </div>
   </section>
-  <section class="card handover-panel" aria-labelledby="handover-title">
+  <section class="card handover-panel{% if handover.recipient_mode not in ('pending_user', 'not_in_snipeit') %} hidden{% endif %}" data-waiting-user-panel aria-labelledby="waiting-user-title">
+    <div class="card-header"><h2 class="card-title" id="waiting-user-title">Waiting user</h2></div>
+    <div class="card-content"><span class="badge badge-secondary">Waiting user</span></div>
+  </section>
+  <section class="card handover-panel{% if handover.recipient_mode == 'none' %} hidden{% endif %}" data-handover-panel aria-labelledby="handover-title">
     <div class="card-header"><h2 class="card-title" id="handover-title">Handover</h2></div>
     <div class="card-content stack">
       <div class="fact"><dt>Engineer</dt><dd data-engineer>{{ handover.engineer_name or handover.engineer_email }}</dd></div>
