@@ -3,10 +3,10 @@
   The active item carries the b_labs mint underscore motif.
 -#}
 <aside data-rail class="rail hidden md:flex">
-  <a href="/" class="rail-brand" aria-label="Handover Portal home">
+  <a href="/" class="rail-brand" aria-label="HQ Portal home">
     {% from "partials/logo.html" import logo %}
     {{ logo(40) }}
-    <span class="rail-brand-name">Handover Portal</span>
+    <span class="rail-brand-name">HQ Portal</span>
   </a>
   <nav class="rail-nav" aria-label="Main">
     <p class="rail-group">Handover</p>
@@ -30,6 +30,11 @@
     <a href="/maintenance/vendors" data-nav {% if active_nav == 'maintenance_vendors' %}data-nav-active="true"{% endif %} class="rail-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 10h.01M15 10h.01M9 14h.01M15 14h.01M10 21v-4h4v4"/></svg>
       <span class="rail-label" data-nav-label>Vendors</span>
+    </a>
+    <p class="rail-group">History</p>
+    <a href="/devices" data-nav {% if active_nav == 'devices' %}data-nav-active="true"{% endif %} class="rail-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 22h8M12 18v4"/></svg>
+      <span class="rail-label" data-nav-label>Devices</span>
     </a>
   </nav>
 </aside>

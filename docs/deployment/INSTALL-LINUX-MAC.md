@@ -9,4 +9,11 @@
 5. Review `deploy/snipeit-dev/README.md` before starting the development Docker Compose stack. It is not verified on Linux or macOS.
 6. Run `python -m pytest -q` and confirm `/api/health` reports `status: ok`.
 
+For PDF printing on Debian/Ubuntu, install the headless Writer converter and Arabic-capable fonts:
+`apt-get install -y --no-install-recommends libreoffice-writer-nogui fonts-noto-core fonts-noto-ui-core fonts-dejavu-core fonts-kacst`.
+Confirm `soffice` is on the portal service account's `PATH`, then run
+`python tools/check_pdf_render.py`. Download Word does not require LibreOffice.
+On macOS, install LibreOffice and make its `soffice` executable available on `PATH`.
+These conversion commands have not been verified in this Windows run.
+
 Every command and expected result in this draft needs clean-machine verification before it is published as a supported installation path.

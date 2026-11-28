@@ -65,8 +65,8 @@ class HandoverRepository:
         result = await self._session.execute(statement)
         return result.scalar_one_or_none()
 
-    async def find_active_by_serial(self, serial: str) -> Handover | None:
-        """An active case is any status except completed, closed_gaps, cancelled."""
+    async def find_active_by_serial(self, serial: str, kind: str | None = None) -> Handover | None:
+        """Find an active case, optionally restricted to its kind."""
         normalized = serial.strip().lower()
         result = await self._session.execute(
             select(Handover).where(
@@ -78,6 +78,7 @@ class HandoverRepository:
                         HandoverStatus.CANCELLED.value,
                     ]
                 ),
+                *([Handover.kind == kind] if kind else []),
             )
         )
         return result.scalars().first()

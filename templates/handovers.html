@@ -30,14 +30,14 @@
       <tbody>
         {% for row in rows %}
         <tr class="table-row" data-row data-company="{{ row.company }}">
-          <td class="table-cell"><a class="row-link mono" href="/handovers/{{ row.id }}">{{ row.serial }}</a></td>
+          <td class="table-cell"><a class="row-link mono" href="/devices/{{ row.serial }}">{{ row.serial }}</a></td>
           <td class="table-cell">{{ row.model or '—' }}</td>
           <td class="table-cell"><span class="badge badge-secondary">{{ row.company or '—' }}</span></td>
           <td class="table-cell">{{ row.recipient or 'No recipient' }}</td>
           <td class="table-cell"><div class="case-chips">{% for part in row.missing[:3] %}<span class="badge badge-outline">{{ part }}</span>{% endfor %}{% if row.missing|length > 3 %}<span class="badge badge-secondary">+{{ row.missing|length - 3 }}</span>{% endif %}</div></td>
           <td class="table-cell mono">{{ row.age_days }}d</td>
           <td class="table-cell"><div class="case-chips"><span class="badge {% if row.outcome == 'complete' %}badge-success{% elif row.outcome == 'ready' %}badge-accent{% else %}badge-warning{% endif %}">{{ {'complete': 'Complete', 'ready': 'Ready lab', 'not_complete': 'Not complete'}.get(row.outcome, 'Not complete') }}</span>{% if row.recipient_mode in ('pending_user', 'not_in_snipeit') %}<span class="badge badge-secondary">Waiting user</span>{% endif %}{% if row.warnings %}<span class="badge badge-secondary" title="{{ row.company or '—' }} / {{ row.recipient_company or '—' }}">Company differs !</span>{% endif %}{% if row.display_status == 'stalled' %}<span class="badge badge-secondary">Stale</span>{% endif %}</div></td>
-          <td class="table-cell"><a class="btn btn-outline btn-sm" href="/handovers/{{ row.id }}">{{ 'Open' if row.outcome == 'complete' else 'Continue' }}</a></td>
+          <td class="table-cell"><div class="button-row"><a class="btn btn-outline btn-sm" href="/handovers/{{ row.id }}">{{ 'Open' if row.outcome == 'complete' else 'Continue' }}</a><span data-row-case-menu data-case-id="{{ row.id }}" data-case-status="{{ row.status }}"></span></div></td>
         </tr>
         {% endfor %}
         {% if not rows %}<tr><td class="table-cell" colspan="8"><div class="empty" data-empty><span>—</span></div></td></tr>{% endif %}

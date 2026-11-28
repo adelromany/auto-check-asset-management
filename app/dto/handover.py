@@ -73,6 +73,10 @@ class SoftwareCheckOverride(BaseModel):
         return cleaned
 
 
+class CheckoutRequest(BaseModel):
+    replace_holder: bool = False
+
+
 class DeviceStatusRequest(BaseModel):
     """The Snipe-IT status label to set on the device (null = read only)."""
 
@@ -308,6 +312,10 @@ class HandoverSummary(BaseModel):
                 }
                 result["maintenance"] = maint
                 result["stages"] = list(data.stages)
+                reports = ins.attrs.agent_reports.loaded_value
+                result["logged_on_user"] = (
+                    None if reports is NO_VALUE else data.logged_on_user
+                )
                 return {**result, **_outcome_fields(result)}
         except Exception:
             pass
@@ -344,6 +352,11 @@ class HandoverSummary(BaseModel):
     recipient_snipeit_name: str | None = None
     recipient_snipeit_email: str | None = None
     recipient_company: str | None = None
+    recipient_employee_code: str | None = None
+    recipient_username: str | None = None
+    pending_checked_at: datetime | None = None
+    pending_found_at: datetime | None = None
+    logged_on_user: str | None = None
     recipient_confirmed_by: str | None = None
     recipient_confirmed_at: datetime | None = None
     created_at: datetime
@@ -354,6 +367,7 @@ class HandoverSummary(BaseModel):
 
 
 class HandoverDetail(HandoverSummary):
+    open_handover: dict[str, Any] | None = None
     stages: list[StageOut]
     missing_steps: list[MissingStepOut]
     events: list[EventOut]
@@ -416,6 +430,7 @@ class RecipientCandidate(BaseModel):
     username: str | None = None
     name: str | None = None
     email: str | None = None
+    employee_num: str | None = None
     matches_reported: bool = False
     matches_engineer: bool = False
 
@@ -437,6 +452,7 @@ class SnipeItUserSearchResult(BaseModel):
     name: str | None = None
     email: str | None = None
     username: str | None = None
+    employee_num: str | None = None
     company: str | None = None
     same_company: bool | None = None
 
@@ -444,8 +460,10 @@ class SnipeItUserSearchResult(BaseModel):
 class RecipientSelectionRequest(BaseModel):
     """Choose a Snipe-IT user, no recipient, or a free-form recipient."""
 
-    mode: Literal["snipeit", "none", "not_in_snipeit"]
+    mode: Literal["snipeit", "none", "not_in_snipeit", "pending_user"]
     user_id: int | None = Field(default=None, ge=1)
+    employee_code: str | None = Field(default=None, max_length=60)
+    username: str | None = Field(default=None, max_length=120)
     name: str | None = Field(default=None, max_length=200)
     email: str | None = Field(default=None, max_length=200)
 
@@ -459,6 +477,11 @@ class RecipientSelectionRequest(BaseModel):
                 raise ValueError("name is required for a recipient not in Snipe-IT.")
             if not self.email or "@" not in self.email.strip():
                 raise ValueError("A valid email is required.")
+        elif self.mode == "pending_user":
+            self.employee_code = (self.employee_code or "").strip() or None
+            self.username = (self.username or "").strip() or None
+            if not self.employee_code and not self.username:
+                raise ValueError("Employee code or username is required.")
         return self
 
 

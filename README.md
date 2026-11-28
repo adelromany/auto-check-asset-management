@@ -1,4 +1,4 @@
-# Snipe-IT Device Onboarding (Handover Portal)
+# Snipe-IT Device Onboarding (HQ Portal)
 
 IT opens the portal, runs a short-lived agent on the employee's device, and
 works through ten verifiable handover stages. Snipe-IT stays the system of

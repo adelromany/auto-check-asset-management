@@ -97,12 +97,15 @@ async def _create(api: ApiHarness, serial: str = "SN-1", **extra) -> dict:
     return response.json()
 
 
-async def test_create_returns_a_draft_summary(api: ApiHarness) -> None:
+async def test_create_returns_a_summary_with_device_status_prepassed(
+    api: ApiHarness,
+) -> None:
     body = await _create(api, serial="SN-API-1", ticket_ref="LAB-42")
 
     assert body["device_serial"] == "SN-API-1"
     assert body["ticket_ref"] == "LAB-42"
-    assert body["status"] == "draft"
+    # The fake device is already "Ready to deploy", so Device status passes at once.
+    assert body["status"] == "in_progress"
     assert body["engineer_email"] == ENGINEER["email"]
     assert body["engineer_name"] == ENGINEER["name"]
     assert body["closed_at"] is None
@@ -223,6 +226,7 @@ async def test_users_search_marks_a_same_company_user(api: ApiHarness) -> None:
             "name": "Alice",
             "email": "alice@example.com",
             "username": "alice",
+            "employee_num": None,
             "company": "B.tech",
             "same_company": True,
         }
@@ -595,10 +599,16 @@ async def test_detail_includes_stages_missing_steps_and_timeline(
         "document_scanned",
         "document_pushed",
     ]
-    assert all(stage["status"] == "pending" for stage in body["stages"])
-    assert len(body["missing_steps"]) == 9
+    statuses = {stage["stage"]: stage["status"] for stage in body["stages"]}
+    assert statuses.pop("device_status") == "passed"  # device already Ready to deploy
+    assert all(status == "pending" for status in statuses.values())
+    assert len(body["missing_steps"]) == 8
     assert all(item["hint"] for item in body["missing_steps"])
-    assert [event["type"] for event in body["events"]] == ["handover_created"]
+    assert [event["type"] for event in body["events"]] == [
+        "handover_created",
+        "operation_recorded",
+    ]
+    assert body["events"][-1]["detail"]["operation"] == "device_status"
 
 
 async def test_case_page_links_device_check_and_explains_manual_confirmations(
@@ -687,11 +697,18 @@ async def test_dashboard_attention_reason_counts_days_at_vendor(
     )
     assert confirmed.status_code == 200, confirmed.text
 
-    page = await api.client.get("/")
-    assert page.status_code == 200
+    from types import SimpleNamespace
+    from app.routers.pages import _attention_from_rows
+    maintenance = SimpleNamespace(
+        sent_date=sent, expected_return_date=expected, returned_date=None,
+    )
+    row = {
+        "status": "in_progress", "display_status": "in_progress", "states": [],
+        "maintenance": maintenance, "maintenance_state": "at_vendor",
+        "updated_at": None, "created_at": None,
+    }
     # Never a "?" â€” the days run from the send date to today.
-    assert "At vendor 30 days, overdue" not in page.text
-    assert 'data-outcome="ready"' in page.text
+    assert _attention_from_rows([row])[0]["reason"] == "At vendor 30 days, overdue"
 
 
 async def test_unauthorized_access_returns_401(
@@ -775,6 +792,7 @@ async def test_confirming_a_manual_stage_updates_status_and_timeline(
     assert stage["actor"] == ENGINEER["email"]
     assert [event["type"] for event in body["events"]] == [
         "handover_created",
+        "operation_recorded",  # device_status, auto-confirmed (already Ready)
         "operation_recorded",
         "operation_recorded",
         "operation_recorded",
@@ -833,6 +851,15 @@ async def test_duplicate_active_serial_returns_409(api: ApiHarness) -> None:
 
     assert response.status_code == 409
     assert "already has an active handover case" in response.json()["detail"]
+
+
+async def test_cancelled_case_can_reopen(api: ApiHarness) -> None:
+    created = await _create(api, serial="SN-CANCEL-REOPEN")
+    cancelled = await api.client.post(f"/api/handovers/{created['id']}/cancel")
+    assert cancelled.json()["status"] == "cancelled"
+    reopened = await api.client.post(f"/api/handovers/{created['id']}/reopen")
+    assert reopened.status_code == 200, reopened.text
+    assert reopened.json()["status"] != "cancelled"
 
 
 async def test_cancel_is_idempotent_and_blocks_further_work(
@@ -962,7 +989,8 @@ async def test_list_filters_by_outcome_and_company(api: ApiHarness) -> None:
     invalid = await api.client.get("/api/handovers?outcome=invalid")
 
     assert detail.json()["outcome"] == "not_complete"
-    assert "Device status" in detail.json()["missing"]
+    assert "Device status" not in detail.json()["missing"]  # already Ready to deploy
+    assert "Agent report" in detail.json()["missing"]
     assert listed.json()["total"] == 1
     assert listed.json()["items"][0]["outcome"] == "not_complete"
     assert wrong_company.json()["total"] == 0
@@ -1020,6 +1048,7 @@ async def test_agent_flow_with_matching_serial_passes_stage_three(
         if event["type"] == "operation_recorded"
     ]
     assert [event["detail"]["operation"] for event in recorded] == [
+        "device_status",
         "agent_report",
         "software_check",
     ]

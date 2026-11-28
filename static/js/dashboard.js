@@ -47,7 +47,7 @@
   function caseRow(item) {
     var row = portal.el("div", "handover-row");
     var serial = portal.el("a", "mono handover-serial", item.device_serial);
-    serial.href = "/handovers/" + item.id;
+    serial.href = "/devices/" + encodeURIComponent(item.device_serial);
     row.appendChild(serial);
     row.appendChild(portal.el("span", "handover-model", item.device_model || "—"));
     row.appendChild(badge(item.device_company || "—", "badge badge-secondary"));
@@ -78,6 +78,7 @@
     var action = portal.el("a", "btn btn-outline btn-sm", item.outcome === "complete" ? "Open" : "Continue");
     action.href = "/handovers/" + item.id;
     row.appendChild(action);
+    row.appendChild(portal.caseMenu(item.id, item.status));
     return row;
   }
 
@@ -244,7 +245,7 @@
       var level = /missing/.test(row.reason) ? "attention-0" : /Waiting/.test(row.reason) ? "attention-1" : /Stale/.test(row.reason) ? "attention-2" : "attention-3";
       line.appendChild(portal.el("span", "attention-icon " + level, "!"));
       var link = portal.el("a", "attention-serial mono", row.serial);
-      link.href = "/handovers/" + row.id;
+      link.href = "/devices/" + encodeURIComponent(row.serial);
       line.appendChild(link);
       line.appendChild(portal.el("span", "attention-reason", row.reason));
       line.appendChild(portal.el("span", "attention-age muted", hoursLabel(row.age_hours)));

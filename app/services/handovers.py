@@ -68,6 +68,7 @@ from app.domain.stages import (
 from app.domain.timeutil import as_utc
 from app.repositories.events import EventRepository
 from app.repositories.handovers import HandoverRepository
+from app.services.recipient_search import find_recipient_users
 
 SERIAL_MISMATCH_REASON = (
     "Report serial does not match the handover device serial."
@@ -122,19 +123,27 @@ class HandoverService:
     async def latest_agent_report(self, handover_id: uuid.UUID):
         return await self._handovers.latest_agent_report(handover_id)
 
-    async def find_active_by_serial(self, serial: str) -> Handover | None:
-        return await self._handovers.find_active_by_serial(serial.strip())
+    async def find_active_by_serial(self, serial: str, kind: str | None = None) -> Handover | None:
+        return await self._handovers.find_active_by_serial(serial.strip(), kind)
 
     async def search_snipeit_users(
         self,
         handover_id: uuid.UUID,
-        query: str,
+        query: str | None,
         *,
         client: SnipeItClient,
+        user_id: int | None = None,
     ) -> list[dict[str, Any]]:
-        """Search recipient candidates and compare their company to the device."""
+        """Search recipient candidates and compare their company to the device.
+
+        ``user_id`` loads exactly that Snipe-IT user (the device's current
+        holder) as the one candidate instead of searching.
+        """
         handover = await self.get(handover_id, with_details=False)
-        users = await client.search_users(query.strip(), limit=10)
+        if user_id is not None:
+            users = [await client.get_user(user_id)]
+        else:
+            users = await find_recipient_users(client, query or "", limit=10)
         results: list[dict[str, Any]] = []
         for user in users:
             if company_known(handover.device_company) and company_known(user.company):
@@ -149,6 +158,7 @@ class HandoverService:
                     "name": user.name,
                     "email": user.email,
                     "username": user.username,
+                    "employee_num": user.employee_num,
                     "company": user.company,
                     "same_company": same_company,
                 }
@@ -208,7 +218,7 @@ class HandoverService:
             raise ValueError("device_serial must not be blank.")
         resolved_kind = CaseKind(str(kind))
 
-        existing = await self._handovers.find_active_by_serial(serial)
+        existing = await self._handovers.find_active_by_serial(serial, resolved_kind.value)
         if existing is not None:
             raise HandoverAlreadyExists(active_case_message(existing, serial))
 
@@ -259,7 +269,44 @@ class HandoverService:
             detail={},
         )
         await self.recompute_status(handover)
+        if device is not None and resolved_kind == CaseKind.HANDOVER:
+            await self.confirm_ready_status(
+                handover.id, status_name=device.status, actor=engineer_email
+            )
         return handover
+
+    async def confirm_ready_status(
+        self, handover_id: uuid.UUID, *, status_name: str | None, actor: str
+    ) -> bool:
+        """Pass the device-status part when Snipe-IT already shows Ready.
+
+        The device is already in the state the part asks for, so nobody should
+        have to press a button. Only ever passes the part (never downgrades it),
+        never touches closed cases and is a no-op for maintenance cases.
+        """
+        ready = str(config.SNIPEIT_STATUS_READY or "").strip().casefold()
+        if not ready or str(status_name or "").strip().casefold() != ready:
+            return False
+        handover = await self.get(handover_id, with_details=True)
+        if (handover.kind or CaseKind.HANDOVER.value) != CaseKind.HANDOVER.value:
+            return False
+        if handover.status in (
+            HandoverStatus.CANCELLED.value,
+            HandoverStatus.COMPLETED.value,
+            HandoverStatus.CLOSED_WITH_GAPS.value,
+        ):
+            return False
+        if stage_row(handover, Operation.DEVICE_STATUS).status == StageStatus.PASSED.value:
+            return False
+        await self.record_operation(
+            handover_id,
+            Operation.DEVICE_STATUS,
+            status=StageStatus.PASSED,
+            reason=None,
+            detail={"status": status_name, "auto_confirmed": True},
+            actor=actor,
+        )
+        return True
 
     async def change_mode(
         self, handover_id: uuid.UUID, *, mode: str, actor: str
@@ -473,6 +520,22 @@ class HandoverService:
                 )
             return await self._recompute_and_view(handover.id)
 
+    async def delete(self, handover_id: uuid.UUID, *, actor: str) -> None:
+        """Permanently delete an incomplete case without calling Snipe-IT."""
+        import logging
+
+        handover = await self.get(handover_id, with_details=True)
+        if handover.status == HandoverStatus.COMPLETED.value:
+            raise CaseStateConflict("Complete cases cannot be deleted")
+        if handover.maintenance_state == "returned":
+            raise CaseStateConflict("Returned maintenance cases cannot be deleted")
+        serial = handover.device_serial
+        await self._session.delete(handover)
+        await self._session.flush()
+        logging.getLogger(__name__).info(
+            "case_deleted serial=%s actor=%s", serial, actor
+        )
+
     # -- case closing -----------------------------------------------------
     async def cancel(
         self, handover_id: uuid.UUID, *, actor: str
@@ -483,6 +546,8 @@ class HandoverService:
             return await self.view(handover)
         if handover.status == HandoverStatus.COMPLETED.value:
             raise HandoverCompleted("Completed cases cannot be cancelled.")
+        if handover.maintenance_state == "returned":
+            raise CaseStateConflict("Returned maintenance cases cannot be cancelled")
         if handover.status == HandoverStatus.CLOSED_WITH_GAPS.value:
             raise CaseStateConflict(
                 "A case closed with gaps must be reopened before it can be cancelled."
@@ -526,10 +591,13 @@ class HandoverService:
     async def reopen(
         self, handover_id: uuid.UUID, *, actor: str
     ) -> HandoverDetailView:
-        """Reopen only a ``closed_with_gaps`` case so a missing operation can run."""
+        """Reopen a cancelled case or one closed with gaps."""
         handover = await self.get(handover_id, with_details=True)
-        if handover.status != HandoverStatus.CLOSED_WITH_GAPS.value:
-            raise CaseStateConflict("Only a case closed with gaps can be reopened.")
+        if handover.status not in (
+            HandoverStatus.CLOSED_WITH_GAPS.value,
+            HandoverStatus.CANCELLED.value,
+        ):
+            raise CaseStateConflict("Only a closed or cancelled case can be reopened.")
         handover.closed_gaps = None
         handover.closed_at = None
         await self._events.add(
@@ -538,7 +606,9 @@ class HandoverService:
             type="case_reopened",
             detail={},
         )
-        await self.recompute_status(handover, closed_with_gaps=False)
+        await self.recompute_status(
+            handover, cancelled=False, closed_with_gaps=False
+        )
         return await self.view(handover)
 
     # -- status -----------------------------------------------------------

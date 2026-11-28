@@ -19,7 +19,7 @@ vanilla JS modules only refresh the same data.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -253,7 +253,7 @@ def _attention_from_rows(rows: list[dict]) -> list[dict]:
             # An in-flight device has no returned date: days at the vendor run
             # from the send date to today.
             days = (
-                (_now().date() - maintenance.sent_date).days
+                (date.today() - maintenance.sent_date).days
                 if maintenance.sent_date is not None
                 else None
             )
@@ -459,7 +459,7 @@ def _maintenance_row_extra(row: dict, *, vendor_warn_days: int = MAINTENANCE_OVE
     extra["expected_return_date"] = maintenance.expected_return_date
     extra["reference"] = maintenance.reference or ""
     if row["maintenance_state"] == MaintenanceState.IN_MAINTENANCE.value and maintenance.sent_date:
-        days = (_now().date() - maintenance.sent_date).days
+        days = (date.today() - maintenance.sent_date).days
         extra["days_at_vendor"] = days
         due = maintenance.expected_return_date or (
             maintenance.sent_date + timedelta(days=MAINTENANCE_OVERDUE_DAYS)

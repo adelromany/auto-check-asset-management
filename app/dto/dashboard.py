@@ -130,6 +130,8 @@ class MaintenanceCaseOut(BaseModel):
     received_date: date | None = None
     sent_date: date | None = None
     returned_date: date | None = None
+    stages: list[dict] = Field(default_factory=list)
+    open_handover: dict | None = None
 
 
 # -- Round 2: full handover operations dashboard -----------------------------

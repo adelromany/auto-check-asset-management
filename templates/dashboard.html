@@ -3,7 +3,7 @@
 <h1 class="sr-only">Handover</h1>
 <div class="dashboard-head">
   <div class="row-between">
-    <p class="page-intro">Handover</p>
+    <p class="page-intro" aria-hidden="true"></p>
     <div class="dash-controls">
       <div class="segmented" role="group" aria-label="Period">
         <button type="button" data-period="today" aria-pressed="false">Today</button>
@@ -66,7 +66,7 @@
         </div>
         <div class="metric">
           <span class="metric-value" data-metric="within">—</span>
-          <span class="metric-label">Within 24 h</span>
+          <span class="metric-label">&lt;24 h</span>
         </div>
       </div>
     </div>
@@ -102,7 +102,7 @@
     <div class="card-content"><div class="attention-list" data-attention></div></div>
   </section>
   <section class="card" aria-labelledby="activity-title">
-    <div class="card-header"><h2 class="card-title" id="activity-title">Recent activity</h2></div>
+    <div class="card-header"><h2 class="card-title" id="activity-title">Activity</h2></div>
     <div class="card-content"><div class="activity-list" data-activity></div></div>
   </section>
 </div>
@@ -111,7 +111,7 @@
   <div class="card-header"><h2 class="card-title" id="engineer-title">By engineer</h2></div>
   <div class="card-content">
     <table class="table table-compact">
-      <thead><tr><th scope="col">Engineer</th><th scope="col">Open now</th><th scope="col">Completed in period</th></tr></thead>
+      <thead><tr><th scope="col">Engineer</th><th scope="col">Open</th><th scope="col">Completed</th></tr></thead>
       <tbody data-engineer-table></tbody>
     </table>
   </div>
@@ -120,7 +120,7 @@
 <section class="card handover-results" aria-label="Handover cases">
   <div class="card-header">
     <h2 class="card-title" data-panel-title>Needs attention</h2>
-    <button type="button" class="btn btn-outline btn-sm" data-panel-clear>Clear</button>
+    <button type="button" class="btn btn-outline btn-sm" data-panel-clear aria-label="Clear">×</button>
   </div>
   <div class="card-content">
     <div class="handover-list" data-handover-list><div class="empty" data-empty><span>—</span></div></div>

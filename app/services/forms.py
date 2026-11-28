@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.company_rules import normalize_company
 from app.domain.errors import FormTemplateNotFound
-from app.domain.form_fill import fill_engineer
+from app.domain.form_fill import fill_form
 from app.domain.stages import Operation, StageStatus
 from app.services.handovers import HandoverService
 
@@ -35,6 +35,7 @@ class GeneratedForm:
     filename: str
     template: str
     engineer_name: str
+    hardware_missing: bool = False
 
 
 class FormService:
@@ -70,7 +71,25 @@ class FormService:
             raise FormTemplateNotFound(reason)
 
         engineer_name = handover.engineer_name or fallback_engineer_name
-        content = fill_engineer(template.read_bytes(), engineer_name)
+        latest_report = await self._core.latest_agent_report(handover_id)
+        report = latest_report.payload if latest_report else {}
+        manufacturer = str(report.get("manufacturer") or "").strip()
+        model = str(report.get("model") or handover.device_model or "").strip()
+        if manufacturer and not model.casefold().startswith(manufacturer.casefold()):
+            model = f"{manufacturer} {model}".strip()
+        processor = str(report.get("cpu") or "").strip()
+        if processor and report.get("cpu_cores"):
+            processor += f" ({report['cpu_cores']} cores)"
+        ram = f"{round(float(report['ram_gb']))} GB" if report.get("ram_gb") is not None else ""
+        disks = []
+        for disk in report.get("disks") or []:
+            if disk.get("size_gb") is not None:
+                disks.append(f"{round(float(disk['size_gb']))} GB {disk.get('type') or ''}".strip())
+        hardware = {
+            "processor": processor, "ram": ram, "disk": " + ".join(disks),
+            "model": model, "serial": handover.device_serial,
+        }
+        content = fill_form(template.read_bytes(), engineer=engineer_name, hardware=hardware)
         await self._core.record_operation(
             handover_id,
             Operation.REPORT_PRINTED,
@@ -86,4 +105,5 @@ class FormService:
             filename=filename,
             template=template.stem,
             engineer_name=engineer_name,
+            hardware_missing=latest_report is None,
         )

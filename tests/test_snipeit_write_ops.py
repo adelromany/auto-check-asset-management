@@ -490,9 +490,31 @@ async def test_checkout_refuses_when_the_asset_is_assigned_elsewhere(
         f"/api/handovers/{handover_id}/checkout"
     )
 
-    assert response.status_code == 422, response.text
-    assert "Bob" in response.json()["detail"]
+    assert response.status_code == 409, response.text
+    assert response.json()["detail"] == {"code": "held_by_other", "holder": "Bob"}
     assert _post_paths(ops) == []
+
+
+async def test_checkout_replaces_another_holder_when_confirmed(
+    ops: OpsHarness,
+) -> None:
+    handover_id = await _ready(ops)
+    ops.fake.assets[10]["assigned_to"] = dict(BOB)
+    ops.fake.calls.clear()
+
+    response = await ops.client.post(
+        f"/api/handovers/{handover_id}/checkout",
+        json={"replace_holder": True},
+    )
+
+    assert response.status_code == 200, response.text
+    assert ops.fake.assets[10]["assigned_to"]["id"] == ALICE_ID
+    assert _post_paths(ops) == [
+        "/api/v1/hardware/10/checkin",
+        "/api/v1/hardware/10/checkout",
+    ]
+    types = [event["type"] for event in response.json()["events"]]
+    assert types[-2:] == ["device_checked_in", "checkout_attempt"]
 
 
 async def test_checkout_requires_a_snipeit_recipient(ops: OpsHarness) -> None:

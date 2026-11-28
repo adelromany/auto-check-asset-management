@@ -42,5 +42,17 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "Alembic migration failed." }
         } else { Write-Output "Would run python -m alembic upgrade head" }
     } else { Write-Output "Would run python -m alembic upgrade head" }
+    # PDF printing needs LibreOffice (or Microsoft Word + docx2pdf). Detect only; never install.
+    $SofficeCandidates = @(
+        "C:\Program Files\LibreOffice\program\soffice.exe",
+        "C:\Program Files (x86)\LibreOffice\program\soffice.exe"
+    )
+    $Soffice = Get-Command soffice -ErrorAction SilentlyContinue
+    $SofficeFound = $null -ne $Soffice -or ($SofficeCandidates | Where-Object { Test-Path -LiteralPath $_ })
+    if ($SofficeFound) {
+        Write-Output "LibreOffice found: PDF printing is available."
+    } else {
+        Write-Warning "LibreOffice was not found. Print form will download the Word file instead of printing. Install LibreOffice (for example: winget install --id TheDocumentFoundation.LibreOffice -e) or set SOFFICE_PATH in .env. Setup does not install it for you."
+    }
     Write-Output "Portal setup complete. Review .env for SSO and Snipe-IT settings; secrets are never displayed."
 } finally { Pop-Location }

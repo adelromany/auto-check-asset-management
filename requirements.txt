@@ -13,3 +13,4 @@ alembic>=1.13
 asyncpg>=0.29
 aiosqlite>=0.20
 python-multipart>=0.0.9
+docx2pdf>=0.1.8; sys_platform == "win32"

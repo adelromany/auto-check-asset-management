@@ -782,6 +782,79 @@
   .handover-list { @apply flex flex-col divide-y; }
   .case-mode-choices { @apply grid grid-cols-1 gap-2 sm:grid-cols-3; }
 .mode-choice { @apply flex min-h-20 flex-col items-center justify-center gap-1 text-center; }
+.is-loading::before { content: ""; @apply mr-1 inline-block size-3 animate-spin rounded-full border border-current border-t-transparent; }
+
+.device-summary { @apply mb-5 grid grid-cols-2 gap-3 md:grid-cols-4; }
+.summary-fact { @apply rounded-lg border bg-background p-3; }
+.summary-fact small, .history-fact small { @apply block text-xs uppercase tracking-wide; }
+.device-history { @apply relative ml-2 border-l pl-5; }
+.history-date-group { @apply relative mb-6; }
+.history-date { @apply sticky top-2 z-10 mb-2 bg-background py-1 text-base; }
+.history-dot { @apply absolute -left-[27px] top-3 size-3 rounded-full bg-accent; }
+.milestone-inner { @apply grid gap-4 rounded-lg bg-secondary p-4 md:grid-cols-[1fr_1.4fr]; }
+.milestone-main { @apply flex flex-col gap-2; }
+.milestone-facts { @apply grid grid-cols-2 gap-2 sm:grid-cols-4; }
+.history-fact { @apply min-w-0 rounded-md border bg-background p-2; }
+.history-fact strong { @apply mt-1 block break-words text-sm; }
+.device-row { @apply cursor-pointer; }
+
+/* Devices page (round 3 redesign) -------------------------------------- */
+.page-header { @apply mb-5 flex flex-wrap items-end justify-between gap-3; }
+.page-header h1 { @apply text-2xl font-semibold tracking-tight; }
+.dv-toolbar { @apply mb-4 flex flex-wrap items-center gap-3 p-3; }
+.dv-search { @apply min-w-0 flex-1 basis-64; }
+.dv-company { @apply w-full sm:w-52; }
+.dv-places { @apply w-full; }
+.chip[aria-pressed] { @apply bg-transparent; }
+.chip[aria-pressed="true"] { @apply border-transparent bg-accent font-medium text-accent-foreground; }
+.dv-chip-count { @apply ml-2 rounded-full bg-muted px-1.5 text-xs tabular-nums text-muted-foreground; }
+.chip-active .dv-chip-count { @apply bg-background/60 text-accent-foreground; }
+.dv-list { @apply overflow-hidden; }
+.table-wrap { @apply overflow-x-auto; }
+.dv-table { @apply w-full text-sm; }
+.dv-table th { @apply h-10 whitespace-nowrap px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-muted-foreground; }
+.dv-table td { @apply px-4 py-3 align-middle; }
+.dv-table thead tr { @apply border-b; }
+.dv-sort { @apply inline-flex min-h-8 items-center gap-1 rounded uppercase tracking-wider hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring; }
+.dv-row { @apply cursor-pointer border-b border-border/60 transition-colors hover:bg-muted/40; }
+.dv-row:last-child { @apply border-b-0; }
+.dv-id { @apply flex flex-col gap-0.5; }
+.dv-serial { @apply font-medium underline-offset-4 hover:underline; }
+.dv-tag { @apply text-xs; }
+.dv-model, .dv-holder { @apply max-w-56 truncate; }
+.dv-last { @apply whitespace-nowrap; }
+.dv-skeleton { @apply block h-4 w-full max-w-40; }
+.dv-skeleton-chip { @apply h-6 w-28; }
+.dv-skeleton-card { @apply mb-3 h-24 w-full max-w-none; }
+.dv-message-row td { @apply px-4 py-12; }
+.dv-empty, .dv-error { @apply flex flex-col items-center gap-2 text-center; }
+.dv-empty p, .dv-error p { @apply max-w-md text-sm; }
+.dv-crumb { @apply mb-3; }
+.dv-head-main { @apply flex min-w-0 flex-col gap-2; }
+.dv-head h1 { @apply text-2xl font-semibold tracking-tight; }
+.dv-live { @apply items-center text-sm; }
+.dv-holder-text { @apply text-muted-foreground; }
+.dv-section-title { @apply mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground; }
+.device-history.dv-history-empty { @apply ml-0 border-l-0 pl-0; }
+.milestone-title { @apply text-base font-semibold; }
+.history-fact strong.badge { @apply h-auto max-w-full whitespace-normal text-left; }
+@media (max-width: 767px) {
+  .dv-table thead { @apply sr-only; }
+  .dv-table, .dv-table tbody { @apply block; }
+  .dv-row { @apply grid grid-cols-2 gap-x-3 gap-y-2 border-b p-4; }
+  .dv-row td { @apply block min-w-0 p-0; }
+  .dv-row td::before { content: attr(data-label); @apply mb-0.5 block text-[0.68rem] font-medium uppercase tracking-wider text-muted-foreground; }
+  .dv-row td.dv-id { @apply col-span-2 flex; }
+  .dv-row td.dv-id::before { content: none; }
+  .dv-model, .dv-holder { @apply max-w-none; }
+  .dv-skeleton-row td::before { content: none; }
+  .dv-message-row, .dv-message-row td { @apply block; }
+}
+
+.case-menu { @apply relative; }
+.case-menu summary { @apply list-none; }
+.case-menu-items { @apply absolute right-0 z-30 mt-1 min-w-40 rounded-md border bg-background p-2 shadow-lg; }
+
 .mode-choice[aria-pressed="true"], .case-mode-control [aria-pressed="true"] { @apply border-accent bg-accent text-accent-foreground; }
 .mode-choice-icon { @apply text-xl; }
 .case-mode-control { @apply mb-4 w-fit; }

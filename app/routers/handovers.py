@@ -23,6 +23,7 @@ from app.dto.handover import (
     CategoryOut,
     CheckinRequest,
     CheckinResult,
+    CheckoutRequest,
     CloseCaseRequest,
     DestinationOut,
     DeviceStatusRequest,
@@ -195,7 +196,7 @@ async def get_device_live(
 ) -> dict:
     try:
         return await SnipeItHandoverService(session).device_live(
-            handover_id, client=client
+            handover_id, client=client, actor=_actor(user)
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
@@ -235,6 +236,44 @@ async def change_handover_mode(
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
     return handover_detail(view)
+
+
+@router.post("/pending-user/check-all")
+async def check_all_pending_users(
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+):
+    from app.services.pending_users import check_pending_users
+    views = await check_pending_users(session, client)
+    return {"checked": len(views)}
+
+
+@router.post("/{handover_id}/pending-user/check", response_model=HandoverDetail)
+async def check_one_pending_user(
+    handover_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+    client: SnipeItClient = Depends(get_snipeit_client),
+):
+    from app.services.pending_users import check_pending_user
+    try:
+        view = await check_pending_user(session, handover_id, actor=_actor(user), client=client)
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
+    return handover_detail(view)
+
+
+@router.delete("/{handover_id}", status_code=204)
+async def delete_handover(
+    handover_id: uuid.UUID,
+    user: dict = Depends(current_user),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    try:
+        await HandoverService(session).delete(handover_id, actor=_actor(user))
+    except HandoverError as exc:
+        raise handover_http_error(exc) from exc
 
 
 @router.post("/{handover_id}/cancel", response_model=HandoverDetail)
@@ -365,6 +404,14 @@ async def choose_recipient(
     """Choose a Snipe-IT recipient, no recipient, or a free-form recipient."""
     service = SnipeItHandoverService(session)
     try:
+        if payload.mode == "pending_user":
+            from app.services.pending_users import register_pending
+            view = await register_pending(
+                session, handover_id, employee_code=payload.employee_code,
+                username=payload.username, name=payload.name,
+                actor=_actor(user), client=client,
+            )
+            return handover_detail(view)
         view = await service.choose_recipient(
             handover_id,
             mode=payload.mode,
@@ -545,6 +592,7 @@ async def checkin_assets(
 @router.post("/{handover_id}/checkout", response_model=HandoverDetail)
 async def checkout_handover(
     handover_id: uuid.UUID,
+    payload: CheckoutRequest | None = None,
     user: dict = Depends(current_user),
     session: AsyncSession = Depends(get_session),
     client: SnipeItClient = Depends(get_snipeit_client),
@@ -552,7 +600,10 @@ async def checkout_handover(
     service = SnipeItHandoverService(session)
     try:
         view = await service.checkout(
-            handover_id, actor=_actor(user), client=client
+            handover_id,
+            actor=_actor(user),
+            client=client,
+            replace_holder=bool(payload and payload.replace_holder),
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc

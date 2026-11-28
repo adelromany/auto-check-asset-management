@@ -1,4 +1,4 @@
-"""Branding requirements: b_labs logo, Handover Portal title, no old monitor SVG."""
+"""Branding requirements: b_labs logo, HQ Portal title, no old monitor SVG."""
 
 from __future__ import annotations
 

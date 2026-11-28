@@ -1,5 +1,5 @@
 # ==============================================================================
-# Handover Portal Agent — Windows
+# HQ Portal Agent — Windows
 # Phase 3: Hardware + Software inventory + Windows Activation status
 #
 # Called automatically by the web page. Paste the one-liner shown in
@@ -21,7 +21,7 @@ if (-not $ServerUrl -or -not $Code) {
 }
 
 Write-Host ""
-Write-Host "  Handover Portal Agent (Windows)" -ForegroundColor Cyan
+Write-Host "  HQ Portal Agent (Windows)" -ForegroundColor Cyan
 Write-Host "  Session : $Code" -ForegroundColor Cyan
 Write-Host "  Server  : $ServerUrl" -ForegroundColor Cyan
 Write-Host ""
@@ -449,6 +449,7 @@ $payload = @{
     username      = $currentUser
     user_domain   = $env:USERDOMAIN
     console_user  = Safe-Get { (Get-CimInstance Win32_ComputerSystem).UserName }
+    logged_on_user = Safe-Get { if ($cs.UserName) { $cs.UserName } else { (Get-ChildItem "$env:SystemDrive\Users" -Directory | Where-Object { $_.Name -notin @('Public','Default','Default User','All Users') } | Sort-Object LastWriteTime -Descending | Select-Object -First 1).Name } }
     serial        = if ($bios) { $bios.SerialNumber }      else { $null }
     manufacturer  = if ($cs)   { $cs.Manufacturer }        else { $null }
     model         = if ($cs)   { $cs.Model }               else { $null }

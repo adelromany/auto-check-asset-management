@@ -8,7 +8,9 @@ from io import BytesIO
 
 import pytest
 
-from app.domain.form_fill import PLACEHOLDER, TemplateError, fill_engineer
+from pathlib import Path
+
+from app.domain.form_fill import PLACEHOLDER, TemplateError, fill_engineer, fill_form
 
 
 def _docx(document_xml: bytes, *, extra: dict[str, bytes] | None = None) -> bytes:
@@ -90,3 +92,37 @@ def test_fills_placeholder_in_header_and_footer() -> None:
     with zipfile.ZipFile(BytesIO(result)) as archive:
         assert "Header Engineer" in archive.read("word/header1.xml").decode()
         assert "Header Engineer" in archive.read("word/footer1.xml").decode()
+
+
+def _cell(label: str) -> bytes:
+    return f"<w:tc><w:p><w:r><w:t>{label}</w:t></w:r></w:p><w:p></w:p></w:tc>".encode()
+
+
+def test_fills_inline_labels_split_over_runs_and_tables() -> None:
+    template = _docx(
+        b"<w:document><w:body><w:p><w:r><w:t>SN </w:t></w:r>"
+        b"<w:r><w:t>:                         </w:t></w:r><w:r><w:t>Model : </w:t></w:r></w:p>"
+        b"<w:tbl><w:tr>" + _cell("Model") + _cell("") + b"</w:tr>"
+        b"<w:tr>" + _cell("Serial") + _cell("") + b"</w:tr>"
+        b"<w:tr>" + _cell("Processor") + _cell("") + b"</w:tr></w:tbl>"
+        b"<w:p><w:r><w:t>{{ENGINEER}}</w:t></w:r></w:p></w:body></w:document>"
+    )
+    result = fill_form(template, engineer="محمد", hardware={"model": "Dell Latitude 5440", "serial": "TEST-SN-0001", "processor": "Intel i5"})
+    text = html.unescape(_document_text(result))
+    assert "SN : TEST-SN-0001      Model : Dell Latitude 5440" in text
+    assert "Intel i5" in text and "محمد" in text
+
+
+def test_inline_missing_model_keeps_its_label() -> None:
+    template = _docx(b"<w:document><w:p><w:r><w:t>{{ENGINEER}} SN : old Model : </w:t></w:r></w:p></w:document>")
+    text = html.unescape(_document_text(fill_form(template, engineer="A", hardware={"serial": "NEW"})))
+    assert "SN : NEW      Model :" in text
+
+
+def test_real_templates_receive_hardware() -> None:
+    hardware = {"processor": "Intel i5 (8 cores)", "ram": "16 GB", "disk": "512 GB SSD", "model": "Dell Latitude 5440", "serial": "TEST-SN-0001"}
+    for name in ("B.tech.docx", "Mylo.docx"):
+        source = Path("forms") / name
+        text = html.unescape(_document_text(fill_form(source.read_bytes(), engineer="Alex", hardware=hardware)))
+        assert hardware["serial"] in text and hardware["model"] in text
+        assert hardware["processor"] in text and hardware["ram"] in text

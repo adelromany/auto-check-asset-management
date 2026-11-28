@@ -16,7 +16,7 @@ try {
     $env:HTTPS_ONLY = "false"
     Write-Output "Starting local development mode at http://$HostAddress`:$Port (SSO disabled)."
     Write-Output "Network binding 0.0.0.0 allows other devices to connect; use only on a trusted network."
-    if ($PSCmdlet.ShouldProcess("http://$HostAddress`:$Port", "Start the Handover Portal")) {
+    if ($PSCmdlet.ShouldProcess("http://$HostAddress`:$Port", "Start the HQ Portal")) {
         & $VenvPython -m uvicorn main:app --host $HostAddress --port $Port
         if ($LASTEXITCODE -ne 0) { throw "Uvicorn exited with code $LASTEXITCODE." }
     } else { Write-Output "Would run .\.venv\Scripts\python.exe -m uvicorn main:app --host $HostAddress --port $Port" }

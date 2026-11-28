@@ -3,7 +3,7 @@
 {% block content %}
 <header class="case-header">
   <div>
-    <h1 class="mono case-title">{{ handover.device_serial }}</h1>
+    <h1 class="mono case-title"><a href="/devices/{{ handover.device_serial }}">{{ handover.device_serial }}</a></h1>
     <div class="case-chips">
       <span class="badge badge-secondary" data-case-company>{{ handover.device_company or '—' }}</span>
       <span class="badge badge-outline" data-case-model>{{ handover.device_model or '—' }}</span>
@@ -11,7 +11,10 @@
       <span class="case-chips" data-header-warning></span>
     </div>
   </div>
-  <a href="/handovers/{{ handover.id }}/history" class="btn btn-outline">History</a>
+  <div class="button-row">
+    <a href="/handovers/{{ handover.id }}/history" class="btn btn-outline">History</a>
+    <div data-case-menu></div>
+  </div>
 </header>
 <div class="segmented case-mode-control" role="group" aria-label="Handover type">
   <button type="button" class="btn btn-outline" data-case-mode="none" aria-pressed="{{ 'true' if handover.recipient_mode == 'none' else 'false' }}">▣ Lab only</button>
@@ -26,14 +29,14 @@
         <div class="case-chips"><span class="badge badge-outline" data-device-status>{{ handover.snipeit_status_name or '—' }}</span></div>
         <strong data-device-holder>{{ 'With: ' ~ handover.device_holder_name if handover.device_holder_name else 'Not assigned' }}</strong>
         <div class="button-row">
-          <button type="button" class="btn btn-outline{% if not handover.device_holder_name %} hidden{% endif %}" data-device-checkin>Check in</button>
+          <span data-device-checkin-slot>{% if handover.device_holder_name %}<button type="button" class="btn btn-outline" data-device-checkin>Check in</button>{% endif %}</span>
           <button type="button" class="btn btn-outline" data-device-refresh>Refresh</button>
         </div>
         <small class="muted" data-device-updated></small>
       </div>
       <div class="filter-row">
         <select class="input" data-status-select aria-label="Snipe-IT status"></select>
-        <button type="button" class="btn btn-default" data-apply-status>Apply</button>
+        <span data-apply-status-slot></span>
       </div>
       <button type="button" class="btn btn-outline" data-check-device>Check device</button>
       <div class="device-check-results" data-device-results>
@@ -68,7 +71,11 @@
     <div class="card-header"><h2 class="card-title" id="recipient-title">Recipient</h2></div>
     <div class="card-content stack">
       <label class="sr-only" for="recipient-search">Search recipient</label>
-      <input id="recipient-search" class="input" data-recipient-search placeholder="Search" autocomplete="off">
+      <div class="button-row">
+        <button type="button" class="btn btn-outline btn-sm hidden" data-use-holder>Current Snipe-IT holder</button>
+        <button type="button" class="btn btn-outline btn-sm hidden" data-use-device-user>User signed in on device</button>
+      </div>
+      <input id="recipient-search" class="input" data-recipient-search placeholder="Name, username or employee code" autocomplete="off">
       <div class="recipient-results" data-recipient-results></div>
       <div class="recipient-card {% if not (handover.recipient_snipeit_name or handover.recipient_free_name or handover.recipient_snipeit_username) %}hidden{% endif %}" data-recipient-card>
         <strong>{{ handover.recipient_snipeit_name or handover.recipient_free_name or handover.recipient_snipeit_username or 'No recipient' }}</strong>
@@ -76,20 +83,32 @@
       </div>
       <div class="stack" data-recipient-items></div>
       <div class="button-row" data-recipient-item-actions>
-        <button type="button" class="btn btn-outline" data-take-back-selected disabled>Check in</button>
-        <button type="button" class="btn btn-default" data-confirm-items>Keep all</button>
+        <span data-items-checkin-slot></span>
+        <span data-items-keep-slot></span>
       </div>
+      <p class="field-error hidden" data-recipient-items-error></p>
     </div>
   </section>
   <section class="card handover-panel{% if handover.recipient_mode not in ('pending_user', 'not_in_snipeit') %} hidden{% endif %}" data-waiting-user-panel aria-labelledby="waiting-user-title">
     <div class="card-header"><h2 class="card-title" id="waiting-user-title">Waiting user</h2></div>
-    <div class="card-content"><span class="badge badge-secondary">Waiting user</span></div>
+    <div class="card-content stack">
+      <span class="badge badge-secondary">Waiting user</span>
+      <label>Employee code<input class="input" data-pending-code maxlength="60" value="{{ handover.recipient_employee_code or '' }}"></label>
+      <label>Username<input class="input" data-pending-username maxlength="120" value="{{ handover.recipient_username or '' }}"></label>
+      <label>Name (optional)<input class="input" data-pending-name value="{{ handover.recipient_free_name or '' }}"></label>
+      <p class="muted" data-logged-on-user></p>
+      <p class="muted" data-pending-checked></p>
+      <div class="button-row"><button type="button" class="btn btn-outline" data-pending-save>Change</button><button type="button" class="btn btn-default" data-pending-check>Check now</button><button type="button" class="btn btn-outline hidden" data-use-logged-user>Use</button></div>
+      <p class="field-error hidden" data-pending-error></p>
+    </div>
   </section>
   <section class="card handover-panel{% if handover.recipient_mode == 'none' %} hidden{% endif %}" data-handover-panel aria-labelledby="handover-title">
     <div class="card-header"><h2 class="card-title" id="handover-title">Handover</h2></div>
     <div class="card-content stack">
       <div class="fact"><dt>Engineer</dt><dd data-engineer>{{ handover.engineer_name or handover.engineer_email }}</dd></div>
       <button type="button" class="btn btn-outline" data-print-form>Print form</button>
+      <a class="btn btn-ghost" href="/api/handovers/{{ handover.id }}/form?format=docx" data-download-word>Download Word</a>
+      <span class="badge badge-warning hidden" data-form-hardware>No device report</span>
       <p class="field-error hidden" data-form-error></p>
       <div class="drop-zone" data-signed-paper>
         <label for="signed-paper-file" class="btn btn-outline btn-sm">Choose signed scan</label>
@@ -101,6 +120,7 @@
       <button type="button" class="btn btn-default" data-checkout disabled>Check out</button>
       <p class="field-hint" data-checkout-reason>Choose a recipient</p>
       <p class="field-error hidden" data-checkout-result aria-live="polite" role="status"></p>
+      <button type="button" class="btn btn-outline hidden" data-replace-holder>Check in and check out</button>
       <div class="case-chips" data-missing-parts>
         {% for part in missing_parts %}<span class="badge badge-outline">{{ part }}</span>{% endfor %}
       </div>
@@ -108,4 +128,4 @@
   </section>
 </div>
 {% endblock %}
-{% block scripts %}<script src="/static/js/clipboard.js" defer></script><script src="/static/js/sync.js" defer></script><script src="/static/js/handover-case.js?v=vendor-checkout-3" defer></script>{% endblock %}
+{% block scripts %}<script src="/static/js/clipboard.js" defer></script><script src="/static/js/sync.js" defer></script><script src="/static/js/handover-case.js?v=round3-1" defer></script>{% endblock %}

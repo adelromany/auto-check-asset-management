@@ -4,7 +4,7 @@
 -#}
 <header data-topbar class="topbar">
   <div class="topbar-inner">
-    <a href="/" class="topbar-brand md:hidden" aria-label="Handover Portal home">
+    <a href="/" class="topbar-brand md:hidden" aria-label="HQ Portal home">
       {% from "partials/logo.html" import logo %}
       {{ logo(32) }}
     </a>
@@ -14,7 +14,7 @@
         <label class="sr-only" for="omnibox-input">Search</label>
         <svg class="omnibox-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="omnibox-input" name="q" type="search" maxlength="100"
-               placeholder="Search serial, person, ticket, vendor"
+               placeholder="Search"
                aria-label="Search cases and devices"
                aria-describedby="omnibox-hint">
         <span class="omnibox-caret" aria-hidden="true"></span>
@@ -24,6 +24,7 @@
     </div>
 
     <div class="topbar-actions">
+      {% if active_nav == 'dashboard' %}<button type="button" class="btn btn-outline btn-sm" data-check-waiting>Check waiting users</button>{% endif %}
       <div class="user-menu" id="user-menu">
         <button type="button" id="user-menu-button" class="btn btn-ghost h-10 gap-2 px-2"
                 aria-haspopup="true" aria-expanded="false" aria-label="User menu">

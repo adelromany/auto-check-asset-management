@@ -642,6 +642,24 @@ async def test_form_endpoint_returns_filled_company_template(
     assert "Engineer One" in document
 
 
+async def test_form_endpoint_returns_inline_pdf_and_handles_unavailability(
+    docs: DocsHarness, tmp_path: Path, monkeypatch
+) -> None:
+    _write_template(tmp_path / "B.tech.docx")
+    monkeypatch.setattr(config, "FORMS_DIR", str(tmp_path))
+    handover_id = await _create(docs)
+    monkeypatch.setattr("app.routers.documents.docx_to_pdf", lambda content: b"%PDF-test")
+    response = await docs.client.get(f"/api/handovers/{handover_id}/form?format=pdf")
+    assert response.status_code == 200
+    assert response.content == b"%PDF-test"
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert response.headers["content-disposition"].startswith("inline")
+    assert response.headers["x-form-hardware"] == "missing"
+    monkeypatch.setattr("app.routers.documents.docx_to_pdf", lambda content: None)
+    response = await docs.client.get(f"/api/handovers/{handover_id}/form?format=pdf")
+    assert response.status_code == 503
+
+
 async def test_form_endpoint_missing_template_records_failure(
     docs: DocsHarness, tmp_path: Path, monkeypatch
 ) -> None:

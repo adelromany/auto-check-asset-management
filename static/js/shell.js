@@ -85,6 +85,7 @@
           if (Array.isArray(message)) message = message.map(function (e) { return e.msg || ""; }).join(", ");
           var error = new Error(typeof message === "string" ? message : JSON.stringify(message));
           error.status = res.status;
+          error.detail = message;
           throw error;
         }
         return body;
@@ -102,6 +103,97 @@
     }));
   }
   portal.apiJson = apiJson;
+
+  function actionSlot(host, options) {
+    host.textContent = "";
+    if (options.done) {
+      host.appendChild(el("span", "badge badge-success", "✓ " + options.doneLabel));
+      return null;
+    }
+    if (!options.applicable) return null;
+    var button = actionButton(options.label, "btn-outline btn-sm");
+    if (options.attribute) button.setAttribute(options.attribute, "");
+    button.addEventListener("click", function () {
+      button.disabled = true;
+      button.classList.add("is-loading");
+      var result = options.onClick(button);
+      if (result && result.catch) result.catch(function () { button.disabled = false; button.classList.remove("is-loading"); });
+    });
+    host.appendChild(button);
+    return button;
+  }
+  portal.actionSlot = actionSlot;
+
+  function confirmCase(action) {
+    return new Promise(function (resolve) {
+      var dialog = el("dialog", "card stack");
+      var title = action === "delete" ? "Delete case" : "Cancel case";
+      dialog.appendChild(el("h2", "card-title", title));
+      if (action === "cancel") dialog.appendChild(el("p", "muted", "Snipe-IT is not changed"));
+      var reason = el("input", "input");
+      reason.placeholder = "Reason (optional)";
+      if (action === "cancel") dialog.appendChild(reason);
+      var actions = el("div", "button-row");
+      var confirm = actionButton(title, "btn-destructive");
+      var keep = actionButton("Keep", "btn-outline");
+      actions.appendChild(confirm); actions.appendChild(keep); dialog.appendChild(actions);
+      document.body.appendChild(dialog);
+      function close(value) { dialog.close(); dialog.remove(); resolve(value ? { confirmed: true, reason: reason.value } : { confirmed: false }); }
+      confirm.addEventListener("click", function () { close(true); });
+      keep.addEventListener("click", function () { close(false); });
+      dialog.addEventListener("cancel", function () { close(false); });
+      dialog.showModal();
+    });
+  }
+  portal.confirmCase = confirmCase;
+
+  function caseMenu(id, status, maintenanceState) {
+    var menu = el("details", "case-menu");
+    menu.appendChild(el("summary", "btn btn-outline btn-sm", "More"));
+    var items = el("div", "case-menu-items stack-sm");
+    var save = el("a", "btn btn-ghost btn-sm", "Save and exit"); save.href = "/";
+    save.setAttribute("data-save-exit", ""); items.appendChild(save);
+    if (status === "cancelled") {
+      var reopen = actionButton("Reopen", "btn-ghost btn-sm");
+      reopen.setAttribute("data-reopen-case", id); items.appendChild(reopen);
+    } else if (status !== "completed" && maintenanceState !== "returned") {
+      var cancel = actionButton("Cancel case", "btn-ghost btn-sm"); cancel.setAttribute("data-cancel-case", id); items.appendChild(cancel);
+      var remove = actionButton("Delete case", "btn-ghost btn-sm"); remove.setAttribute("data-delete-case", id); items.appendChild(remove);
+    }
+    menu.appendChild(items);
+    return menu;
+  }
+  portal.caseMenu = caseMenu;
+  $all("[data-row-case-menu]").forEach(function (host) {
+    host.appendChild(caseMenu(host.getAttribute("data-case-id"), host.getAttribute("data-case-status")));
+  });
+
+  document.addEventListener("click", function (event) {
+    var target = event.target.closest && event.target.closest("[data-cancel-case],[data-delete-case],[data-reopen-case],[data-save-exit],[data-check-waiting]");
+    if (!target) return;
+    if (target.hasAttribute("data-save-exit")) { toast("Saved", "success"); return; }
+    if (target.hasAttribute("data-check-waiting")) {
+      apiJson("/api/handovers/pending-user/check-all", { method: "POST" }).then(function () { window.location.reload(); }).catch(function (error) { toast(error.message, "error"); });
+      return;
+    }
+    if (target.hasAttribute("data-reopen-case")) {
+      apiJson("/api/handovers/" + target.getAttribute("data-reopen-case") + "/reopen", { method: "POST" })
+        .then(function () { window.location.reload(); })
+        .catch(function (error) { toast(error.message, "error"); });
+      return;
+    }
+    var id = target.getAttribute("data-cancel-case") || target.getAttribute("data-delete-case");
+    var action = target.hasAttribute("data-delete-case") ? "delete" : "cancel";
+    confirmCase(action).then(function (choice) {
+      if (!choice.confirmed) return;
+      request("/api/handovers/" + id + (action === "cancel" ? "/cancel" : ""), {
+        method: action === "cancel" ? "POST" : "DELETE",
+        headers: action === "cancel" ? { "Content-Type": "application/json" } : {},
+        body: action === "cancel" ? JSON.stringify({ reason: choice.reason }) : undefined,
+      }).then(function () { window.location.href = "/"; })
+        .catch(function (error) { toast(error.message, "error"); });
+    });
+  });
 
   // -- toasts ----------------------------------------------------------------
   function toast(message, kind) {
@@ -295,6 +387,7 @@
     form.setAttribute("data-kind", kind);
 
     var serial = portal.textInput("device_serial", "Serial number", { required: true, maxlength: 100 });
+    if (options.serial) serial.value = options.serial;
     var match = portal.el("div", "snipe-match", "");
     match.setAttribute("data-snipe-match", "");
     serial.addEventListener("input", function () {
@@ -316,6 +409,7 @@
             match.appendChild(chips);
             match.appendChild(portal.el("div", "muted", device.assigned_to ? "With: " + (device.assigned_to.name || device.assigned_to.username) : "Not assigned"));
             if (device.open_case) {
+              if (device.open_case.kind === "maintenance") chips.appendChild(portal.el("span", "badge badge-warning", "In maintenance"));
               var open = portal.el("a", "btn btn-outline btn-sm", "Open case");
               open.href = device.open_case.url;
               match.appendChild(open);
@@ -328,12 +422,12 @@
         }).catch(function () { /* Snipe-IT optional at registration */ });
     });
 
+    if (options.serial) serial.dispatchEvent(new Event("input", { bubbles: true }));
     var ticket = portal.textInput("ticket_ref", "Ticket (optional)", { maxlength: 100 });
     var issue = null;
     var category = null;
     var priority = null;
     var notes = null;
-    var engineer = null;
     var actions = portal.formActions(isMaintenance ? "Register" : "Start");
     var selectedMode = null;
     form.appendChild(portal.field("Serial", serial, isMaintenance ? "The device that needs repair" : "The device leaving or returning"));
@@ -396,13 +490,7 @@
           .querySelectorAll("option").forEach(function (option) { category.appendChild(option); });
       }).catch(function () { /* the default category remains usable */ });
     } else {
-      engineer = portal.textInput("engineer", "", { value: "Current user" });
-      engineer.readOnly = true;
-      engineer.setAttribute("aria-label", "Assigned engineer");
-      form.appendChild(portal.field("Engineer", engineer));
-      portal.fetchMe().then(function (user) {
-        if (user) engineer.value = user.email || user.name || "Current user";
-      });
+      // The engineer is the signed-in user (server side); it is not asked here.
       form.appendChild(portal.field("Ticket", ticket));
     }
     form.appendChild(actions);

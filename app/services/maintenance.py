@@ -83,7 +83,7 @@ class MaintenanceService:
         client: SnipeItClient,
     ) -> HandoverDetailView:
         cleaned_serial = serial.strip()
-        existing = await self._core.find_active_by_serial(cleaned_serial)
+        existing = await self._core.find_active_by_serial(cleaned_serial, "maintenance")
         if existing is not None:
             raise MaintenanceCaseExists(str(existing.id))
 
@@ -117,7 +117,7 @@ class MaintenanceService:
             )
         except (HandoverAlreadyExists, IntegrityError) as exc:
             await self._session.rollback()
-            existing = await self._core.find_active_by_serial(cleaned_serial)
+            existing = await self._core.find_active_by_serial(cleaned_serial, "maintenance")
             if existing is not None:
                 raise MaintenanceCaseExists(str(existing.id)) from exc
             if isinstance(exc, IntegrityError):
@@ -305,15 +305,17 @@ class MaintenanceService:
             state=state, company=company, model=model, vendor_id=vendor_id, q=q
         )
         today = date.today()
-        return [
-            MaintenanceCaseOut(
+        results = []
+        for row in rows:
+            active = await self._core.find_active_by_serial(row["serial"], "handover")
+            results.append(MaintenanceCaseOut(
                 **row,
+                open_handover={"id": str(active.id)} if active else None,
                 days=days_in_maintenance(
                     row["received_date"], row["returned_date"], today
                 ),
-            )
-            for row in rows
-        ]
+            ))
+        return results
 
     async def batch_send(
         self,

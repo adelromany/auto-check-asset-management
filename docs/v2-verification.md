@@ -1,5 +1,36 @@
 # V2 Final Verification
 
+## Polish (2026-11-28)
+
+Branch: `feature/v2-polish`. Verified working tree based on `fe65711`; the PART 4-9 commits are awaiting the owner's required git confirmation, so no polish commit id or push is claimed here.
+
+### Automated evidence
+
+- Full non-e2e suite: **656 passed, 13 skipped, 2 xfailed** (`pytest -q --ignore=tests/e2e`), including migration up/down/up coverage and 13 standalone Playwright scenarios.
+- Standalone browser coverage verifies maintenance action success/error states and reload persistence, Apply visibility, successful PDF printing without a download, maintenance Devices open-handover cancellation, device milestone cards, dashboard/mobile word budgets, and a 12-page navigation crawl.
+- Full suite including repository e2e fixtures: **645 passed, 13 skipped, 2 xfailed, 2 failures subsequently fixed, 3 setup errors**. The errors are all Snipe-IT HTTP 503 during fixture setup. The final non-e2e rerun above is green.
+- Architecture and graph consistency: **100 passed**. Principle visuals regenerated and the graph consistency check passed in the final suite.
+- CSS rebuilt twice with `npm run build:css`; the second build was byte-stable.
+- JavaScript syntax checks and `git diff --check`: passed.
+- Ruff: **not run**, because `No module named ruff` in the existing virtual environment.
+
+### Live integration and rendered forms
+
+**Not verified in this environment.** Both `tools/snipeit_seed.py` and `tools/snipeit_probe.py` failed with `WinError 10061` (connection refused). The latest probe report records 0/11 environmental failures; this must not be read as a regression result or passing live evidence. Restart Snipe-IT, seed TEST data, then rerun the probes and `tools/v2_verify_all.py` before deployment.
+
+LibreOffice, `soffice`, and `pdftoppm` are unavailable. `tools/check_pdf_render.py` therefore reports `FAIL Mylo.docx` and `FAIL B.tech.docx`; real PDF conversion, page-count evidence, and rendered-form PNG inspection remain blocked. The DOCX filling tests use the real B.tech and Mylo templates, PDF conversion is covered with a fake runner, and Playwright verifies successful PDF print behavior plus the Word-download fallback. Install LibreOffice Writer and fonts as now documented in both deployment guides, then run the checker and render both PDFs for owner inspection.
+
+### Captures
+
+`docs/review/v2/p1-dashboard.png`, `polish-handover-case.png`, `polish-maintenance-case.png`, `device-history-light.png`, and `device-history-dark.png`. The case/device captures were inspected. The two specification files remain untracked and untouched.
+
+### Owner actions still open
+
+1. Start Snipe-IT and provide LibreOffice plus a PDF rasterizer, then rerun live integration and form-render verification.
+2. Review the Mylo form branding and provide the missing Nexta template (`docs/OPEN_QUESTIONS.md`).
+3. Confirm the accumulated git commits; only after that can `feature/v2-polish` be committed and pushed. No merge is permitted.
+
+
 Date: 2026-11-25
 Branch: `feature/v2-handover-maintenance`
 Baseline commit verified: `7271274` (Phase 07)  

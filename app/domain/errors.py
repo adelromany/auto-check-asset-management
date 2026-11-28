@@ -69,6 +69,12 @@ class CaseStateConflict(HandoverError):
         super().__init__(reason)
 
 
+class HeldByOther(HandoverError):
+    def __init__(self, holder: str):
+        self.holder = holder
+        super().__init__(f"Held by {holder}")
+
+
 class ClosingConfirmationRequired(HandoverError):
     """Closing with gaps needs the explicit confirmation text."""
 

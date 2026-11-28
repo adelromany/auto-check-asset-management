@@ -16,7 +16,7 @@ def test_registration_maintenance_transit_and_case_sync(portal):
             form = page.locator('[data-new-case-form][data-kind="handover"]')
             form.locator('[name="device_serial"]').fill("TEST-FLOW-H")
             form.locator('[name="ticket_ref"]').fill("FLOW-H")
-            assert form.locator('[name="engineer"]').input_value()
+            assert form.locator('[name="engineer"]').count() == 0  # engineer comes from the session
             form.locator("[data-primary]").click()
             page.wait_for_url("**/handovers/*", timeout=10000)
             assert "TEST-FLOW-H" in page.locator("h1").inner_text()

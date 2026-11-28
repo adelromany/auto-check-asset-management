@@ -122,9 +122,10 @@ def test_health_shape(sso_off_client):
     r = sso_off_client.get("/api/health")
     assert r.status_code == 200
     body = r.json()
-    assert set(body.keys()) == {"status", "time", "sessions_active"}
+    assert set(body.keys()) == {"status", "time", "sessions_active", "pdf_print"}
     assert body["status"] == "ok"
     assert body["sessions_active"] == 0
+    assert body["pdf_print"] in {"available", "unavailable"}
 
 
 def test_index_200_when_sso_off(sso_off_client):

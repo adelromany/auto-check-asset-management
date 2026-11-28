@@ -95,6 +95,47 @@ async def test_phase06_create_rejects_a_second_active_case(api: ApiHarness) -> N
     assert detail["case_id"] == first.json()["id"]
 
 
+async def test_open_handover_and_maintenance_coexist_and_cancel_frees_kind(
+    api: ApiHarness,
+) -> None:
+    handover = await _create(api, serial="SN-10")
+    created = await api.client.post("/api/maintenance/cases", json={"serial": "SN-10"})
+    assert created.status_code == 201, created.text
+    assert created.json()["open_handover"] == {"id": handover["id"]}
+    duplicate_handover = await api.client.post("/api/handovers", json={"device_serial": "SN-10"})
+    assert duplicate_handover.status_code == 409
+    duplicate_maintenance = await api.client.post("/api/maintenance/cases", json={"serial": "SN-10"})
+    assert duplicate_maintenance.status_code == 409
+    cancelled = await api.client.post(f"/api/handovers/{handover['id']}/cancel")
+    assert cancelled.status_code == 200
+    remaining = await api.client.get(f"/api/handovers/{created.json()['id']}")
+    assert remaining.json()["status"] != "cancelled"
+    replacement = await api.client.post("/api/handovers", json={"device_serial": "SN-10"})
+    assert replacement.status_code == 201
+
+
+async def test_delete_removes_case_and_refuses_complete(api: ApiHarness, monkeypatch) -> None:
+    case = await _create(api, serial="SN-10")
+    before = len(api.fake.calls)
+    deleted = await api.client.delete(f"/api/handovers/{case['id']}")
+    assert deleted.status_code == 204
+    assert (await api.client.get(f"/api/handovers/{case['id']}")).status_code == 404
+    assert len(api.fake.calls) == before
+    complete = await _create(api, serial="SN-11")
+    from app.services.handovers import HandoverService
+    original_get = HandoverService.get
+    async def completed_get(self, handover_id, *, with_details=True):
+        handover = await original_get(self, handover_id, with_details=with_details)
+        handover.status = "completed"
+        return handover
+    monkeypatch.setattr(HandoverService, "get", completed_get)
+    before = len(api.fake.calls)
+    refused = await api.client.delete(f"/api/handovers/{complete['id']}")
+    assert refused.status_code == 409
+    assert refused.json()["detail"] == "Complete cases cannot be deleted"
+    assert len(api.fake.calls) == before
+
+
 async def test_phase06_other_reason_requires_details(api: ApiHarness) -> None:
     reasons = await api.client.get("/api/maintenance/reasons")
     other = next(item for item in reasons.json() if item["name"] == "Other")

@@ -52,7 +52,7 @@ async def live_device_lookup(
             {"asset_id": item.id, "asset_tag": item.asset_tag, "serial": item.serial, "model": item.model}
             for item in candidates
         ] if len(candidates) > 1 else [],
-        "open_case": ({"id": str(active.id), "url": (f"/maintenance/{active.id}" if active.kind == "maintenance" else f"/handovers/{active.id}")} if active else None),
+        "open_case": ({"id": str(active.id), "kind": active.kind, "url": (f"/maintenance/{active.id}" if active.kind == "maintenance" else f"/handovers/{active.id}")} if active else None),
     }
 
 
@@ -107,17 +107,20 @@ async def lookup_device(serial: str, user=Depends(current_user)):
 
 @router.get("/api/snipeit/users", response_model=list[SnipeItUserSearchResult])
 async def search_snipeit_users(
-    q: str = Query(min_length=2, max_length=200),
+    q: str | None = Query(default=None, min_length=2, max_length=200),
     handover_id: uuid.UUID = Query(),
+    user_id: int | None = Query(default=None, ge=1),
     user: dict = Depends(current_user),
     session: AsyncSession = Depends(get_session),
     client: SnipeItClient = Depends(get_snipeit_client),
 ) -> list[SnipeItUserSearchResult]:
     """Search Snipe-IT users and show whether each matches the device company."""
+    if q is None and user_id is None:
+        raise HTTPException(status_code=422, detail="Enter a name, username or employee code.")
     service = HandoverService(session)
     try:
         users = await service.search_snipeit_users(
-            handover_id, q, client=client
+            handover_id, q, client=client, user_id=user_id
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc

@@ -8,10 +8,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{{ page_title }} · Handover Portal{% endblock %}</title>
+  <title>{% block title %}{{ page_title }} · HQ Portal{% endblock %}</title>
   <link rel="icon" href="/static/img/favicon-32.png" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="/static/img/favicon-180.png">
-  <link rel="stylesheet" href="/static/css/app.css?v=fix12-3">
+  <link rel="stylesheet" href="/static/css/app.css?v=round3-1">
   <script src="/static/js/theme-init.js"></script>
   <script src="/static/js/theme.js" defer></script>
 </head>
@@ -28,7 +28,7 @@
   {% include "partials/bottom_nav.html" %}
   <div id="toast-stack" class="toast-stack" data-toast-region aria-live="polite"></div>
   <div id="drawer-root"></div>
-  <script src="/static/js/shell.js" defer></script>
+  <script src="/static/js/shell.js?v=round3-1" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -26,6 +26,7 @@ from app.clients.snipeit import (
 from app.db.models.handover import Handover
 from app.domain.errors import (
     CaseStateConflict,
+    HeldByOther,
     InputMissing,
     RecipientConfirmationConflict,
 )
@@ -40,6 +41,7 @@ from app.dto.handover import (
     RecipientSearchResult,
 )
 from app.repositories.events import EventRepository
+from app.services.recipient_search import find_recipient_users
 from app.services.handovers import (
     HandoverDetailView,
     HandoverService,
@@ -112,7 +114,7 @@ class SnipeItHandoverService:
                 is_local=detected.is_local,
                 same_as_engineer=detected.same_as_engineer,
             )
-        users = await client.search_users(search_query)
+        users = await find_recipient_users(client, search_query)
         engineer_keys = _identity_keys(engineer_email, engineer_name)
         reported = handover.recipient_reported_username
         reported_key = (reported or "").strip().casefold()
@@ -123,6 +125,7 @@ class SnipeItHandoverService:
                 username=user.username,
                 name=user.name,
                 email=user.email,
+                employee_num=user.employee_num,
                 matches_reported=bool(reported_key)
                 and reported_key in _user_keys(user),
                 matches_engineer=bool(engineer_keys & _user_keys(user)),
@@ -682,7 +685,7 @@ class SnipeItHandoverService:
             )
 
         note = (
-            f"Handover by {actor} via Handover Portal, "
+            f"Handover by {actor} via HQ Portal, "
             f"case {handover.id}"
         )
         try:
@@ -758,12 +761,9 @@ class SnipeItHandoverService:
         *,
         actor: str,
         client: SnipeItClient,
+        replace_holder: bool = False,
     ) -> HandoverDetailView:
         handover = await self._core.get(handover_id, with_details=True)
-        row = stage_row(handover, Operation.CHECKOUT)
-        if row.status == StageStatus.PASSED.value:
-            return await self._core.view(handover)
-
         ensure_open(handover)
 
         if handover.recipient_mode != "snipeit":
@@ -801,12 +801,21 @@ class SnipeItHandoverService:
             )
 
         if asset.assigned_to_id is not None:
-            raise InputMissing(
-                f"Device is currently assigned to {_holder_label(asset)}"
+            if not replace_holder:
+                raise HeldByOther(_holder_label(asset))
+            holder = _holder_label(asset)
+            await client.checkin_asset(
+                asset.id, f"Check in by {actor} via HQ Portal"
+            )
+            await self._events.add(
+                handover_id=handover.id,
+                actor=actor,
+                type="device_checked_in",
+                detail={"holder": holder, "replacement": True},
             )
 
         note = (
-            f"Handover by {actor} via Handover Portal, "
+            f"Handover by {actor} via HQ Portal, "
             f"case {handover.id}"
         )
         try:
@@ -892,6 +901,7 @@ class SnipeItHandoverService:
             "asset_tag": asset.asset_tag,
             "assigned_to_id": asset.assigned_to_id,
             "already_assigned": already_assigned,
+            "already": already_assigned,
         }
         await self._events.add(
             handover_id=handover.id,
@@ -937,7 +947,11 @@ class SnipeItHandoverService:
 
     # -- live device state -------------------------------------------------
     async def device_live(
-        self, handover_id: uuid.UUID, *, client: SnipeItClient
+        self,
+        handover_id: uuid.UUID,
+        *,
+        client: SnipeItClient,
+        actor: str = "system",
     ) -> dict[str, Any]:
         from app.services.device_live import read_device, store_device_snapshot
 
@@ -945,6 +959,10 @@ class SnipeItHandoverService:
         device = await read_device(client, handover.device_serial)
         store_device_snapshot(handover, device)
         await self._session.flush()
+        # Already "Ready to deploy" in Snipe-IT: the device-status part passes.
+        await self._core.confirm_ready_status(
+            handover_id, status_name=device.get("status"), actor=actor
+        )
         return device
 
     async def checkin_device(
@@ -960,7 +978,7 @@ class SnipeItHandoverService:
         if changed:
             await client.checkin_asset(
                 handover.snipeit_asset_id or before["asset_id"],
-                f"Check in by {actor} via Handover Portal",
+                f"Check in by {actor} via HQ Portal",
             )
         device = await read_device(client, handover.device_serial)
         store_device_snapshot(handover, device)

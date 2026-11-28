@@ -176,7 +176,7 @@
     check.setAttribute("aria-label", "Select " + item.serial);
     checkCell.appendChild(check); row.appendChild(checkCell);
     var serial = node("td", "table-cell");
-    var link = node("a", "row-link mono", item.serial); link.href = "/maintenance/" + item.case_id;
+    var link = node("a", "row-link mono", item.serial); link.href = "/devices/" + encodeURIComponent(item.serial);
     serial.appendChild(link);
     serial.appendChild(node("span", "badge badge-outline ml-2", item.snipeit_status || "No status"));
     row.appendChild(serial);
@@ -186,8 +186,34 @@
     row.appendChild(node("td", "table-cell", String(item.days || 0) + "d"));
     row.appendChild(node("td", "table-cell", item.planned_vendor || item.vendor || "Not assigned"));
     var actions = node("td", "table-cell maint-row-actions");
-    actions.appendChild(actionButton("Set Maintenance", "set-status", item));
-    if (item.assigned_to) actions.appendChild(actionButton("Remove from user", "take-back", item));
+    var statusSlot = node("span", "");
+    statusSlot.setAttribute("data-row-slot", "set-status");
+    actions.appendChild(statusSlot);
+    var takeBackSlot = node("span", "");
+    takeBackSlot.setAttribute("data-row-slot", "take-back");
+    actions.appendChild(takeBackSlot);
+    renderRowActions(actions, item);
+    if (item.open_handover) {
+      var open = node("div", "stack-sm");
+      var openLink = node("a", "link-quiet", "Open handover");
+      openLink.href = "/handovers/" + item.open_handover.id;
+      open.appendChild(openLink);
+      var cancelSlot = node("span", "");
+      portal.actionSlot(cancelSlot, {
+        applicable: true, done: false, doneLabel: "", label: "Cancel handover",
+        onClick: function () {
+          return portal.apiJson("/api/handovers/" + item.open_handover.id + "/cancel", { method: "POST" })
+            .then(function () { portal.actionSlot(cancelSlot, { applicable: false, done: true, doneLabel: "Handover cancelled", label: "", onClick: function () {} }); })
+            .catch(function (error) {
+              var result = actions.querySelector("[data-row-result]");
+              result.textContent = error.message; result.className = "field-error";
+              result.classList.remove("hidden"); throw error;
+            });
+        },
+      });
+      open.appendChild(cancelSlot);
+      actions.appendChild(open);
+    }
     actions.appendChild(resultChip());
     row.appendChild(actions);
     return row;
@@ -201,7 +227,7 @@
     var check = node("input", "");
     check.type = "checkbox"; check.setAttribute("data-select-case", item.case_id); check.setAttribute("aria-label", "Select " + item.serial);
     checkCell.appendChild(check); row.appendChild(checkCell);
-    var serial = node("td", "table-cell"); var link = node("a", "row-link mono", item.serial); link.href = "/maintenance/" + item.case_id; serial.appendChild(link); row.appendChild(serial);
+    var serial = node("td", "table-cell"); var link = node("a", "row-link mono", item.serial); link.href = "/devices/" + encodeURIComponent(item.serial); serial.appendChild(link); row.appendChild(serial);
     row.appendChild(node("td", "table-cell", item.model || "—"));
     row.appendChild(node("td", "table-cell", item.company || "Unknown"));
     row.appendChild(node("td", "table-cell", item.vendor || "Not assigned"));
@@ -311,35 +337,47 @@
       all("[data-device-table]").forEach(function (table) { table.classList.toggle("hidden", table.getAttribute("data-device-table") !== state.tab); });
       restoreChecks(); updateSelection(); return;
     }
-    var action = event.target.closest ? event.target.closest("[data-row-action]") : null;
-    if (action) runRowAction(action);
   });
 
-  function runRowAction(button) {
-    var id = button.getAttribute("data-case-id");
-    var kind = button.getAttribute("data-row-action");
-    var row = button.closest("tr");
+  function renderRowActions(actions, item) {
+    var status = (item.stages || []).find(function (stage) { return stage.stage === "snipeit_status"; }) || {};
+    var taken = (item.stages || []).find(function (stage) { return stage.stage === "taken_back"; }) || {};
+    portal.actionSlot(actions.querySelector("[data-row-slot='set-status']"), {
+      applicable: status.status !== "passed", done: status.status === "passed",
+      doneLabel: "Maintenance", label: status.status === "failed" ? "Retry" : "Set Maintenance",
+      onClick: function () { return performRowAction(item, "set-status", actions.closest("tr")); },
+    });
+    portal.actionSlot(actions.querySelector("[data-row-slot='take-back']"), {
+      applicable: !!item.assigned_to && taken.status !== "passed", done: taken.status === "passed",
+      doneLabel: "Checked in", label: taken.status === "failed" ? "Retry" : "Remove from user",
+      onClick: function () { return performRowAction(item, "take-back", actions.closest("tr")); },
+    });
+  }
+
+  function performRowAction(item, kind, row) {
     var chip = row.querySelector("[data-row-result]");
-    button.disabled = true;
-    portal.request("/api/maintenance/cases/" + id + "/" + kind, { method: "POST" })
+    chip.classList.add("hidden");
+    return portal.request("/api/maintenance/cases/" + item.case_id + "/" + kind, { method: "POST" })
       .then(function (detail) {
+        item.stages = detail.stages || [];
+        item.snipeit_status = detail.snipeit_status_name;
+        item.assigned_to = detail.device_holder_name || detail.recipient_snipeit_name;
+        var statusBadge = row.querySelector("td:nth-child(2) .badge");
+        if (statusBadge) statusBadge.textContent = item.snipeit_status || "No status";
+        renderRowActions(row.querySelector(".maint-row-actions"), item);
         var stage = kind === "set-status" ? "snipeit_status" : "taken_back";
-        var operation = (detail.stages || []).find(function (item) { return item.stage === stage; });
+        var operation = (item.stages || []).find(function (entry) { return entry.stage === stage; });
         if (operation && (operation.status === "failed" || operation.status === "not_done")) {
-          chip.textContent = operation.reason || (operation.status === "not_done" ? "Not assigned" : "Failed");
-          chip.className = "badge badge-destructive";
-          return null;
+          chip.textContent = operation.reason || "Failed";
+          chip.className = "field-error";
+          chip.classList.remove("hidden");
         }
-        chip.textContent = kind === "set-status" ? "Done" : "User removed";
-        chip.className = "badge badge-success";
-        if (kind === "take-back") {
-          var remove = row.querySelector("[data-row-action='take-back']");
-          if (remove) remove.remove();
-        }
-        return loadCases();
       })
-      .catch(function (error) { chip.textContent = error.message; chip.className = "badge badge-destructive"; })
-      .then(function () { button.disabled = false; });
+      .catch(function (error) {
+        chip.textContent = error.message; chip.className = "field-error";
+        chip.classList.remove("hidden");
+        throw error;
+      });
   }
 
   function today() {

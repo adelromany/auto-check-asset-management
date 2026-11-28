@@ -14,7 +14,7 @@ from sqlalchemy.engine import make_url
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(PROJECT_ROOT / ".env")
 
-APP_NAME = os.getenv("APP_NAME", "Handover Portal")
+APP_NAME = os.getenv("APP_NAME", "HQ Portal")
 SNIPEIT_URL = os.getenv("SNIPEIT_URL", "http://localhost:8081")
 SNIPEIT_TOKEN = os.getenv("SNIPEIT_TOKEN", "")
 SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL", "600"))  # 10 min default
@@ -56,6 +56,9 @@ if (
 DOCUMENTS_DIR = os.getenv("DOCUMENTS_DIR", "./data/documents")
 if not Path(DOCUMENTS_DIR).is_absolute():
     DOCUMENTS_DIR = str((PROJECT_ROOT / DOCUMENTS_DIR).resolve())
+# Optional full path to LibreOffice's soffice(.exe) for the PDF "Print form".
+# Empty = look on PATH, then the standard Windows install folders.
+SOFFICE_PATH = os.getenv("SOFFICE_PATH", "").strip()
 FORMS_DIR = os.getenv("FORMS_DIR", "forms")
 if not Path(FORMS_DIR).is_absolute():
     FORMS_DIR = str((PROJECT_ROOT / FORMS_DIR).resolve())
@@ -71,6 +74,8 @@ SNIPEIT_STATUS_READY = os.getenv("SNIPEIT_STATUS_READY", "Ready to deploy")
 MAINT_WARN_DAYS = int(os.getenv("MAINT_WARN_DAYS", "7"))
 MAINT_LATE_DAYS = int(os.getenv("MAINT_LATE_DAYS", "14"))
 STALL_HOURS = int(os.getenv("STALL_HOURS", "24"))
+PENDING_USER_CHECK_HOURS = float(os.getenv("PENDING_USER_CHECK_HOURS", "24"))
+PENDING_USER_CHECK_ENABLED = os.getenv("PENDING_USER_CHECK_ENABLED", "true").lower() == "true"
 REQUIRED_SOFTWARE_IDS = [
     item.strip().casefold()
     for item in os.getenv(

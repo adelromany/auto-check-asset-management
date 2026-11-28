@@ -1,6 +1,8 @@
 """Application factory. No business logic lives here."""
 
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -17,6 +19,7 @@ from app.routers import (
     agent,
     dashboard,
     diag,
+    devices,
     documents,
     handovers,
     health,
@@ -35,10 +38,33 @@ from app.request_context import request_id_var
 logger = logging.getLogger(__name__)
 
 
+@asynccontextmanager
+async def _lifespan(application):
+    task = None
+    if config.PENDING_USER_CHECK_ENABLED:
+        from app.clients.snipeit import ServiceAccountProvider, SnipeItClient
+        from app.db.engine import get_sessionmaker
+        from app.services.pending_users import pending_user_loop
+
+        def client_factory():
+            return SnipeItClient(config.SNIPEIT_URL, ServiceAccountProvider(config.SNIPEIT_TOKEN), timeout=config.SNIPEIT_TIMEOUT_SECONDS)
+
+        task = asyncio.create_task(pending_user_loop(get_sessionmaker(), client_factory, hours=config.PENDING_USER_CHECK_HOURS))
+    try:
+        yield
+    finally:
+        if task:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+
 def create_app() -> FastAPI:
     configure_logging()
     validate_startup_config()
-    application = FastAPI(title=config.APP_NAME, docs_url=None, redoc_url=None)
+    application = FastAPI(title=config.APP_NAME, docs_url=None, redoc_url=None, lifespan=_lifespan)
     application.add_exception_handler(Exception, _internal_error)
     application.add_exception_handler(StarletteHTTPException, _http_error)
     application.add_exception_handler(RequestValidationError, _validation_error)
@@ -64,6 +90,7 @@ def create_app() -> FastAPI:
     application.include_router(agent.router)
     application.include_router(handovers.router)
     application.include_router(maintenance.router)
+    application.include_router(devices.router)
     application.include_router(documents.router)
     application.include_router(dashboard.router)
     application.include_router(snipeit.router)

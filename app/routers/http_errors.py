@@ -28,6 +28,7 @@ from app.domain.errors import (
     HandoverCompleted,
     HandoverError,
     HandoverNotFound,
+    HeldByOther,
     InputMissing,
     InvalidStage,
     MaintenanceCaseExists,
@@ -69,6 +70,11 @@ _UNPROCESSABLE_ERRORS = (
 
 
 def handover_http_error(exc: HandoverError) -> HTTPException:
+    if isinstance(exc, HeldByOther):
+        return HTTPException(
+            status_code=409,
+            detail={"code": "held_by_other", "holder": exc.holder},
+        )
     if isinstance(exc, MaintenanceCaseExists):
         return HTTPException(
             status_code=409,

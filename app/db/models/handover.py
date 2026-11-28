@@ -47,12 +47,13 @@ class Handover(Base):
         Index("ix_handovers_engineer_email", "engineer_email"),
         Index("ix_handovers_device_serial", "device_serial"),
         Index("ix_handovers_kind", "kind"),
-        # One ACTIVE case per device serial, across kinds. "Active" means not
+        # One ACTIVE case per device serial and kind. "Active" means not
         # completed, not closed with gaps and not cancelled; both partial-index
         # predicates are declared so the rule holds on PostgreSQL and SQLite.
         Index(
             "uq_handovers_active_device_serial",
-            "device_serial",
+            "kind",
+            text("lower(device_serial)"),
             unique=True,
             postgresql_where=text(
                 "status NOT IN ('completed', 'closed_with_gaps', 'cancelled')"
@@ -109,6 +110,10 @@ class Handover(Base):
     recipient_snipeit_name: Mapped[str | None] = mapped_column(String(200))
     recipient_snipeit_email: Mapped[str | None] = mapped_column(String(320))
     recipient_company: Mapped[str | None] = mapped_column(String(120))
+    recipient_employee_code: Mapped[str | None] = mapped_column(String(60))
+    recipient_username: Mapped[str | None] = mapped_column(String(120))
+    pending_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    pending_found_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     recipient_confirmed_by: Mapped[str | None] = mapped_column(String(320))
     recipient_confirmed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)
@@ -128,6 +133,13 @@ class Handover(Base):
     )
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     closed_gaps: Mapped[list[dict[str, Any]] | None] = mapped_column(_json_type())
+
+    @property
+    def logged_on_user(self) -> str | None:
+        if not self.agent_reports:
+            return None
+        latest = max(self.agent_reports, key=lambda report: (report.received_at, report.id))
+        return latest.payload.get("logged_on_user")
 
     stages: Mapped[list["HandoverStage"]] = relationship(
         back_populates="handover",

@@ -27,6 +27,7 @@ from app.dto.maintenance import (
 from app.repositories.maintenance import MaintenanceRepository
 from app.routers.http_errors import handover_detail, handover_http_error
 from app.services.maintenance import MaintenanceService
+from app.services.handovers import HandoverService
 
 router = APIRouter(prefix="/api/maintenance", tags=["maintenance"])
 
@@ -78,7 +79,11 @@ async def create_case(
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
-    return handover_detail(view)
+    result = handover_detail(view)
+    active = await HandoverService(session).find_active_by_serial(payload.serial, "handover")
+    if active:
+        result.open_handover = {"id": str(active.id)}
+    return result
 
 
 @router.post("/cases/{case_id}/set-status", response_model=HandoverDetail)

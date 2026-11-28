@@ -437,6 +437,10 @@ class MaintenanceRepository:
             "planned_vendor": vendor,
             "assigned_to": handover.recipient_snipeit_name,
             "snipeit_status": handover.snipeit_status_name,
+            "stages": [
+                {"stage": stage.stage, "status": stage.status}
+                for stage in handover.stages
+            ],
             "state": derived_state,
             "received_date": info.received_date if info is not None else None,
             "sent_date": info.sent_date if info is not None else None,

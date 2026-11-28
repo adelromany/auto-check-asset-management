@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +22,7 @@ from app.routers.http_errors import (
 )
 from app.services.documents import DocumentService
 from app.services.forms import FormService
+from app.services.pdf_render import docx_to_pdf
 
 router = APIRouter(prefix="/api/handovers", tags=["documents"])
 
@@ -63,6 +64,7 @@ async def download_form(
     handover_id: uuid.UUID,
     user: dict = Depends(current_user),
     session: AsyncSession = Depends(get_session),
+    format: str = Query(default="docx", pattern="^(docx|pdf)$"),
 ) -> Response:
     service = FormService(session, forms_dir=config.FORMS_DIR)
     try:
@@ -73,10 +75,19 @@ async def download_form(
         )
     except HandoverError as exc:
         raise handover_http_error(exc) from exc
+    headers = {"X-Form-Hardware": "missing" if form.hardware_missing else "present"}
+    if format == "pdf":
+        pdf = docx_to_pdf(form.content)
+        if pdf is None:
+            raise HTTPException(503, "PDF printing is not available on this server")
+        return Response(
+            content=pdf, media_type="application/pdf",
+            headers={**headers, "Content-Disposition": f'inline; filename="{Path(form.filename).stem}.pdf"'},
+        )
     return Response(
         content=form.content,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f'attachment; filename="{form.filename}"'},
+        headers={**headers, "Content-Disposition": f'attachment; filename="{form.filename}"'},
     )
 
 

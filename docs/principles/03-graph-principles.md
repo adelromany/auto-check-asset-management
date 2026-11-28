@@ -60,11 +60,17 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/repositories/maintenance.py | repository | maintenance info and governed list values data access |
 | module | app/repositories/documents.py | repository | stored evidence document data access |
 | module | app/repositories/events.py | repository | insert-only business event trail |
+| module | app/repositories/devices.py | repository | device-centric case and milestone reads |
 | module | app/services/handovers.py | service | create, get, list, record operations, retry, close/reopen, agent report |
 | module | app/services/software_check.py | service | override and re-evaluation of software checks |
 | module | app/services/snipeit_ops.py | service | recipient search/confirm, preview, checkin and verified checkout |
 | module | app/services/documents.py | service | printable report, safe scan storage, download and verified push |
 | module | app/services/forms.py | service | company template lookup and generated handover form |
+| module | app/services/pdf_render.py | service | LibreOffice (SOFFICE_PATH, PATH, standard Windows folders) DOCX-to-PDF conversion and print-availability check |
+| module | app/services/recipient_search.py | service | recipient lookup shared by case screens; exact employee code first |
+| module | app/services/device_live.py | service | shared live device lookup and holder persistence |
+| module | app/services/device_history.py | service | device search summaries and milestone history cards |
+| module | app/services/pending_users.py | service | recurring pending-user lookup and automatic linking |
 | module | app/services/dashboard.py | service | database-side dashboard aggregates and page-sized handover rows |
 | module | app/services/maintenance.py | service | maintenance intake, Snipe-IT status/take-back, batch transitions and case queries |
 | module | app/services/sessions.py | service | in-memory short-code session store |
@@ -73,6 +79,7 @@ The project graph is a map of what depends on what, so any change can be assesse
 | module | app/routers/handovers.py | router | /api/handovers create, list, detail, confirm, cancel, recipient, preview, checkin, checkout |
 | module | app/routers/maintenance.py | router | /api/maintenance intake, lookup, reasons, vendors, case actions and batch transitions |
 | module | app/routers/documents.py | router | report page, document upload/download and push |
+| module | app/routers/devices.py | router | device search, history API and history pages |
 | module | app/routers/dashboard.py | router | /api/dashboard summary and paged-row reads |
 | module | app/routers/http_errors.py | router | shared domain/client error to HTTP mapping and detail DTO |
 | module | app/routers/snipeit.py | router | Snipe-IT device lookup and health |
@@ -267,6 +274,11 @@ The project graph is a map of what depends on what, so any change can be assesse
 | app/services/snipeit_ops.py | uses | app/domain/company_rules.py |
 | app/services/snipeit_ops.py | uses | app/domain/recipient_identity.py |
 | app/services/snipeit_ops.py | imports | app/clients/snipeit.py |
+| app/services/snipeit_ops.py | imports | app/services/recipient_search.py |
+| app/services/handovers.py | imports | app/services/recipient_search.py |
+| app/services/recipient_search.py | imports | app/clients/snipeit.py |
+| app/services/recipient_search.py | uses | app/domain/recipient_identity.py |
+| app/routers/health.py | imports | app/services/pdf_render.py |
 | app/services/snipeit_ops.py | imports | app/repositories/events.py |
 | app/services/documents.py | imports | app/repositories/documents.py |
 | app/services/documents.py | imports | app/repositories/events.py |

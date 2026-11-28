@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
+
+# Up to four letters then at least two digits: "12345", "EMP1234", "bl0042".
+_EMPLOYEE_CODE = re.compile(r"^[A-Za-z]{0,4}\d{2,}$")
+
+
+def looks_like_employee_code(query: str | None) -> bool:
+    """True when a search text has the shape of an employee code, not a name."""
+    return bool(_EMPLOYEE_CODE.match((query or "").strip()))
 
 
 @dataclass(frozen=True)

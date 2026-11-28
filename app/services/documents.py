@@ -440,7 +440,7 @@ def _file_present(files: list[SnipeItFile], document: Document) -> bool:
 
 def _push_note(actor: str, handover_id: uuid.UUID) -> str:
     return (
-        f"Signed handover sheet uploaded by {actor} via Handover Portal, "
+        f"Signed handover sheet uploaded by {actor} via HQ Portal, "
         f"case {handover_id}"
     )
 

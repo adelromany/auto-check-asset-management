@@ -1,16 +1,35 @@
-# Install the Handover Portal on Windows
+# Install the HQ Portal on Windows
 
 **Last verified:** 2026-10-31, commit `ea58d4bfca96b755b946ae7617e7bebed7cb9f80` (base commit; guide changes are not published yet). Windows 11 environment, PowerShell 7.6.5, Python 3.14.0, Git 2.49.0.windows.1, Docker CLI 29.7.2 / Compose v5.5.1. Docker engine unavailable. Clean clone and portal installation are **NOT VERIFIED** in this run; see [verification limits](#verification-status).
 
 ## What you will have at the end
 
-The Handover Portal runs locally on your Windows PC. Snipe-IT is an optional separate local development instance. For real employee devices, use a reachable internal address and approved HTTPS deployment.
+The HQ Portal runs locally on your Windows PC. Snipe-IT is an optional separate local development instance. For real employee devices, use a reachable internal address and approved HTTPS deployment.
 
 | Component | Address | Who uses it |
 |---|---|---|
-| Handover Portal | `http://localhost:8080` | IT engineer |
+| HQ Portal | `http://localhost:8080` | IT engineer |
 | Snipe-IT development instance | `http://localhost:8081` | IT engineer and portal API |
 | Device agent | Downloaded from the portal | Employee device; reports to the portal |
+
+## PDF printing
+
+**Print form** converts the Word form to PDF on the server. Download Word works without a converter.
+If no converter is found, **Print form** downloads the Word file and shows
+"PDF printing is not available on the server (needs Microsoft Word or LibreOffice)".
+This is a server-side converter problem, not a printer problem.
+
+1. **Microsoft Word (first choice).** `docx2pdf` is in `requirements.txt` for Windows;
+   run `.\.venv\Scripts\pip install -r requirements.txt`. Word must be installed and the
+   portal must run under a signed-in user (as `scripts/start.ps1` does). Word through COM
+   usually does not work when the portal runs as a Windows service.
+2. **LibreOffice (fallback, used when Word is missing or fails).** Install it, for example
+   `winget install --id TheDocumentFoundation.LibreOffice -e`. `soffice.exe` is found from
+   `SOFFICE_PATH` in `.env`, then `PATH`, then `C:\Program Files\LibreOffice\program` and
+   `C:\Program Files (x86)\LibreOffice\program`.
+3. Restart the portal. Open `/api/health`: `"pdf_print": "available"` means printing works.
+4. Run `python tools/check_pdf_render.py`; it must print an `OK` line for both
+   B.tech and Mylo forms.
 
 ## Before you start
 
@@ -83,6 +102,7 @@ The repository is `https://github.com/adelromany/auto-check-asset-management.git
    | `DATABASE_URL` | `sqlite+aiosqlite:///./data/handover.db` | SQLite local; PostgreSQL URL from database administrator | Safe SQLite default |
    | `DOCUMENTS_DIR` | `./data/documents` | Set storage path if needed | Safe default |
    | `FORMS_DIR` | `forms` | Folder containing company Word templates | Safe default |
+   | `SOFFICE_PATH` | `C:\Program Files\LibreOffice\program\soffice.exe` | Only when LibreOffice is not on `PATH` or in a standard folder (see PDF printing) | No |
    | `DOCUMENT_MAX_BYTES` | `10485760` (10 MiB) | Set by operator | Safe default |
    | `SNIPEIT_TIMEOUT_SECONDS` | `10` | Set by operator | Safe default |
    | `SNIPEIT_URL` | `http://localhost:8081` | Snipe-IT administrator | Optional for portal-only setup |
@@ -163,7 +183,7 @@ Set `SNIPEIT_URL` to the approved Snipe-IT base URL and `SNIPEIT_TOKEN` to a ded
 
 2. Open `http://localhost:8080/` and `http://localhost:8080/handovers`.
 
-   You should see the Handover Portal and its handover dashboard.
+   You should see the HQ Portal and its handover dashboard.
 
 3. Check portal liveness in another PowerShell window.
 
@@ -182,14 +202,14 @@ Set `SNIPEIT_URL` to the approved Snipe-IT base URL and `SNIPEIT_TOKEN` to a ded
    ```powershell
    $RepoRoot = (Resolve-Path .).Path
    $StartupFolder = [Environment]::GetFolderPath("Startup")
-   $Shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $StartupFolder "Handover Portal.lnk"))
+   $Shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $StartupFolder "HQ Portal.lnk"))
    $Shortcut.TargetPath = (Get-Command powershell.exe).Source
    $Shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$RepoRoot\scripts\start.ps1`""
    $Shortcut.WorkingDirectory = $RepoRoot
    $Shortcut.Save()
    ```
 
-   The portal will be available at `http://localhost:8080` after sign-in. To disable automatic startup, delete `Handover Portal.lnk` from the Startup folder. This starts the local portal only; it does not start Docker or Snipe-IT.
+   The portal will be available at `http://localhost:8080` after sign-in. To disable automatic startup, delete `HQ Portal.lnk` from the Startup folder. This starts the local portal only; it does not start Docker or Snipe-IT.
 
 ## Part 5: Use it from another device
 

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AgentPayload(BaseModel):
@@ -10,6 +10,7 @@ class AgentPayload(BaseModel):
     username:     Optional[str] = None
     user_domain:  Optional[str] = None
     console_user: Optional[str] = None
+    logged_on_user: Optional[str] = Field(default=None, max_length=200)
     serial:       Optional[str] = None
     manufacturer: Optional[str] = None
     model:        Optional[str] = None

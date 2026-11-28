@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block body_attrs %}data-device-serial="{{ serial }}"{% endblock %}
+{% block content %}
+<nav class="dv-crumb" aria-label="Breadcrumb"><a class="link-quiet" href="/devices">&larr; Devices</a></nav>
+<header class="case-header dv-head">
+  <div class="dv-head-main">
+    <h1 class="mono">{{ serial }}</h1>
+    <div class="case-chips" data-device-meta></div>
+    <div class="case-chips dv-live" data-live-holder aria-live="polite"></div>
+  </div>
+  <div class="button-row"><button class="btn btn-default" data-new-handover>New handover</button><button class="btn btn-outline" data-new-maintenance>New maintenance</button></div>
+</header>
+<div class="device-summary" data-device-summary></div>
+<h2 class="dv-section-title">History</h2>
+<section class="device-history" data-device-history aria-live="polite"></section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/devices.js?v=round3-1" defer></script>{% endblock %}

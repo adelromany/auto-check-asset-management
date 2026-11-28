@@ -41,7 +41,7 @@ def test_startup_accepts_a_real_secret(monkeypatch) -> None:
 
     validate_startup_config()
     application = app.main.create_app()
-    assert application.title == "Handover Portal"
+    assert application.title == "HQ Portal"
 
 
 def test_development_bypass_does_not_require_a_secret(monkeypatch) -> None:

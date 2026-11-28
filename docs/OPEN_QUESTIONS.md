@@ -318,14 +318,12 @@ invented or substituted from another company.
 
 Owner: handover process owner.
 
-## Q-26 — How should engineers print the generated form? (OPEN)
+## Q-26 — How should engineers print the generated form? (RESOLVED 2026-11-27)
 
-Context: the portal runs on a server and cannot print to the office printer.
-The form operation now passes when the filled Word file is generated and
-downloaded; printing happens from the engineer's own PC.
-
-Conservative option taken: generate and download the company DOCX only. No
-server-side print service or office-printer integration is added.
+The portal converts the filled DOCX to PDF with LibreOffice and opens the PDF in
+an iframe for browser printing. If conversion is unavailable, the UI downloads
+the Word file and explains that printing is unavailable. Production must install
+LibreOffice Writer and suitable Arabic/Latin fonts.
 
 Owner: handover process owner.
 
@@ -377,3 +375,16 @@ Owner decision (Round 2): B.tech form — the engineer name goes after
 `{{ENGINEER}}` placeholder in those two places.
 
 Owner: handover process owner (decided 2026-11-25).
+
+## Q-32 — Is the Mylo form branding intentional? (OPEN)
+
+The supplied `Mylo.docx` contains a B.tech logo and the company text `بي تك للتمويل`.
+The implementation preserves the owner template rather than replacing its branding.
+Owner: handover process owner; confirm or supply corrected artwork.
+
+## Q-33 — Can a complete case be deleted? (RESOLVED 2026-11-28)
+
+Complete cases cannot be deleted. Cancelled and other incomplete cases can be deleted
+from the portal without changing Snipe-IT; returned maintenance cases also cannot be
+cancelled or deleted. Cancelled cases support Reopen.
+Owner: handover process owner (polish specification).

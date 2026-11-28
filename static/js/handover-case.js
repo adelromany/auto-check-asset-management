@@ -51,6 +51,7 @@
   }
 
   function renderLiveDevice(device) {
+    var hadHolder = !!(detail && detail.device_holder_id);
     if (detail) {
       detail.snipeit_status_name = device.status;
       detail.device_holder_id = device.assigned_to && device.assigned_to.id;
@@ -63,13 +64,72 @@
     }
     var holder = device.assigned_to;
     setText("[data-device-holder]", holder ? "With: " + (holder.name || holder.username) + (holder.company ? " (" + holder.company + ")" : "") : "Not assigned");
-    var checkin = document.querySelector("[data-device-checkin]");
-    if (checkin) checkin.classList.toggle("hidden", !holder);
+    var slot = document.querySelector("[data-device-checkin-slot]");
+    if (slot) portal.actionSlot(slot, {
+      applicable: !!holder, done: !holder && hadHolder,
+      doneLabel: "Checked in", label: "Check in", attribute: "data-device-checkin", onClick: function () {},
+    });
     setText("[data-device-updated]", "Updated " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+    var useHolder = document.querySelector("[data-use-holder]");
+    if (useHolder) useHolder.classList.toggle("hidden", !(holder && holder.id));
+    renderStatusAction();
+  }
+
+  function deviceStatusStage() {
+    return ((detail && detail.stages) || []).find(function (stage) { return stage.stage === "device_status"; });
+  }
+
+  function renderStatusAction() {
+    var host = document.querySelector("[data-apply-status-slot]");
+    var select = document.querySelector("[data-status-select]");
+    if (!host || !select || !detail) return;
+    var option = select.options[select.selectedIndex];
+    var selectedName = option ? option.textContent : "";
+    if (!selectedName) { host.textContent = ""; return; }
+    if (selectedName !== detail.snipeit_status_name) {
+      portal.actionSlot(host, {
+        applicable: true, done: false, doneLabel: "", label: "Apply", attribute: "data-apply-status",
+        onClick: applySelectedStatus,
+      });
+      return;
+    }
+    // The selected status is already the device's status: nothing to change, but
+    // the engineer still has to be able to confirm it (Device status part).
+    var stage = deviceStatusStage();
+    var confirmed = !!stage && stage.status === "passed";
+    portal.actionSlot(host, {
+      applicable: !confirmed, done: confirmed, doneLabel: "Status confirmed",
+      label: "Confirm status", attribute: "data-confirm-status", onClick: confirmCurrentStatus,
+    });
+  }
+
+  function applySelectedStatus() {
+    var select = document.querySelector("[data-status-select]");
+    return portal.apiJson(base + "/device-status", { method: "POST", body: JSON.stringify({ status_label_id: Number(select.value) }) })
+      .then(function (data) { renderDetail(data); refreshDevice(); portal.toast("Status applied.", "success"); })
+      .catch(function (error) { portal.toast(error.message, "error"); throw error; });
+  }
+
+  // POST with no label = verify only: Snipe-IT is not changed, the current status is checked.
+  function confirmCurrentStatus() {
+    return portal.apiJson(base + "/device-status", { method: "POST", body: JSON.stringify({ status_label_id: null }) })
+      .then(function (data) {
+        renderDetail(data);
+        var stage = deviceStatusStage();
+        if (stage && stage.status === "passed") portal.toast("Status confirmed.", "success");
+        else portal.toast((stage && stage.reason) || "Status is not Ready to deploy.", "error");
+      })
+      .catch(function (error) { portal.toast(error.message, "error"); throw error; });
   }
 
   function refreshDevice() {
-    return portal.request(base + "/device-live").then(renderLiveDevice).catch(function (error) {
+    return portal.request(base + "/device-live").then(function (device) {
+      renderLiveDevice(device);
+      // The server confirms Device status itself when Snipe-IT already shows Ready.
+      var stage = deviceStatusStage();
+      if (stage && stage.status !== "passed") return loadDetail();
+      return null;
+    }).catch(function (error) {
       setText("[data-device-updated]", "Snipe-IT unavailable");
       portal.toast(error.message, "error");
     });
@@ -77,6 +137,8 @@
 
   function renderDetail(data) {
     detail = data;
+    var menuHost = document.querySelector("[data-case-menu]");
+    if (menuHost) { menuHost.textContent = ""; menuHost.appendChild(portal.caseMenu(data.id, data.status, data.maintenance_state)); }
     renderMode(data);
     var outcome = document.querySelector("[data-case-outcome]");
     if (outcome) {
@@ -107,7 +169,10 @@
     var checkout = document.querySelector("[data-checkout]");
     var reason = document.querySelector("[data-checkout-reason]");
     if (checkout) {
-      checkout.disabled = !canCheckout || !!(checkoutStage && checkoutStage.status === "passed");
+      checkout.disabled = !canCheckout;
+      checkout.firstChild.textContent = checkoutStage && checkoutStage.status === "passed" ? "Check out again" : "Check out";
+      var replace = document.querySelector("[data-replace-holder]");
+      if (replace) replace.classList.add("hidden");
       var oldMark = checkout.querySelector("[data-checkout-warn]");
       if (oldMark) oldMark.remove();
       if (hasCompanyMismatch(data)) {
@@ -119,8 +184,13 @@
       }
     }
     if (reason) reason.hidden = canCheckout;
+    renderStatusAction();
     var checkoutResult = document.querySelector("[data-checkout-result]");
-    if (checkoutResult && checkoutStage && (checkoutStage.status === "failed" || checkoutStage.status === "not_done")) {
+    if (checkoutResult && checkoutStage && checkoutStage.status === "passed") {
+      checkoutResult.textContent = "✓ Checked out to " + (data.recipient_snipeit_name || "recipient");
+      checkoutResult.className = "field-hint text-success";
+      checkoutResult.classList.remove("hidden");
+    } else if (checkoutResult && checkoutStage && (checkoutStage.status === "failed" || checkoutStage.status === "not_done")) {
       checkoutResult.textContent = checkoutStage.reason || "Checkout failed. Review the device and try again.";
       checkoutResult.className = "field-error";
       checkoutResult.classList.remove("hidden");
@@ -132,11 +202,37 @@
       card.appendChild(portal.el("strong", "", data.recipient_snipeit_name || data.recipient_free_name || "No recipient"));
       card.appendChild(portal.el("div", "muted", data.recipient_snipeit_email || data.recipient_free_email || ""));
       if (hasCompanyMismatch(data)) card.appendChild(warningChip(data));
+      if (data.pending_found_at && (!checkoutStage || checkoutStage.status !== "passed")) {
+        card.appendChild(portal.el("span", "badge badge-warning", "Check out manually"));
+      }
       var change = portal.actionButton("Change", "btn-outline btn-sm");
       change.addEventListener("click", function () { card.classList.add("hidden"); });
       card.appendChild(change);
     }
+    setText("[data-pending-checked]", data.pending_checked_at ? "Last checked " + new Date(data.pending_checked_at).toLocaleString() : "Not checked yet");
+    var pendingCode = document.querySelector("[data-pending-code]");
+    var pendingUsername = document.querySelector("[data-pending-username]");
+    if (pendingCode && document.activeElement !== pendingCode) pendingCode.value = data.recipient_employee_code || "";
+    if (pendingUsername && document.activeElement !== pendingUsername) pendingUsername.value = data.recipient_username || "";
+    setText("[data-logged-on-user]", data.logged_on_user ? "On device: " + data.logged_on_user : "");
+    var useLogged = document.querySelector("[data-use-logged-user]");
+    if (useLogged) useLogged.classList.toggle("hidden", !data.logged_on_user);
+    var useHolder = document.querySelector("[data-use-holder]");
+    if (useHolder) useHolder.classList.toggle("hidden", !data.device_holder_id);
+    var useDeviceUser = document.querySelector("[data-use-device-user]");
+    if (useDeviceUser) useDeviceUser.classList.toggle("hidden", !data.logged_on_user);
     renderPaper(data);
+  }
+
+  function savePendingUser() {
+    return portal.apiJson(base + "/recipient", { method: "POST", body: JSON.stringify({
+      mode: "pending_user", employee_code: document.querySelector("[data-pending-code]").value,
+      username: document.querySelector("[data-pending-username]").value,
+      name: document.querySelector("[data-pending-name]").value,
+    }) }).then(function (data) { renderDetail(data); return data; }).catch(function (error) {
+      var node = document.querySelector("[data-pending-error]"); node.textContent = error.message; node.classList.remove("hidden");
+      return null;
+    });
   }
 
   function loadDetail() {
@@ -154,6 +250,7 @@
         if (detail && detail.snipeit_status_name === label.name) option.selected = true;
         select.appendChild(option);
       });
+      renderStatusAction();
     }).catch(function (error) {
       var option = portal.el("option", "", "Status unavailable");
       select.appendChild(option);
@@ -170,6 +267,7 @@
       var info = portal.el("div", "stack-sm");
       info.appendChild(portal.el("strong", "", candidate.name || candidate.username || "—"));
       info.appendChild(portal.el("span", "muted", candidate.email || ""));
+      if (candidate.employee_num) info.appendChild(portal.el("span", "muted mono", "Code " + candidate.employee_num));
       var company = portal.el("div", "case-chips");
       company.appendChild(portal.el("span", "badge badge-secondary", candidate.company || "—"));
       if (candidate.same_company === false) {
@@ -192,53 +290,96 @@
     });
   }
 
-  function loadRecipientItems() {
-    if (!detail || detail.mode !== "snipeit") {
-      items = [];
-      var emptyHost = document.querySelector("[data-recipient-items]");
-      if (emptyHost) emptyHost.textContent = "";
-      return;
-    }
-    portal.request(base + "/recipient/items").then(function (data) {
-      items = data || [];
-      var host = document.querySelector("[data-recipient-items]");
-      host.textContent = "";
-      host.appendChild(portal.el("h3", "drawer-sub", "Other devices with this user"));
-      var itemActions = document.querySelector("[data-recipient-item-actions]");
-      if (itemActions) itemActions.classList.toggle("hidden", !items.length);
-      if (!items.length) {
-        host.appendChild(portal.el("p", "muted", "None"));
-        return;
-      }
-      items.forEach(function (item) {
-        var label = portal.el("label", "recipient-row");
+  function recipientItemsStage() {
+    return ((detail && detail.stages) || []).find(function (stage) {
+      return stage.stage === "recipient_items";
+    }) || { status: "pending", detail: {} };
+  }
+
+  function renderRecipientItems() {
+    var host = document.querySelector("[data-recipient-items]");
+    if (!host || !detail) return;
+    host.textContent = "";
+    host.appendChild(portal.el("h3", "drawer-sub", "Other devices with this user"));
+    var stage = recipientItemsStage();
+    var facts = stage.detail || {};
+    var reviewed = stage.status === "passed";
+    var rows = items.map(function (item) {
+      return { serial: item.serial || item.asset_tag || item.asset_id, model: item.model, id: item.asset_id, done: reviewed ? "Kept" : null };
+    });
+    (facts.checked_in || []).forEach(function (serial) {
+      if (!rows.some(function (item) { return item.serial === serial; })) rows.push({ serial: serial, done: "Checked in" });
+    });
+    rows.forEach(function (item) {
+      var label = portal.el(reviewed ? "div" : "label", "recipient-row");
+      if (!reviewed) {
         var check = portal.el("input", "");
-        check.type = "checkbox";
-        check.value = item.asset_id;
+        check.type = "checkbox"; check.value = item.id;
         check.setAttribute("data-take-back", "");
         check.addEventListener("change", updateTakeBack);
         label.appendChild(check);
-        label.appendChild(portal.el("span", "mono", item.serial || item.asset_tag || item.asset_id));
-        label.appendChild(portal.el("span", "muted", item.model || ""));
-        host.appendChild(label);
-      });
-      updateTakeBack();
+      }
+      label.appendChild(portal.el("span", "mono", item.serial));
+      label.appendChild(portal.el("span", "muted", item.model || ""));
+      if (item.done) label.appendChild(portal.el("span", "badge badge-success", "✓ " + item.done));
+      host.appendChild(label);
+    });
+    if (!rows.length) host.appendChild(portal.el("p", "muted", "None"));
+    var actions = document.querySelector("[data-recipient-item-actions]");
+    actions.classList.toggle("hidden", reviewed || !items.length);
+    portal.actionSlot(document.querySelector("[data-items-checkin-slot]"), {
+      applicable: !reviewed && !!items.length, done: false, doneLabel: "", label: "Check in",
+      onClick: function () { return checkinSelectedItems(); },
+    });
+    portal.actionSlot(document.querySelector("[data-items-keep-slot]"), {
+      applicable: !reviewed && !!items.length, done: false, doneLabel: "", label: "Keep all",
+      onClick: function () { return keepRecipientItems(); },
+    });
+    updateTakeBack();
+  }
+
+  function loadRecipientItems() {
+    if (!detail || detail.mode !== "snipeit") {
+      items = [];
+      renderRecipientItems();
+      return Promise.resolve();
+    }
+    return portal.request(base + "/recipient/items").then(function (data) {
+      items = data || [];
+      renderRecipientItems();
     }).catch(function (error) { portal.toast(error.message, "error"); });
   }
 
   function updateTakeBack() {
-    var button = document.querySelector("[data-take-back-selected]");
+    var host = document.querySelector("[data-items-checkin-slot]");
+    var button = host && host.querySelector("button");
     if (button) button.disabled = !document.querySelector("[data-take-back]:checked");
   }
 
-  function finishRecipientItems(label) {
-    document.querySelectorAll("[data-take-back]").forEach(function (checkbox) {
-      var row = checkbox.closest("label");
-      checkbox.remove();
-      row.appendChild(portal.el("span", "badge badge-success", "✓ " + label));
-    });
-    var actions = document.querySelector("[data-recipient-item-actions]");
-    if (actions) actions.classList.add("hidden");
+  function finishRecipientItems(data) {
+    renderDetail(data);
+    return loadRecipientItems();
+  }
+
+  function keepRecipientItems() {
+    return portal.apiJson(base + "/recipient/items/confirm", { method: "POST" })
+      .then(finishRecipientItems).catch(function (error) {
+        var node = document.querySelector("[data-recipient-items-error]");
+        node.textContent = error.message; node.classList.remove("hidden");
+        throw error;
+      });
+  }
+
+  function checkinSelectedItems() {
+    var selected = Array.prototype.slice.call(document.querySelectorAll("[data-take-back]:checked")).map(function (node) { return Number(node.value); });
+    if (!selected.length) return Promise.resolve();
+    return portal.apiJson(base + "/recipient/items/checkin", { method: "POST", body: JSON.stringify({ asset_ids: selected }) })
+      .then(function () { return portal.apiJson(base + "/recipient/items/confirm", { method: "POST" }); })
+      .then(finishRecipientItems).catch(function (error) {
+        var node = document.querySelector("[data-recipient-items-error]");
+        node.textContent = error.message; node.classList.remove("hidden");
+        throw error;
+      });
   }
 
   function renderPaper(data) {
@@ -265,14 +406,69 @@
     }
   }
 
+  function performCheckout(replaceHolder) {
+    var checkout = document.querySelector("[data-checkout]");
+    var checkoutResult = document.querySelector("[data-checkout-result]");
+    checkout.disabled = true;
+    checkoutResult.textContent = "Checking out...";
+    checkoutResult.className = "field-hint";
+    checkoutResult.classList.remove("hidden");
+    portal.apiJson(base + "/checkout", {
+      method: "POST", body: JSON.stringify({ replace_holder: replaceHolder }),
+    }).then(function (data) {
+      renderDetail(data);
+      refreshDevice();
+      var stage = (data.stages || []).find(function (item) { return item.stage === "checkout"; });
+      if (stage && stage.status === "passed") {
+        portal.toast(stage.detail && stage.detail.already ? "Already checked out to this user." : "Checkout completed.", "success");
+      } else {
+        checkoutResult.textContent = (stage && stage.reason) || "Checkout did not complete.";
+        checkoutResult.className = "field-error";
+        checkoutResult.classList.remove("hidden");
+      }
+    }).catch(function (error) {
+      checkout.disabled = false;
+      checkoutResult.className = "field-error";
+      checkoutResult.classList.remove("hidden");
+      if (error.status === 409 && error.detail && error.detail.code === "held_by_other") {
+        checkoutResult.textContent = "Held by " + error.detail.holder;
+        document.querySelector("[data-replace-holder]").classList.remove("hidden");
+      } else {
+        checkoutResult.textContent = error.message || "Checkout failed. Try again.";
+      }
+    });
+  }
+
+  function showHardwareState(value) {
+    var chip = document.querySelector("[data-form-hardware]");
+    if (chip) chip.classList.toggle("hidden", value !== "missing");
+  }
+
+  function downloadWord() {
+    return fetch(base + "/form?format=docx", { credentials: "same-origin" }).then(function (response) {
+      showHardwareState(response.headers.get("X-Form-Hardware"));
+      if (!response.ok) return response.json().then(function (body) { throw new Error(body.detail || "Download failed."); });
+      return response.blob();
+    }).then(function (blob) {
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement("a");
+      link.href = url; link.download = "handover-form.docx"; link.click();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    });
+  }
+
   document.addEventListener("click", function (event) {
     var target = event.target;
     if (!target || !target.closest) return;
-    if (target.closest("[data-apply-status]")) {
-      var select = document.querySelector("[data-status-select]");
-      portal.apiJson(base + "/device-status", { method: "POST", body: JSON.stringify({ status_label_id: Number(select.value) }) })
-        .then(function (data) { renderDetail(data); refreshDevice(); portal.toast("Status applied.", "success"); })
-        .catch(function (error) { portal.toast(error.message, "error"); });
+    if (target.closest("[data-pending-save]")) savePendingUser();
+    if (target.closest("[data-pending-check]")) {
+      savePendingUser().then(function (saved) {
+        if (!saved) return null;
+        return portal.apiJson(base + "/pending-user/check", { method: "POST" });
+      }).then(function (data) { if (data) renderDetail(data); }).catch(function (error) { portal.toast(error.message, "error"); });
+    }
+    if (target.closest("[data-use-logged-user]") && detail.logged_on_user) {
+      document.querySelector("[data-pending-username]").value = detail.logged_on_user.split("\\").pop();
     }
     if (target.closest("[data-device-refresh]")) {
       refreshDevice();
@@ -298,76 +494,77 @@
       }).then(function (data) { renderDetail(data); loadRecipientItems(); })
         .catch(function (error) { portal.toast(error.message, "error"); });
     }
-    if (target.closest("[data-take-back-selected]")) {
-      var selected = Array.prototype.slice.call(document.querySelectorAll("[data-take-back]:checked")).map(function (node) { return Number(node.value); });
-      portal.apiJson(base + "/recipient/items/checkin", { method: "POST", body: JSON.stringify({ asset_ids: selected }) })
-        .then(function () { finishRecipientItems("Checked in"); return loadDetail(); })
-        .catch(function (error) { portal.toast(error.message, "error"); });
-    }
-    if (target.closest("[data-confirm-items]")) {
-      portal.apiJson(base + "/recipient/items/confirm", { method: "POST" })
-        .then(function (data) { finishRecipientItems("Kept"); renderDetail(data); })
-        .catch(function (error) { portal.toast(error.message, "error"); });
+    if (target.closest("[data-download-word]")) {
+      event.preventDefault();
+      downloadWord();
     }
     if (target.closest("[data-print-form]")) {
-      fetch(base + "/form", { credentials: "same-origin" }).then(function (response) {
+      var formError = document.querySelector("[data-form-error]");
+      fetch(base + "/form?format=pdf", { credentials: "same-origin" }).then(function (response) {
+        showHardwareState(response.headers.get("X-Form-Hardware"));
+        if (response.status === 503) {
+          return downloadWord().then(function () {
+            formError.textContent = "PDF printing is not available on the server (needs Microsoft Word or LibreOffice) \u2014 Word file downloaded instead.";
+            formError.classList.remove("hidden");
+            return null;
+          });
+        }
         if (!response.ok) return response.json().then(function (body) { throw new Error(body.detail || "Print form failed."); });
         return response.blob();
       }).then(function (blob) {
-        var link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "handover-form.docx";
-        link.click();
-        URL.revokeObjectURL(link.href);
+        if (!blob) return;
+        var url = URL.createObjectURL(blob);
+        var frame = document.createElement("iframe");
+        frame.hidden = true;
+        frame.src = url;
+        frame.addEventListener("load", function () {
+          frame.contentWindow.focus();
+          frame.contentWindow.print();
+          setTimeout(function () { URL.revokeObjectURL(url); frame.remove(); }, 60000);
+        });
+        document.body.appendChild(frame);
       }).catch(function (error) {
-        var node = document.querySelector("[data-form-error]");
-        node.textContent = error.message;
-        node.classList.remove("hidden");
+        formError.textContent = error.message;
+        formError.classList.remove("hidden");
       });
     }
-    if (target.closest("[data-checkout]")) {
-      var checkout = document.querySelector("[data-checkout]");
-      var checkoutResult = document.querySelector("[data-checkout-result]");
-      checkout.disabled = true;
-      checkoutResult.textContent = "Checking out...";
-      checkoutResult.className = "field-hint";
-      checkoutResult.classList.remove("hidden");
-      portal.apiJson(base + "/checkout", { method: "POST" })
-        .then(function (data) {
-          renderDetail(data);
-          var stage = (data.stages || []).find(function (item) { return item.stage === "checkout"; });
-          if (stage && stage.status === "passed") {
-            checkoutResult.textContent = "Checkout completed.";
-            checkoutResult.className = "field-hint text-success";
-            checkoutResult.classList.remove("hidden");
-            portal.toast("Checkout completed.", "success");
-          } else {
-            checkoutResult.textContent = (stage && stage.reason) || "Checkout did not complete. Check the device status and recipient.";
-            checkoutResult.className = "field-error";
-            checkoutResult.classList.remove("hidden");
-            checkout.disabled = false;
-            portal.toast(checkoutResult.textContent, "error");
-          }
-        }).catch(function (error) {
-          checkoutResult.textContent = error.message || "Checkout failed. Try again.";
-          checkoutResult.className = "field-error";
-          checkoutResult.classList.remove("hidden");
-          checkout.disabled = false;
-          portal.toast(checkoutResult.textContent, "error");
-        });
-    }
+    if (target.closest("[data-checkout]")) performCheckout(false);
+    if (target.closest("[data-replace-holder]")) performCheckout(true);
   });
+
+  function showRecipientCandidates(path) {
+    return portal.request(path + "&handover_id=" + encodeURIComponent(caseId))
+      .then(renderRecipientResults).catch(function (error) { portal.toast(error.message, "error"); });
+  }
 
   document.addEventListener("input", function (event) {
     if (!event.target.matches || !event.target.matches("[data-recipient-search]")) return;
     var query = event.target.value.trim();
     var results = document.querySelector("[data-recipient-results]");
     if (query.length < 2) { results.textContent = ""; return; }
-    portal.request("/api/snipeit/users?q=" + encodeURIComponent(query) + "&handover_id=" + encodeURIComponent(caseId))
-      .then(renderRecipientResults).catch(function (error) { portal.toast(error.message, "error"); });
+    showRecipientCandidates("/api/snipeit/users?q=" + encodeURIComponent(query));
+  });
+
+  document.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!target.closest) return;
+    var search = document.querySelector("[data-recipient-search]");
+    if (target.closest("[data-use-holder]") && detail && detail.device_holder_id) {
+      if (search) search.value = detail.device_holder_name || "";
+      showRecipientCandidates("/api/snipeit/users?user_id=" + encodeURIComponent(detail.device_holder_id));
+    }
+    if (target.closest("[data-use-device-user]") && detail && detail.logged_on_user) {
+      var sam = detail.logged_on_user.split("\\").pop().trim();
+      if (search) search.value = sam;
+      if (sam.length >= 2) showRecipientCandidates("/api/snipeit/users?q=" + encodeURIComponent(sam));
+    }
   });
 
   document.addEventListener("change", function (event) {
+    if (event.target.matches && event.target.matches("[data-status-select]")) {
+      renderStatusAction();
+      return;
+    }
     if (!event.target.matches || !event.target.matches("[data-signed-file]")) return;
     var file = event.target.files[0];
     if (!file) return;

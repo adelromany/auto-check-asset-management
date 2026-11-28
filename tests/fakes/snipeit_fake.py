@@ -145,7 +145,7 @@ class SnipeItFake:
                 for user in self.users.values()
                 if not query
                 or query
-                in f"{user['username']} {user['email']} {user['name']}".casefold()
+                in f"{user['username']} {user['email']} {user['name']} {user.get('employee_num', '')}".casefold()
             ]
             return httpx.Response(200, json={"rows": rows})
         user = self.users.get(int(parts[3]))

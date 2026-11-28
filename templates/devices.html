@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-header"><div><h1>Devices</h1><p class="muted" data-device-total aria-live="polite">Loading devices</p></div></header>
+<section class="card dv-toolbar" aria-label="Filter devices">
+  <input class="input dv-search" type="search" data-device-search placeholder="Serial, tag or model" aria-label="Search devices" autocomplete="off">
+  <select class="input dv-company" data-device-company aria-label="Company"><option value="">All companies</option></select>
+  <div class="chip-row dv-places" role="group" aria-label="Current place" data-place-chips></div>
+</section>
+<div class="card dv-list">
+  <div class="table-wrap">
+    <table class="dv-table">
+      <thead><tr>
+        <th scope="col">Device</th>
+        <th scope="col">Model</th>
+        <th scope="col">Company</th>
+        <th scope="col">Current place</th>
+        <th scope="col">Holder</th>
+        <th scope="col" aria-sort="descending" data-sort-head><button type="button" class="dv-sort" data-sort-last aria-label="Sort by last activity">Last activity <span aria-hidden="true" data-sort-arrow>&darr;</span></button></th>
+      </tr></thead>
+      <tbody data-device-rows aria-live="polite"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/devices.js?v=round3-1" defer></script>{% endblock %}

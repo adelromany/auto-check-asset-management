@@ -24,3 +24,14 @@ def downgrade() -> None:
     with op.batch_alter_table("handovers") as batch:
         batch.drop_column("device_holder_name")
         batch.drop_column("device_holder_id")
+    op.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_handovers_active_device_serial "
+        "ON handovers (device_serial) WHERE status NOT IN "
+        "('completed', 'closed_with_gaps', 'cancelled')"
+    )
+    op.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_handovers_active_maintenance_serial "
+        "ON handovers (lower(device_serial)) WHERE kind = 'maintenance' "
+        "AND status != 'cancelled' AND (maintenance_state IS NULL "
+        "OR maintenance_state != 'returned')"
+    )

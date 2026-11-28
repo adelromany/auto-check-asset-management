@@ -86,6 +86,7 @@ class SnipeItUser:
     email: str | None = None
     company_id: int | None = None
     company: str | None = None
+    employee_num: str | None = None
 
 
 @dataclass(frozen=True)
@@ -237,6 +238,7 @@ def _user_from_json(row: dict[str, Any]) -> SnipeItUser:
             else None
         ),
         company=_nested_name(company),
+        employee_num=row.get("employee_num"),
     )
 
 
@@ -359,6 +361,36 @@ class SnipeItClient:
             "/api/v1/users", params={"search": query, "limit": limit}
         )
         return [_user_from_json(row) for row in _rows(data)]
+
+    async def find_users_by_employee_num(self, code: str) -> list[SnipeItUser]:
+        """Every user whose employee number is exactly ``code`` (case-insensitive).
+
+        Asks Snipe-IT to filter by ``employee_num``; when the instance ignores
+        that filter the plain search result is filtered here instead, so a
+        partial match is never returned. More than one result means the code
+        is ambiguous.
+        """
+        needle = code.strip()
+        if not needle:
+            return []
+        for params in (
+            {"employee_num": needle, "limit": 10},
+            {"search": needle, "limit": 50},
+        ):
+            data = await self._get_json("/api/v1/users", params=params)
+            exact = [
+                _user_from_json(row)
+                for row in _rows(data)
+                if str(row.get("employee_num") or "").strip().casefold() == needle.casefold()
+            ]
+            if exact:
+                return exact
+        return []
+
+    async def find_user_by_employee_num(self, code: str) -> SnipeItUser | None:
+        """The first exact employee-number match, or None."""
+        users = await self.find_users_by_employee_num(code)
+        return users[0] if users else None
 
     async def get_user(self, user_id: int) -> SnipeItUser:
         data = await self._get_json(f"/api/v1/users/{user_id}")

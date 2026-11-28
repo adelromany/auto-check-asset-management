@@ -25,32 +25,57 @@
       })
       .catch(function (error) { status.textContent = error.message; });
   });
-  document.addEventListener("click", function (event) {
-    var button = event.target.closest ? event.target.closest("[data-maint-action]") : null;
-    if (!button || !caseId) return;
-    var action = button.getAttribute("data-maint-action");
+  function stage(detail, name) {
+    return (detail.stages || []).find(function (item) { return item.stage === name; }) || {};
+  }
+
+  function perform(action) {
     var result = portal.$("[data-maint-result]");
-    button.disabled = true;
-    portal.request("/api/maintenance/cases/" + caseId + "/" + action, { method: "POST" })
+    result.textContent = "";
+    return portal.request("/api/maintenance/cases/" + caseId + "/" + action, { method: "POST" })
       .then(function (detail) {
-        var stage = action === "set-status" ? "snipeit_status" : action === "take-back" ? "taken_back" : "ready_status";
-        var operation = (detail.stages || []).find(function (item) { return item.stage === stage; });
-        if (operation && (operation.status === "failed" || operation.status === "not_done")) {
-          result.textContent = operation.reason || (operation.status === "not_done" ? "Not assigned" : "Failed");
-          result.className = "badge badge-destructive";
-          return;
-        }
-        result.textContent = "Done";
-        result.className = "badge badge-success";
-        if (action === "take-back") {
-          var remove = portal.$("[data-maint-action='take-back']");
-          if (remove) remove.remove();
+        renderActions(detail);
+        var name = action === "set-status" ? "snipeit_status" : action === "take-back" ? "taken_back" : "ready_status";
+        var operation = stage(detail, name);
+        if (operation.status === "failed" || operation.status === "not_done") {
+          result.textContent = operation.reason || "Failed";
+          throw new Error(result.textContent);
         }
       })
-      .catch(function (error) {
-        result.textContent = error.message;
-        result.className = "badge badge-destructive";
-      })
-      .then(function () { button.disabled = false; });
+      .catch(function (error) { result.textContent = error.message; });
+  }
+
+  function renderActions(detail) {
+    var status = stage(detail, "snipeit_status");
+    var taken = stage(detail, "taken_back");
+    var ready = stage(detail, "ready_status");
+    var holder = detail.device_holder_name || detail.recipient_snipeit_name;
+    var definitions = {
+      "set-status": {
+        applicable: status.status !== "passed", done: status.status === "passed",
+        doneLabel: "Maintenance", label: status.status === "failed" ? "Retry" : "Set Maintenance",
+        onClick: function () { return perform("set-status"); },
+      },
+      "take-back": {
+        applicable: !!holder && taken.status !== "passed", done: taken.status === "passed",
+        doneLabel: "Checked in", label: taken.status === "failed" ? "Retry" : "Remove from user",
+        onClick: function () { return perform("take-back"); },
+      },
+      "ready-status": {
+        applicable: ready.status === "failed" || ready.status === "not_done",
+        done: ready.status === "passed", doneLabel: "Ready to deploy", label: "Retry status",
+        onClick: function () { return perform("ready-status"); },
+      },
+    };
+    Object.keys(definitions).forEach(function (action) {
+      portal.actionSlot(portal.$("[data-maint-action-slot='" + action + "']"), definitions[action]);
+    });
+    var menuHost = portal.$("[data-case-menu]");
+    menuHost.textContent = "";
+    menuHost.appendChild(portal.caseMenu(detail.id, detail.status, detail.maintenance_state));
+  }
+
+  portal.request(base).then(renderActions).catch(function (error) {
+    portal.$("[data-maint-result]").textContent = error.message;
   });
 })();
